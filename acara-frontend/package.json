@@ -12,29 +12,18 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
     "axios": "^1.13.4",
-<<<<<<< HEAD
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "bootstrap": "^5.3.8",
+    "mdb-react-ui-kit": "^10.0.0",
+    "react-bootstrap": "^2.10.10",
+    "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
-=======
-    "bootstrap": "^5.3.8",
-    "mdb-react-ui-kit": "^10.0.0",
-    "react": "^18.3.1",
-    "react-bootstrap": "^2.10.10",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^7.13.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/node": "^22.10.1",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
->>>>>>> login_daus
     "@vitejs/plugin-react-swc": "^4.2.2",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
