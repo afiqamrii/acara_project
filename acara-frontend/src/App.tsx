@@ -3,20 +3,18 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom"
-import Login from "./pages/Login";
+import Login from "./pages/Login/Login";
 import UserDashboard from './pages/dashboard/UserDashboard';
 
 function App() { 
   return (
     <BrowserRouter>
      <div className="App">
-        <nav style={{ display: 'flex', gap: '10px', padding: '1rem' }}>
+        {/* <nav style={{ display: 'flex', gap: '10px', padding: '1rem' }}>
           <Link to="/login">Login</Link> |
           <Link to="/dashboard">Dashboard</Link> |
-          <Link to="/dashboard">Vendor</Link> |
-          <Link to="/admin/panel">Admin</Link>
         </nav>
-        <hr />
+        <hr /> */}
 
         <Routes>
            <Route path="/" element={<h1>Acara Dashboard</h1>} />
