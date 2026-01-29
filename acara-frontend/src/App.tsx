@@ -1,15 +1,12 @@
-import { useState} from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom"
-import Login from "./pages/Login/Login";
-import UserDashboard from './pages/dashboard/UserDashboard';
+import { BrowserRouter, Routes, Route } from "react-router-dom"
+import Login from "./features/auth/pages/Login";
+import UserDashboard from './features/dashboard/pages/UserDashboard';
 
-function App() { 
+function App() {
   return (
     <BrowserRouter>
-     <div className="App">
+      <div className="App">
         {/* <nav style={{ display: 'flex', gap: '10px', padding: '1rem' }}>
           <Link to="/login">Login</Link> |
           <Link to="/dashboard">Dashboard</Link> |
@@ -17,7 +14,7 @@ function App() {
         <hr /> */}
 
         <Routes>
-           <Route path="/" element={<h1>Acara Dashboard</h1>} />
+          <Route path="/" element={<h1>Acara Dashboard</h1>} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<UserDashboard />} />
           <Route path="/dashboard" element={<div>Vendor Dashboard</div>} />

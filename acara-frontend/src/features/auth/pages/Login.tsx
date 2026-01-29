@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import api from "../../services/Api";
+import api from "../../../lib/Api";
 import { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 import './Login.css';
@@ -144,8 +144,8 @@ const Login: React.FC = () => {
             <div className="gradient-custom-2 h-100 position-relative w-100 d-flex flex-column justify-content-center">
               <img src="src/img/audience.png" alt="background" className="position-absolute top-0 start-0 w-100 h-100"
                 style={{ objectFit: 'cover', zIndex: 0, opacity: 0.2 }} />
-                <div className="text-white px-3 py-4 p-md-5 mx-md-4 position-relative" style={{ zIndex: 1 }}>
-                  <h1 className="glowing-title text-6xl font-bold mb-5 animate-glow-text"> ACARA </h1>
+              <div className="text-white px-3 py-4 p-md-5 mx-md-4 position-relative" style={{ zIndex: 1 }}>
+                <h1 className="glowing-title text-6xl font-bold mb-5 animate-glow-text"> ACARA </h1>
 
                 <h4 className="mb-2">Vendor Marketplace</h4>
 
