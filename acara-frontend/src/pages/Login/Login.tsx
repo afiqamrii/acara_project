@@ -87,7 +87,7 @@ const Login: React.FC = () => {
               </div>
 
 
-              <h3 className="login-title">Welcome back 👋</h3>
+              <h3 className="login-title">Welcome back !</h3>
               <p className="login-subtitle">
                 Log in to manage your events & vendors
               </p>
