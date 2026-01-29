@@ -73,7 +73,7 @@ const Login: React.FC = () => {
 
   return (
     <div className="background">
-      <MDBContainer className="gradient-form">
+      <MDBContainer fluid className="p-0 gradient-form">
         <MDBRow className="g-0 min-vh-100">
           <MDBCol col="6" className="p-0 d-flex align-items-center justify-content-center">
             <div className="glass-card w-70 mx-6">
@@ -140,17 +140,27 @@ const Login: React.FC = () => {
             </div>
           </MDBCol>
 
-          <MDBCol col="6" className="p-0 d-flex justify-content-end">
-            <div className="d-flex flex-column justify-content-center gradient-custom-2 h-100 mb-4">
-              <div className="text-white px-3 py-4 p-md-5 mx-md-4">
-                <h1 className="glowing-title text-6xl font-bold mb-5 animate-glow-text">
-                  ACARA
-                </h1>
-                <h4 className="mt-1">We are Acara Vendor Marketplace</h4>
-                <p className="small mb-0">
-                  “Making Event Planning Easy for Everyone!”
+          <MDBCol col="6">
+            <div className="gradient-custom-2 h-100 position-relative w-100 d-flex flex-column justify-content-center">
+              <img src="src/img/audience.png" alt="background" className="position-absolute top-0 start-0 w-100 h-100"
+                style={{ objectFit: 'cover', zIndex: 0, opacity: 0.2 }} />
+                <div className="text-white px-3 py-4 p-md-5 mx-md-4 position-relative" style={{ zIndex: 1 }}>
+                  <h1 className="glowing-title text-6xl font-bold mb-5 animate-glow-text"> ACARA </h1>
+
+                <h4 className="mb-2">Vendor Marketplace</h4>
+
+                <p className="tagline mb-4">
+                  Making Event Planning Easy for Everyone
                 </p>
+
+                <ul className="benefits-list d-flex flex-column align-items-start">
+                  <li>Manage all events in one place</li>
+                  <li>Connect with trusted vendors</li>
+                  <li>Track bookings & payments</li>
+                  <li>Grow your vendor business</li>
+                </ul>
               </div>
+
             </div>
           </MDBCol>
         </MDBRow>

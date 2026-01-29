@@ -5,6 +5,7 @@
 }
 
 .gradient-custom-2 {
+
   /* fallback for old browsers */
   background: #6a11cb;
 
@@ -26,22 +27,19 @@
   min-height: 100vh;
   display: flex;
   width: 100%;
-  margin: 0;
 
 }
 
 
 @media (min-width: 768px) {
   .gradient-form {
-    /* height: 100vh !important;     */
-    margin-bottom: 0 !important;
-    margin-top: 0 !important;
+    height: 100vh !important;    
   }
 }
 @media (min-width: 769px) {
   .gradient-custom-2 {
-    border-top-right-radius: .3rem;
-    border-bottom-right-radius: .3rem;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
   }
 
   @keyframes glow {
@@ -81,4 +79,38 @@
 .glass-card .form-outline .form-control {
   background: rgba(255, 255, 255, 0.9);
   border-radius: 8px;
+} 
+
+/* Headline */
+.glowing-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+}
+
+/* Tagline */
+.tagline {
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+/* Benefits list */
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 1.5rem;
+}
+
+.benefits-list li {
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+}
+
+/* Check icon */
+.benefits-list li::before {
+  content: "✔";
+  color: #e056fd;
+  font-weight: bold;
+  margin-right: 0.75rem;
 }
