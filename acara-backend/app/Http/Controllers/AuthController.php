@@ -24,9 +24,11 @@ class AuthController extends Controller
             Auth::logout();
             return response()->json(['message' => 'Account not active'], 403);
         }
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',
+            'token' => $token,
             'role' => $user->role,
             'user' => $user
         ]);

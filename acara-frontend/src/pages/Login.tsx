@@ -1,9 +1,12 @@
 import { useState } from "react";
-import axios, { AxiosError } from "axios";
+import api from "../services/Api";
+import { AxiosError } from "axios";
+import { useNavigate } from "react-router-dom"; // Use navigate instead of window.location
 
 type LoginResponse = {
   message: string;
   role: "user" | "vendor" | "crew" | "admin";
+  token: string; // Added token to the response type
   user: {
     id: number;
     name: string;
@@ -16,28 +19,32 @@ type LoginResponse = {
 function Login() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const navigate = useNavigate();
 
   const handleLogin = async (): Promise<void> => {
     try {
-      const res = await axios.post<LoginResponse>(
-        "http://localhost:5175/api/login",
-        { email, password }
-      );
+      const res = await api.post<LoginResponse>("/login", { email, password });
+
+      // 1. Save credentials to localStorage
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("role", res.data.role);
+      localStorage.setItem("user_name", res.data.user.name);
 
       const role = res.data.role;
 
+      // 2. Navigate without a full page refresh
       switch (role) {
         case "user":
-          window.location.href = "/dashboard";
+          navigate("/");
           break;
         case "vendor":
-          window.location.href = "/vendor/dashboard";
+          navigate("/dashboard");
           break;
         case "crew":
-          window.location.href = "/crew/jobs";
+          navigate("/crew/jobs");
           break;
         case "admin":
-          window.location.href = "/admin/panel";
+          navigate("/admin/panel");
           break;
       }
 
@@ -50,21 +57,18 @@ function Login() {
   return (
     <div className="login">
       <h2>Login to ACARA</h2>
-
       <input
         type="email"
         placeholder="Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
-
       <input
         type="password"
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
-
       <button onClick={handleLogin}>Login</button>
     </div>
   );
