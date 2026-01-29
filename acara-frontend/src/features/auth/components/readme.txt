@@ -1,0 +1,1 @@
+Letakkk sini component2 yg resuseable contoh macam EventCard, JobCard, etc
