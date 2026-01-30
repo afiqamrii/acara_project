@@ -1,0 +1,66 @@
+
+User
+    name
+    email
+    pass
+    role - pilih waktu Register - owner daftar admin
+    verified - bool
+    created_at
+    update_at
+
+Vendor
+    nanti ipan bagi
+    - desc
+    - fix quotation fee/person
+    - event exp
+    - media - gambar service
+
+1. Login
+    - ubah frontend
+    - control 
+
+2. Register
+    - select role - auto add input
+
+3. Vendor Marketplace
+    Customer
+        - select package
+            - browse
+            - filter
+                - date(availability vendor)
+            - save
+        - cart
+        - view vendor profile
+            - name 
+            - desc
+                - place
+        - chat vendor 
+        - checkout
+        - payment gateway - fiuu, toyyibpay, stripe, razorpay
+            - gen invoice
+        - review
+        - prevent double booking
+        - reserve booking - wait for payment
+            - prevent double book
+    Admin
+        - view order
+        - bayar vendor (percentage: 10%)
+            - admin boleh pilih berapa nak bayar
+    Vendor
+        - daftar/manage catalogue
+            - Catering ..
+            - Photo
+
+        - dashboard
+        - notify order
+        - view order
+        - availability and active status service
+        - update booking status 
+            - pending
+            - process etc
+4. Forum event - later
+5. AI assistant - later
+6. Dashboard
+7. Crew hub - customer nak org untuk crew event
+
+
