@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Login from "./features/auth/pages/Login";
 import UserDashboard from './features/dashboard/pages/UserDashboard';
 import Navbar from './features/header/pages/navbar';
+import LandingPage from './features/landing_page/pages/LandingPage';
 
 function App() {
   return (
@@ -16,7 +17,7 @@ function App() {
         <hr /> */}
 
         <Routes>
-          <Route path="/" element={<h1>Acara Dashboard</h1>} />
+          <Route path="/" element={< LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/navbar" element={<Navbar />} />
           <Route path="/dashboard" element={<UserDashboard />} />
