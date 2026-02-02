@@ -1,16 +1,9 @@
 import React, { useState } from "react";
 import api from "../../../lib/Api";
 import { AxiosError } from "axios";
-import { useNavigate } from "react-router-dom";
-import './Login.css';
-import {
-  MDBBtn,
-  MDBContainer,
-  MDBRow,
-  MDBCol,
-  MDBInput,
-} from "mdb-react-ui-kit";
-import Navbar from '../../header/pages/navbar';
+import { useNavigate, Link } from "react-router-dom";
+import Navbar from "../../header/pages/navbar";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 
 type LoginResponse = {
   message: string;
@@ -29,47 +22,23 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = async (
-    e: React.FormEvent<HTMLFormElement>
-  ): Promise<void> => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const res = await api.post<LoginResponse>("/login", {
-        email,
-        password,
-      });
+      const res = await api.post<LoginResponse>("/login", { email, password });
 
-      // localStorage.setItem("token", res.data.token);
-      // localStorage.setItem("role", res.data.role);
-      // localStorage.setItem("user_name", res.data.user.name);
-      localStorage.setItem(
-        "auth",
-        JSON.stringify({
-          token: res.data.token,
-          role: res.data.role,
-          user: res.data.user,
-        })
-      );
-      // api.interceptors.request.use((config) => {
-      //   const auth = localStorage.getItem("auth");
-      //   if (auth) {
-      //     const { token } = JSON.parse(auth);
-      //     config.headers.Authorization = `Bearer ${token}`;
-      //   }
-      //   return config;
-      // });
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("role", res.data.role);
+      localStorage.setItem("user_name", res.data.user.name);
 
       switch (res.data.role) {
-        case "user":
-          navigate("/");
-          break;
         case "vendor":
-          navigate("/dashboard");
+          navigate("/marketplace");
           break;
         case "crew":
           navigate("/crew/jobs");
@@ -89,103 +58,172 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="App">
+    <div className="min-h-screen bg-white-100">
       <Navbar />
-      <div className="background">
 
-        <MDBContainer fluid className="p-0 gradient-form">
-          <MDBRow className="g-0 min-vh-100">
-            <MDBCol col="6" className="p-0 d-flex align-items-center justify-content-center">
-              <div className="glass-card w-70 mx-6">
-                <div className="text-center">
-                  <img
-                    src="src/img/acara-logo.png"
-                    style={{ width: "185px" }}
-                    alt="logo"
-                  />
+      <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen">
+        {/* LEFT SIDE */}
+        <div className="flex items-center justify-center px-6">
+          <div className="w-full max-w-md rounded-2xl bg-white/30 backdrop-blur-xl border border-white/40 shadow-xl p-10">
 
-                </div>
+            <div className="text-center mb-6">
+              <img src="/src/img/acara-logo.png" className="mx-auto w-40" />
+              <h3 className="text-2xl text-black font-bold mt-6">Welcome back 👋</h3>
+              <p className="text-gray-600 mt-2">
+                Log in to manage your events & vendors
+              </p>
+            </div>
 
+            <form onSubmit={handleLogin} className="space-y-5">
+              <input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-4 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 focus:bg-white transition-all text-sm text-gray-900 placeholder:text-gray-400"
+              />
 
-                <h3 className="login-title">Welcome back !</h3>
-                <p className="login-subtitle">
-                  Log in to manage your events & vendors
-                </p>
+              <div className="relative w-full group">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 pr-12 bg-gray-50 border rounded-xl
+               focus:outline-none focus:ring-2 focus:ring-indigo-500
+               focus:bg-white transition-all text-sm text-gray-900
+               placeholder:text-gray-400"
+                />
 
-                <form onSubmit={handleLogin}>
-                  <MDBInput
-                    wrapperClass="mb-4"
-                    label="Email address"
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2
+                             text-gray-400 hover:text-indigo-500
+                             transition-all duration-200
+                             transform hover:scale-110 active:scale-95
 
-                  <MDBInput
-                    wrapperClass="mb-4"
-                    label="Password"
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-
-                  <MDBBtn
-                    type="submit"
-                    className="mb-4 w-100 gradient-custom-2"
-                    disabled={loading}
+                             bg-transparent
+                             p-0
+                             border-none
+                             outline-none
+                             shadow-none
+                             appearance-none
+                             focus:outline-none
+                             focus:ring-0
+                             focus:bg-transparent
+                             active:bg-transparent"
+                >
+                  <span
+                    className={`block transition-all duration-200 ease-in-out
+        ${showPassword ? "scale-100 opacity-100" : "scale-90 opacity-80"}`}
                   >
-                    {loading ? "Logging in..." : "Login"}
-                  </MDBBtn>
-                </form>
-
-                <a className="text-muted text-center" href="#!">
-                  Forgot password?
-                </a>
-
-                <div className="d-flex flex-row align-items-center justify-content-center pb-4 mt-4">
-                  <p className="mb-0">Don't have an account?</p>
-                  <MDBBtn
-                    outline
-                    className="mx-2"
-                    color="danger"
-                    onClick={() => navigate("/register")}
-                  >
-                    Register
-                  </MDBBtn>
-                </div>
+                    {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                  </span>
+                </button>
               </div>
-            </MDBCol>
 
-            <MDBCol col="6">
-              <div className="gradient-custom-2 h-100 position-relative w-100 d-flex flex-column justify-content-center">
-                <img src="src/img/audience.png" alt="background" className="position-absolute top-0 start-0 w-100 h-100"
-                  style={{ objectFit: 'cover', zIndex: 0, opacity: 0.2 }} />
-                <div className="text-white px-3 py-4 p-md-5 mx-md-4 position-relative" style={{ zIndex: 1 }}>
-                  <h1 className="glowing-title text-6xl font-bold mb-5 animate-glow-text"> ACARA </h1>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-purple-600 via-pink-500 to-purple-500 hover:opacity-90 transition"
+              >
+                {loading ? "Logging in..." : "Login"}
+              </button>
+            </form>
+            <div className="mt-6 text-center">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-gray-500 hover:text-purple-600 hover:underline transition"
+              >
+                Forgot password?
+              </Link>
+            </div>
 
-                  <h4 className="mb-2">Vendor Marketplace</h4>
+            <div className="flex justify-center items-center mt-6 gap-2 text-sm">
+              <span className="text-gray-500">Don’t have an account?</span>
+              <Link
+                to="/register"
+                className="text-purple-600 font-semibold hover:underline"
+              >
+                Register
+              </Link>
+            </div>
+          </div>
+        </div>
 
-                  <p className="tagline mb-4">
-                    Making Event Planning Easy for Everyone
-                  </p>
+        {/* RIGHT SIDE */}
+        <div className="hidden md:flex relative items-center justify-center overflow-hidden">
+          <img
+            src="/src/img/bg1_login.jpg"
+            className="absolute inset-0 w-full h-full object-cover"
+            alt="Background"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 via-purple-800/80 to-pink-600/70" />
 
-                  <ul className="benefits-list d-flex flex-column align-items-start">
-                    <li>Manage all events in one place</li>
-                    <li>Connect with trusted vendors</li>
-                    <li>Track bookings & payments</li>
-                    <li>Grow your vendor business</li>
-                  </ul>
-                </div>
+          {/* Content Container */}
+          <div className="relative z-10 px-12 max-w-2xl">
+            {/* Decorative Tag */}
+            <span className="inline-block px-4 py-1 mb-6 mt-8 text-xs font-bold tracking-widest text-white uppercase bg-white/20 backdrop-blur-md rounded-full border border-white/30">
+              Everything you need
+            </span>
 
-              </div>
-            </MDBCol>
-          </MDBRow>
-        </MDBContainer>
+            <h1 className="text-6xl lg:text-7xl font-black text-white leading-tight mb-4 drop-shadow-2xl">
+              Vendor <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-300 to-purple-200">
+                Marketplace
+              </span>
+            </h1>
 
+            {/* Accent Line */}
+            <div className="w-20 h-1.5 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full mb-8" />
+
+            <p className="mb-10 text-xl leading-relaxed text-gray-100/90 font-medium">
+              Your all-in-one platform to plan, manage, and elevate unforgettable
+              events. Built for organizers and vendors who demand excellence.
+            </p>
+
+            {/* Feature List */}
+            <ul className="space-y-5">
+              {[
+                "Manage all events in one place",
+                "Connect with trusted vendors",
+                "Track bookings & payments",
+                "Grow your vendor business",
+              ].map((text, index) => (
+                <li
+                  key={index}
+                  className="flex items-center gap-4 group cursor-default transition-transform duration-300 hover:translate-x-2"
+                >
+                  <div className="flex items-center justify-center w-7 h-7 rounded-full bg-white/20 text-green-300 ring-1 ring-white/40 group-hover:bg-green-500 group-hover:text-white transition-colors">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                  <span className="text-lg font-medium text-white/95">
+                    {text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+                
+          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-purple-500/30 rounded-full blur-3xl" />
+          <div className="absolute bottom-[-5%] left-[-5%] w-64 h-64 bg-pink-500/20 rounded-full blur-3xl" />
+        </div>
       </div>
     </div>
   );
