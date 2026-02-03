@@ -175,7 +175,7 @@ const Login: React.FC = () => {
             className="absolute inset-0 w-full h-full object-cover"
             alt="Background"
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/90 via-purple-800/80 to-pink-600/70" />
+          <div className="absolute inset-0 bg-linear-to-br from-purple-900/90 via-purple-800/80 to-pink-600/70" />
 
           {/* Content Container */}
           <div className="relative z-10 px-12 max-w-2xl">
@@ -186,13 +186,13 @@ const Login: React.FC = () => {
 
             <h1 className="text-6xl lg:text-7xl font-black text-white leading-tight mb-4 drop-shadow-2xl">
               Vendor <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-300 to-purple-200">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-pink-300 to-purple-200">
                 Marketplace
               </span>
             </h1>
 
             {/* Accent Line */}
-            <div className="w-20 h-1.5 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full mb-8" />
+            <div className="w-20 h-1.5 bg-linear-to-r from-pink-500 to-purple-500 rounded-full mb-8" />
 
             <p className="mb-10 text-xl leading-relaxed text-gray-100/90 font-medium">
               Your all-in-one platform to plan, manage, and elevate unforgettable
