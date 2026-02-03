@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import CartDrawer from "./cartdrawer";
+// import CartDrawer from "./cartdrawer";
 import './navbar.css';
 
 const Navbar = () => {
@@ -51,14 +51,14 @@ const Navbar = () => {
             stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="9" cy="21" r="1" />
             <circle cx="20" cy="21" r="1" />
-            <path d="M1 1h4l2.6 13h10.4l2-8H6" /> 
+            <path d="M1 1h4l2.6 13h10.4l2-8H6" />
           </svg>
           <span className="cart-badge">0</span>
         </button>
       </div>
-      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      {/* <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} /> */}
     </nav>
-    
+
   );
 };
 

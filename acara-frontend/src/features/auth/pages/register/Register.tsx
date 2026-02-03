@@ -282,7 +282,7 @@ const Register: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="focus:outline-none hover:outline-none absolute right-4 top-[14px] text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-none outline-none"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-transparent! border-none! text-gray-400 hover:text-gray-600 focus:outline-none transition-colors cursor-pointer flex items-center justify-center rounded-full hover:bg-gray-100"
                             >
                                 {showPassword ? (
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -341,7 +341,7 @@ const Register: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                className="focus:outline-none hover:outline-none absolute right-4 top-[14px] text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-none outline-none"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-transparent! border-none! text-gray-400 hover:text-gray-600 focus:outline-none transition-colors cursor-pointer flex items-center justify-center rounded-full hover:bg-gray-100"
                             >
                                 {showConfirmPassword ? (
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">

@@ -83,6 +83,12 @@ const Login: React.FC = () => {
               </p>
             </div>
 
+            {successMsg && (
+              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <span className="block sm:inline">{successMsg}</span>
+              </div>
+            )}
+
             <form onSubmit={handleLogin} className="space-y-5">
               <input
                 type="email"
@@ -93,11 +99,7 @@ const Login: React.FC = () => {
                 className="w-full px-4 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 focus:bg-white transition-all text-sm text-gray-900 placeholder:text-gray-400"
               />
 
-              {successMsg && (
-                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-                  <span className="block sm:inline">{successMsg}</span>
-                </div>
-              )}
+
 
               <div className="relative w-full group">
                 <input
