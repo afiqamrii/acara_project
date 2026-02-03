@@ -6,6 +6,7 @@ import Register from "./features/auth/pages/register/Register";
 import UserDashboard from './features/dashboard/pages/UserDashboard';
 import Navbar from './features/header/pages/navbar';
 // import Marketplace from './features/marketplace/pages/marketplace';
+import LandingPage from './features/landing_page/pages/LandingPage';
 
 function App() {
   return (
@@ -13,7 +14,7 @@ function App() {
       <div className="App">
 
         <Routes>
-          <Route path="/" element={< LandingPage />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/navbar" element={<Navbar />} />
