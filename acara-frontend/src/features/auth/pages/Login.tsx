@@ -31,6 +31,15 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const [successMsg, setSuccessMsg] = useState("");
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("verified") === "1") {
+      setSuccessMsg("Verification successful! You can now log in.");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const handleLogin = async (
     e: React.FormEvent<HTMLFormElement>
@@ -106,6 +115,14 @@ const Login: React.FC = () => {
 
                 </div>
 
+
+
+
+                {successMsg && (
+                  <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <span className="block sm:inline">{successMsg}</span>
+                  </div>
+                )}
 
                 <h3 className="login-title">Welcome back !</h3>
                 <p className="login-subtitle">
@@ -187,7 +204,7 @@ const Login: React.FC = () => {
         </MDBContainer>
 
       </div>
-    </div>
+    </div >
   );
 };
 

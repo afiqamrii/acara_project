@@ -4,9 +4,18 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\AuthService;
+use App\Http\Requests\RegisterRequest;
 
 class AuthController extends Controller
 {
+    protected $authService;
+
+    public function __construct(AuthService $authService)
+    {
+        $this->authService = $authService;
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -34,26 +43,9 @@ class AuthController extends Controller
         ]);
     }
 
-    public function register(Request $request)
+    public function register(RegisterRequest $request)
     {
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|string|in:user,vendor,crew',
-            'phone_number' => 'required|string|max:20',
-            'ssm_registration' => 'required_if:role,vendor|nullable|string|max:255',
-        ]);
-
-        $user = \App\Models\User::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'password' => \Hash::make($validatedData['password']),
-            'role' => $validatedData['role'],
-            'phone_number' => $validatedData['phone_number'],
-            'ssm_registration' => $validatedData['ssm_registration'] ?? null,
-            'status' => 'active', // Default status
-        ]);
+        $user = $this->authService->registerUser($request->validated());
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -63,5 +55,26 @@ class AuthController extends Controller
             'role' => $user->role,
             'user' => $user
         ], 201);
+    }
+
+    public function verify(Request $request)
+    {
+        $user = \App\Models\User::find($request->route('id'));
+
+        if (! $user) {
+            return response()->json(['message' => 'Invalid user'], 400);
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            // Redirect to frontend login with a message
+            return redirect(env('FRONTEND_URL', 'http://localhost:5173') . '/login?verified=1');
+        }
+
+        if ($user->markEmailAsVerified()) {
+            event(new \Illuminate\Auth\Events\Verified($user));
+        }
+
+        // Redirect to frontend login with success
+        return redirect(env('FRONTEND_URL', 'http://localhost:5173') . '/login?verified=1');
     }
 }

@@ -1,10 +1,11 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useRegister } from "../../hooks";
+import Loader from "../../../../components/common/Loader";
+import SuccessModal from "../../components/SuccessModal";
 
 const Register: React.FC = () => {
     const navigate = useNavigate();
-    const [loading, setLoading] = React.useState(false);
     const [currentSlide, setCurrentSlide] = React.useState(0);
     const [showPassword, setShowPassword] = React.useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
@@ -110,6 +111,8 @@ const Register: React.FC = () => {
         }
     };
 
+    const { register, isLoading, error, isSuccess } = useRegister();
+
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -133,31 +136,34 @@ const Register: React.FC = () => {
             return;
         }
 
-        setLoading(true);
-        try {
-            const payload = {
-                name: formData.name,
-                phone: formData.phone,
-                email: formData.email,
-                password: formData.password,
-                password_confirmation: formData.confirmPassword,
-                role: "user"
-            };
-            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/register`, payload);
-            navigate("/login");
-        } catch (error) {
-            console.error("Registration failed:", error);
-        } finally {
-            setLoading(false);
-        }
+        // Prepare data for the hook
+        const payload = {
+            name: formData.name,
+            phone_number: formData.phone,
+            email: formData.email,
+            password: formData.password,
+            password_confirmation: formData.confirmPassword,
+            role: "user"
+        };
+
+        // Use the custom hook
+        await register(payload);
     };
 
-
-
     return (
-        <div className="min-h-screen flex flex-col lg:flex-row">
+        <div className="min-h-screen flex flex-col lg:flex-row relative">
+            {/* Success Modal */}
+            <SuccessModal isOpen={isSuccess} />
+
+            {/* Global Loader Overlay */}
+            {isLoading && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <Loader />
+                </div>
+            )}
+
             {/* LEFT SIDE - Dynamic Carousel Background */}
-            <div className="hidden lg:block relative w-3/5 min-h-screen bg-gray-900 overflow-hidden rounded-r-[4.5rem]">
+            <div className="hidden lg:block relative w-3/5 min-h-screen bg-gray-900 overflow-hidden rounded-r-none">
                 {/* Background Images */}
                 {slides.map((slide, index) => (
                     <div
@@ -168,7 +174,7 @@ const Register: React.FC = () => {
                 ))}
 
                 {/* Dark Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/70 z-10" />
+                <div className="absolute inset-0 bg-linear-to-b from-black/30 to-black/70 z-10" />
 
                 {/* Content */}
                 <div className="relative z-20 h-full min-h-screen flex flex-col justify-between p-8">
@@ -371,12 +377,14 @@ const Register: React.FC = () => {
                         </div>
                         {errors.terms && <p className="text-red-500 text-[11px] mt-1 ml-1 text-left font-medium">You must agree to the terms</p>}
 
+                        {error && <div className="text-red-500 text-sm text-center font-medium bg-red-50 p-2 rounded-lg">{error}</div>}
+
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={isLoading}
                             className="w-full bg-[#7E57C2] hover:bg-[#6C4AB8] text-white font-medium py-3.5 rounded-xl transition-all duration-300 mt-4 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                         >
-                            {loading ? "Creating account..." : "Create account"}
+                            {isLoading ? "Creating account..." : "Create account"}
                         </button>
                     </form>
                 </div>
