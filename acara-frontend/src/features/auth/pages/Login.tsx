@@ -15,6 +15,7 @@ type LoginResponse = {
     email: string;
     role: string;
     status: string;
+    email_verified_at: string | null;
   };
 };
 
@@ -25,6 +26,9 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const [successMsg, setSuccessMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [requiresVerification, setRequiresVerification] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -33,6 +37,20 @@ const Login: React.FC = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
+
+  const handleResend = async () => {
+    setResendLoading(true);
+    setResendSuccess(false);
+    try {
+      const { resendVerificationEmail } = await import("../api");
+      await resendVerificationEmail();
+      setResendSuccess(true);
+    } catch (err) {
+      alert("Failed to resend email. Please try again later.");
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +62,12 @@ const Login: React.FC = () => {
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.role);
       localStorage.setItem("user_name", res.data.user.name);
+
+      if (res.data.user.email_verified_at === null) {
+        setRequiresVerification(true);
+        setLoading(false);
+        return; // Stop navigation
+      }
 
       switch (res.data.role) {
         case "vendor":
@@ -86,6 +110,34 @@ const Login: React.FC = () => {
             {successMsg && (
               <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
                 <span className="block sm:inline">{successMsg}</span>
+              </div>
+            )}
+
+            {requiresVerification && (
+              <div className={`border px-4 py-4 rounded relative mb-4 flex flex-col items-center gap-2 transition-colors duration-300
+                   ${resendSuccess ? "bg-green-100 border-green-400 text-green-700" : "bg-yellow-100 border-yellow-400 text-yellow-700"}`}>
+
+                <span className="font-bold">
+                  {resendSuccess ? "Verification Sent!" : "Email Verification Required"}
+                </span>
+
+                <span className="text-sm text-center">
+                  {resendSuccess
+                    ? "Please check your inbox (and spam) for the link."
+                    : "Please verify your email to continue."}
+                </span>
+
+                {!resendSuccess && (
+                  <button
+                    onClick={handleResend}
+                    type="button"
+                    disabled={resendLoading}
+                    className={`mt-2 px-4 py-2 text-white text-sm font-semibold rounded transition flex items-center gap-2
+                                ${resendLoading ? "bg-yellow-400 cursor-not-allowed" : "bg-yellow-600 hover:bg-yellow-700"}`}
+                  >
+                    {resendLoading ? "Sending..." : "Resend Verification Email"}
+                  </button>
+                )}
               </div>
             )}
 

@@ -26,6 +26,7 @@ class CustomVerifyEmail extends VerifyEmail
             </div>'))
             ->line('We are excited to have you on board. Please verify your email address to get access to all features.')
             ->action('Verify Email Address', $verificationUrl)
+            ->line('This link will expire in 60 minutes.')
             ->line('If you did not create an account, no further action is required.');
     }
 }

@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useRegister } from "../../hooks";
-import Loader from "../../../../components/common/Loader";
+
 import SuccessModal from "../../components/SuccessModal";
 
 const Register: React.FC = () => {
@@ -133,6 +133,7 @@ const Register: React.FC = () => {
 
         // If any error exists, stop submission
         if (Object.values(newErrors).some(Boolean)) {
+            console.log("Validation failed:", newErrors);
             return;
         }
 
@@ -154,13 +155,6 @@ const Register: React.FC = () => {
         <div className="min-h-screen flex flex-col lg:flex-row relative">
             {/* Success Modal */}
             <SuccessModal isOpen={isSuccess} />
-
-            {/* Global Loader Overlay */}
-            {isLoading && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <Loader />
-                </div>
-            )}
 
             {/* LEFT SIDE - Dynamic Carousel Background */}
             <div className="hidden lg:block relative w-3/5 min-h-screen bg-gray-900 overflow-hidden rounded-r-none">
@@ -382,9 +376,17 @@ const Register: React.FC = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-[#7E57C2] hover:bg-[#6C4AB8] text-white font-medium py-3.5 rounded-xl transition-all duration-300 mt-4 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                            className={`w-full bg-[#7E57C2] hover:bg-[#6C4AB8] text-white font-medium py-3.5 rounded-xl transition-all duration-300 mt-4 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2`}
                         >
-                            {isLoading ? "Creating account..." : "Create account"}
+                            {isLoading ? (
+                                <>
+                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Creating account...</span>
+                                </>
+                            ) : "Create account"}
                         </button>
                     </form>
                 </div>
