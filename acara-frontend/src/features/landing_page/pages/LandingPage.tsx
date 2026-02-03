@@ -4,6 +4,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import Navbar from "../../header/pages/navbar";
 import audienceBg from "../../../img/audience.jpg";
+import LiquidEther from '../components/liquidEther';
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
@@ -15,6 +16,26 @@ const LandingPage: React.FC = () => {
     return (
         <div className="min-h-screen w-full bg-gray-50 text-gray-900 overflow-x-hidden relative text-left font-sans selection:bg-purple-200">
             <Navbar />
+
+            <div style={{ width: '100%', height: '100vh', position: 'absolute' }}>
+                <LiquidEther
+                    colors={['#5227FF', '#FF9FFC', '#B19EEF']}
+                    mouseForce={20}
+                    cursorSize={60}
+                    isViscous
+                    viscous={30}
+                    iterationsViscous={32}
+                    iterationsPoisson={32}
+                    resolution={0.5}
+                    isBounce={false}
+                    autoDemo
+                    autoSpeed={0.5}
+                    autoIntensity={2.2}
+                    takeoverDuration={0.25}
+                    autoResumeDelay={3000}
+                    autoRampDuration={0.6}
+                />
+            </div>
 
             {/* Hero Section */}
             <section className="relative min-h-[100vh] w-full overflow-hidden flex items-center justify-center pt-20">
