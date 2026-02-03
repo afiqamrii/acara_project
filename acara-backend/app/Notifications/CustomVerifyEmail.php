@@ -20,7 +20,7 @@ class CustomVerifyEmail extends VerifyEmail
 
         return (new MailMessage)
             ->subject('Welcome to Acara! Verify your email')
-            ->greeting('Hello ' . $notifiable->name . '!')
+            ->greeting('Hello, ' . $notifiable->name . '!')
             ->line(new HtmlString('<div style="text-align: center; margin-bottom: 20px;">
                 <img src="' . env('URL_PICTURE') . '" alt="ACARA" style="max-width: 150px; height: auto;">
             </div>'))
