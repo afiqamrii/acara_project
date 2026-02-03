@@ -67,7 +67,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white-100">
+    <div className="min-h-screen bg-gray-100">
       <Navbar />
 
       <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen">
