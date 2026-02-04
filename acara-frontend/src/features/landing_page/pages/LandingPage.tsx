@@ -69,7 +69,7 @@ const LandingPage: React.FC = () => {
                         Plan Your Perfect
                     </h1>
                     <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-gray-700 mt-2">
-                        Malaysian Event
+                        Event
                     </h1>
 
                     <div className="w-24 h-1.5 bg-gradient-to-r from-pink-500 to-[#7E57C2] rounded-full my-8 opactiy-80"></div>
