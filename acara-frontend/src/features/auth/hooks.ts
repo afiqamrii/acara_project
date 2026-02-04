@@ -16,6 +16,17 @@ export const useRegister = () => {
             setIsSuccess(true);
         } catch (err: any) {
             console.error("Registration failed:", err);
+
+            // Log full error details for debugging
+            if (err.response) {
+                console.log("Server Error Status:", err.response.status);
+                console.log("Server Error Data:", err.response.data);
+            } else if (err.request) {
+                console.log("No response received:", err.request);
+            } else {
+                console.log("Error details:", err.message);
+            }
+
             // Extract error message if available from backend response
             const message = err.response?.data?.message || "Registration failed. Please try again.";
             setError(message);

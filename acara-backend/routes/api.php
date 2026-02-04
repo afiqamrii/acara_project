@@ -22,4 +22,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
-Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verify'])->name('verification.verify');
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/email/resend', [AuthController::class, 'resendVerification']);
+});
+
+Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verify'])
+    ->middleware('signed')
+    ->name('verification.verify');
