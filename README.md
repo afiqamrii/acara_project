@@ -48,15 +48,3 @@
 ![REST API](https://img.shields.io/badge/REST_API-005571?style=for-the-badge&logo=swagger&logoColor=white)
 ![Git](https://img.shields.io/badge/Git-%23F05033?style=for-the-badge&logo=git&logoColor=white)
 
----
-
-## 🔄 How It Works (Escrow Workflow)
-
-1.  [cite_start]**Event Creation:** User inputs data (Budget, Date, Pax)[cite: 356].
-2.  [cite_start]**Smart Match:** AI suggests verified vendors[cite: 357].
-3.  [cite_start]**Booking:** User selects a vendor and confirms the package[cite: 360].
-4.  [cite_start]**Escrow Funding:** User pays the **full amount** into ACARA's secure account[cite: 367].
-5.  [cite_start]**Partial Release:** ACARA releases an initial % (e.g., 40%) to the vendor for mobilization[cite: 362].
-6.  [cite_start]**Completion:** Vendor delivers the service[cite: 370].
-7.  [cite_start]**Verification:** User confirms satisfaction[cite: 373].
-8.  [cite_start]**Final Release:** ACARA releases the remaining funds to the vendor[cite: 377].
