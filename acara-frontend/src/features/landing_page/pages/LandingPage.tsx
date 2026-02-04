@@ -14,7 +14,7 @@ const LandingPage: React.FC = () => {
     }, []);
 
     return (
-        <div className="min-h-screen w-full bg-gray-50 text-gray-900 overflow-x-hidden relative text-left font-sans selection:bg-purple-200">
+        <div className="min-h-screen w-full bg-gray-50 text-gray-900 overflow-x-hidden relative text-left selection:bg-purple-200">
             <Navbar />
 
             <div style={{ width: '100%', height: '100vh', position: 'absolute' }}>
@@ -83,7 +83,7 @@ const LandingPage: React.FC = () => {
 
                     <button
                         onClick={() => navigate('/login')}
-                        className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white transition-all duration-200 bg-[#7E57C2] font-pj rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 hover:bg-[#6C4AB8] shadow-lg hover:shadow-purple-500/30 hover:-translate-y-1"
+                        className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white transition-all duration-200 bg-[#7E57C2] rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 hover:bg-[#6C4AB8] shadow-lg hover:shadow-purple-500/30 hover:-translate-y-1"
                     >
                         Find Vendors Now
                         <svg className="w-5 h-5 ml-2 transition-transform duration-200 group-hover:translate-x-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
