@@ -14,7 +14,7 @@ function App() {
       <div className="App">
 
         <Routes>
-          <Route path="/" element={<h1>Acara Dashboard</h1>} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/navbar" element={<Navbar />} />
