@@ -7,6 +7,7 @@ import UserDashboard from './features/dashboard/pages/UserDashboard';
 import Navbar from './features/header/pages/navbar';
 import Marketplace from './features/marketplace/pages/Marketplace';
 import LandingPage from './features/landing_page/pages/LandingPage';
+import AdminDashboard from './features/dashboard/pages/AdminDashboard';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="/crew/jobs" element={<div>Crew Jobs</div>} />
           <Route path="/admin/panel" element={<div>Admin Panel</div>} />
           <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/admindashboard" element={<AdminDashboard />} />
         </Routes>
       </div>
     </BrowserRouter>
