@@ -24,7 +24,15 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
-      window.location.href = "/login";
+
+      // Don't redirect if the failed request was the login endpoint and prevents an infinite loop of redirects if the user is already on the login page
+      const requestUrl = error.config?.url || "";
+      const onLoginPage = window.location.pathname === "/login";
+      const isLoginRequest = requestUrl.includes("/login");
+
+      if (!onLoginPage && !isLoginRequest) {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }
