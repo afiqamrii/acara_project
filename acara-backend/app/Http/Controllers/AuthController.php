@@ -28,7 +28,7 @@ class AuthController extends Controller
 
         if (!Auth::attempt($credentials)) {
             Log::warning('Login failed for email: ' . $request->email);
-            return response()->json(['message' => 'Invalid credentials'], 401);
+            return response()->json(['message' => 'Email or password is incorrect.'], 401);
         }
 
         $user = Auth::user();

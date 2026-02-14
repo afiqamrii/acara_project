@@ -13,6 +13,9 @@
       "vite/client"
     ],
     "skipLibCheck": true,
+
+   
+
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
