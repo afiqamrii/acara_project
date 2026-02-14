@@ -21,6 +21,7 @@ type LoginResponse = {
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -54,6 +55,7 @@ const Login: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setLoading(true);
 
     try {
@@ -66,8 +68,9 @@ const Login: React.FC = () => {
       if (res.data.user.email_verified_at === null) {
         setRequiresVerification(true);
         setLoading(false);
-        return; // Stop navigation
+        return;
       }
+
 
       switch (res.data.role) {
         case "vendor":
@@ -83,15 +86,26 @@ const Login: React.FC = () => {
           navigate("/");
       }
     } catch (error) {
-      const err = error as AxiosError<{ message: string }>;
-      alert(err.response?.data?.message || "Login failed");
-    } finally {
-      setLoading(false);
-    }
+      const err = error as AxiosError<any>;
+
+      let message = "Something went wrong.";
+
+      if (!err.response) {
+        message = "Cannot connect to server. Please try again.";
+      } else {
+        message =
+          err.response.data?.message ||
+          "Email or password is incorrect.";
+      }
+
+      setErrorMsg(message);
+
+    } finally { setLoading(false); }
+
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-white-100">
       <Navbar />
 
       <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen">
@@ -110,6 +124,12 @@ const Login: React.FC = () => {
             {successMsg && (
               <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
                 <span className="block sm:inline">{successMsg}</span>
+              </div>
+            )}
+
+            {errorMsg && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                <span className="block sm:inline">{errorMsg}</span>
               </div>
             )}
 
