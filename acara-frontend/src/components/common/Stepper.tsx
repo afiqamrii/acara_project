@@ -113,6 +113,11 @@ export default function Stepper({
                                         currentStep,
                                         onStepClick: clicked => {
                                             if (!isLoading) {
+                                                if (clicked > currentStep) {
+                                                    if (isStepValid && !isStepValid(currentStep)) {
+                                                        return;
+                                                    }
+                                                }
                                                 setDirection(clicked > currentStep ? 1 : -1);
                                                 updateStep(clicked);
                                             }
@@ -125,6 +130,12 @@ export default function Stepper({
                                         currentStep={currentStep}
                                         onClickStep={clicked => {
                                             if (!isLoading) {
+                                                // Prevent skipping ahead if current step is invalid
+                                                if (clicked > currentStep) {
+                                                    if (isStepValid && !isStepValid(currentStep)) {
+                                                        return;
+                                                    }
+                                                }
                                                 setDirection(clicked > currentStep ? 1 : -1);
                                                 updateStep(clicked);
                                             }

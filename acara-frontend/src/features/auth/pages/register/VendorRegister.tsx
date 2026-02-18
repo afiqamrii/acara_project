@@ -124,6 +124,26 @@ const VendorRegister: React.FC = () => {
     };
 
     const handleSubmit = async () => {
+        // Validate all previous steps before submitting
+        const isStep1Valid = validateStep(1);
+        const isStep2Valid = validateStep(2);
+        const isStep3Valid = validateStep(3); // Current step
+
+        if (!isStep1Valid) {
+            setSubmitError("Please complete all required fields in Step 1 (Business Details).");
+            setAttemptedNext(true); // Show errors
+            return;
+        }
+        if (!isStep2Valid) {
+            setSubmitError("Please complete all required fields in Step 2 (Services & Pricing).");
+            setAttemptedNext(true);
+            return;
+        }
+        if (!isStep3Valid) {
+            setAttemptedNext(true);
+            return;
+        }
+
         setIsLoading(true);
         setSubmitError(null);
 
