@@ -152,6 +152,46 @@ const LandingPage: React.FC = () => {
                     </div>
                 </div>
             </section>
+
+            {/* Become a Vendor Section */}
+            <section className="relative py-24 bg-white overflow-hidden">
+                <div className="container mx-auto px-12">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-12">
+                        <div className="w-full md:w-1/2" data-aos="fade-right">
+                            <span className="text-[#6C5CE7] font-semibold tracking-wider uppercase text-sm">For Professionals</span>
+                            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mt-2 mb-6">
+                                Grow Your Business with Acara
+                            </h2>
+                            <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+                                Join our network of top-tier vendors. Showcase your services, connect with clients, and manage bookings effortlessly.
+                            </p>
+                            <button
+                                onClick={() => {
+                                    const token = localStorage.getItem('token');
+                                    if (token) {
+                                        navigate('/vendor/register');
+                                    } else {
+                                        navigate('/register');
+                                    }
+                                }}
+                                className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white transition-all duration-200 bg-gray-900 rounded-full hover:bg-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 cursor-pointer"
+                            >
+                                Become a Vendor
+                            </button>
+                        </div>
+                        <div className="w-full md:w-1/2 relative" data-aos="fade-left">
+                            <div className="relative rounded-3xl overflow-hidden shadow-2xl">
+                                <img
+                                    src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=2070&auto=format&fit=crop"
+                                    alt="Event Planning Team"
+                                    className="w-full h-auto object-cover transform hover:scale-105 transition-transform duration-700"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 };

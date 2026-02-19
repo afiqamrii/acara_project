@@ -67,4 +67,12 @@ class User extends Authenticatable implements MustVerifyEmail
         return static::whereNull('email_verified_at')
             ->where('created_at', '<=', now()->subDays(30));
     }
+
+    /**
+     * Get the vendor profile associated with the user.
+     */
+    public function vendorProfile()
+    {
+        return $this->hasOne(VendorProfile::class);
+    }
 }
