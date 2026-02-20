@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\VendorVerificationController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -25,6 +26,12 @@ Route::post('/register', [AuthController::class, 'register']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/email/resend', [AuthController::class, 'resendVerification']);
+    
+    Route::get('/admin/vendors', [VendorVerificationController::class, 'index']);
+
+    Route::patch('/admin/vendors/{id}/approve', [VendorVerificationController::class, 'approve']);
+
+    Route::patch('/admin/vendors/{id}/reject', [VendorVerificationController::class, 'reject']);
 });
 
 Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verify'])

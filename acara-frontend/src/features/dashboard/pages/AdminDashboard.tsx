@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { AdminSidebar } from "../../header/pages/AdminSidebar";
+import axios from "axios";
+import { useEffect, useState } from "react";
 
 import {
     FiUsers,
@@ -13,11 +15,62 @@ import {
 
 import adminBannerImg from "../../../img/admin_rightside.png";
 
+type VendorMini = {
+    id: number;
+    business_name: string;
+    status: "pending_verification" | "approved" | "rejected";
+};
+
+
+
+
+
 const AdminDashboard = () => {
+    const [pendingVendors, setPendingVendors] = useState<VendorMini[]>([]);
+
+    const [pendingVendorCount, setPendingVendorCount] = useState(0);
+
+    useEffect(() => {
+        const fetchPendingVendors = async () => {
+            try {
+                const token = localStorage.getItem("token");
+
+                const res = await axios.get(
+                    "http://127.0.0.1:8000/api/admin/vendors",
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+
+                // filter only pending and take first 3
+                const pending = res.data
+                    .filter((v: VendorMini) => v.status === "pending_verification")
+                    .slice(0, 3);
+
+                setPendingVendors(pending);
+
+                const allPending = res.data.filter(
+                    (v: VendorMini) => v.status === "pending_verification"
+                );
+
+                setPendingVendorCount(allPending.length);
+
+                setPendingVendors(allPending.slice(0, 3));
+
+            } catch (err) {
+                console.error("Failed to load pending vendors", err);
+            }
+        };
+
+        fetchPendingVendors();
+    }, []);
+
     const stats = [
         { label: "Total Users", value: "1,284", icon: <FiUsers /> },
         { label: "Active Organizers", value: "512", icon: <FiUsers /> },
-        { label: "Vendors Pending", value: "34", icon: <FiClipboard /> },
+        { label: "Vendors Pending", value: pendingVendorCount.toString(), icon: <FiClipboard /> },
         { label: "Crew Pending", value: "18", icon: <FiClipboard /> },
 
         { label: "Escrow Held (RM)", value: "RM 24,580", icon: <FiDollarSign /> },
@@ -133,15 +186,19 @@ const AdminDashboard = () => {
                                 </div>
 
                                 <div className="mt-4 space-y-3">
-                                    {["ABC Enterprise", "Kawaii Catering", "Zack Sound System"].map(
-                                        (name, i) => (
+                                    {pendingVendors.length === 0 ? (
+                                        <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                                            No pending vendor verifications
+                                        </div>
+                                    ) : (
+                                        pendingVendors.map((v) => (
                                             <div
-                                                key={i}
+                                                key={v.id}
                                                 className="flex items-center justify-between rounded-xl bg-neutral-50 px-4 py-3 dark:bg-neutral-900"
                                             >
                                                 <div>
                                                     <div className="font-semibold text-neutral-900 dark:text-white">
-                                                        {name}
+                                                        {v.business_name}
                                                     </div>
                                                     <div className="text-sm text-neutral-500 dark:text-neutral-400">
                                                         Pending documents review
@@ -152,7 +209,7 @@ const AdminDashboard = () => {
                                                     Pending
                                                 </span>
                                             </div>
-                                        )
+                                        ))
                                     )}
                                 </div>
                             </div>
