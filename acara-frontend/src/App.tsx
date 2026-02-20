@@ -8,6 +8,7 @@ import Navbar from './features/header/pages/navbar';
 import Marketplace from './features/marketplace/pages/Marketplace';
 import LandingPage from './features/landing_page/pages/LandingPage';
 import AdminDashboard from './features/dashboard/pages/AdminDashboard';
+import VendorVerificationQueue from './features/dashboard/pages/VendorVerificationQueue';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/admin/panel" element={<div>Admin Panel</div>} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/admindashboard" element={<AdminDashboard />} />
+          <Route path="/admin/verifications/vendors" element={<VendorVerificationQueue />} />
         </Routes>
       </div>
     </BrowserRouter>
