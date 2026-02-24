@@ -275,12 +275,12 @@ const VendorVerificationQueue = () => {
                                     {selectedVendor.business_name}?
                                 </p>
 
-                                <textarea
+                                {/* <textarea
                                     value={adminNote}
                                     onChange={(e) => setAdminNote(e.target.value)}
                                     placeholder="Optional admin note"
                                     className="mt-4 w-full border rounded-lg p-3 text-sm"
-                                />
+                                /> */}
 
                                 <div className="mt-6 flex justify-end gap-2">
                                     <button
