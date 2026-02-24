@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { AdminSidebar } from "../../header/pages/AdminSidebar";
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 
 import {
     FiCheckCircle,
@@ -154,7 +155,7 @@ const VendorVerificationQueue = () => {
 
             <main className="flex flex-1 overflow-auto">
                 <div className="flex h-full w-full flex-col gap-6 p-10">
-
+            
                     <Link
                         to="/admindashboard"
                         className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:underline"
@@ -163,13 +164,36 @@ const VendorVerificationQueue = () => {
                         Back to Dashboard
                     </Link>
 
-                    <h1 className="text-2xl font-semibold">
-                        Vendor Verification Queue
-                    </h1>
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        className="flex items-center justify-between"
+                    >
+                        <div>
+                            <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
+                                Vendor Verification
+                            </h1>
+                            <p className="mt-1 text-sm text-gray-500">
+                                Review and manage vendor onboarding requests
+                            </p>
+                        </div>
+
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className="rounded-xl bg-yellow-50 px-4 py-2 shadow-sm border border-yellow-500"
+                        >
+                            <span className="text-sm font-medium text-yellow-600">
+                                {vendors.filter(v => v.status === "pending_verification").length} Pending
+                            </span>
+                        </motion.div>
+                    </motion.div>
 
                     <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-neutral-50">
+                            <thead className="bg-neutral-300">
                                 <tr>
                                     <th className="px-6 py-3">Business</th>
                                     <th className="px-6 py-3">Category</th>
@@ -183,7 +207,7 @@ const VendorVerificationQueue = () => {
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-8 text-center">
+                                        <td colSpan={6} className="px-6 py-8 text-center">
                                             Loading vendors...
                                         </td>
                                     </tr>
@@ -220,7 +244,7 @@ const VendorVerificationQueue = () => {
                                                     "-"
                                                 )}
 
-                                                 {v.verification_url ? (
+                                                {v.verification_url ? (
                                                     <a
                                                         href={v.verification_url}
                                                         target="_blank"
@@ -238,16 +262,16 @@ const VendorVerificationQueue = () => {
                                                     <>
                                                         <button
                                                             onClick={() => openConfirm("approve", v)}
-                                                            className="bg-emerald-500 text-white px-3 py-1 text-xs rounded hover:bg-emerald-600"
+                                                            className="bg-emerald-600 text-white px-3 py-1.5 text-xs rounded-lg hover:bg-emerald-700 transition-all duration-200 shadow-sm hover:shadow inline-flex items-center gap-2"
                                                         >
-                                                            Approve
+                                                            <FiCheckCircle />
                                                         </button>
 
                                                         <button
                                                             onClick={() => openConfirm("reject", v)}
-                                                            className="bg-rose-500 text-white px-3 py-1 text-xs rounded hover:bg-rose-600"
+                                                            className="bg-rose-600 text-white px-3 py-1.5 text-xs rounded-lg hover:bg-rose-700 transition-all duration-200 shadow-sm hover:shadow"
                                                         >
-                                                            Reject
+                                                            <FiXCircle />
                                                         </button>
                                                     </>
                                                 )}
@@ -293,8 +317,8 @@ const VendorVerificationQueue = () => {
                                     <button
                                         onClick={confirmAction}
                                         className={`px-4 py-2 text-sm text-white rounded-lg ${actionType === "approve"
-                                                ? "bg-emerald-500"
-                                                : "bg-rose-500"
+                                            ? "bg-emerald-500"
+                                            : "bg-rose-500"
                                             }`}
                                     >
                                         Confirm
