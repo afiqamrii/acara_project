@@ -92,7 +92,7 @@ const Login: React.FC = () => {
           navigate("/crew/jobs");
           break;
         case "admin":
-          navigate("/admin/panel");
+          navigate("/admin/dashboard");
           break;
         default:
           navigate("/");

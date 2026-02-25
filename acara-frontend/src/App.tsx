@@ -32,7 +32,7 @@ function App() {
           {/* <Route path="/marketplace" element={<Marketplace />} /> */}
           <Route path="/vendor/register" element={<VendorRegister />} />
           <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/admindashboard" element={<AdminDashboard />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/verifications/vendors" element={<VendorVerificationQueue />} />
         </Routes>
       </div>
