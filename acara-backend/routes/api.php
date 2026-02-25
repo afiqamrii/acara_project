@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\VendorVerificationController;
 use App\Http\Controllers\VendorController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
@@ -33,6 +34,12 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/profile/complete', [AuthController::class, 'completeProfile']);
     Route::post('/email/resend', [AuthController::class, 'resendVerification']);
+    
+    Route::get('/admin/vendors', [VendorVerificationController::class, 'index']);
+
+    Route::patch('/admin/vendors/{id}/approve', [VendorVerificationController::class, 'approve']);
+
+    Route::patch('/admin/vendors/{id}/reject', [VendorVerificationController::class, 'reject']);
 });
 
 // Protected routes (require completed profile)
