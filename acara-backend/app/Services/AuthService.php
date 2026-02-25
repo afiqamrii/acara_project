@@ -54,6 +54,7 @@ class AuthService
         ]);
 
         $user->notify(new AdminInviteNotification($defaultPassword));
+        $user->sendEmailVerificationNotification();
 
         return $user;
     }

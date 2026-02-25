@@ -32,11 +32,11 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
 // Profile completion (authenticated users with incomplete profiles)
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/profile/complete', [AuthController::class, 'completeProfile']);
+    Route::post('/email/resend', [AuthController::class, 'resendVerification']);
 });
 
 // Protected routes (require completed profile)
 Route::middleware(['auth:sanctum', 'profile.completed'])->group(function () {
-    Route::post('/email/resend', [AuthController::class, 'resendVerification']);
     // Add other routes here that require a complete profile
     Route::post('/vendor/register', [VendorController::class, 'store']);
 });
