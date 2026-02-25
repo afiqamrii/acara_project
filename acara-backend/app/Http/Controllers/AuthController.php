@@ -49,10 +49,11 @@ class AuthController extends Controller
             'user' => $user,
             'is_verified' => $user->hasVerifiedEmail() ? true : false,
             'email_verified_at' => $user->email_verified_at,
+            'profile_completed' => $user->profile_completed ?? true,
         ]);
     }
 
-    public function register(RegisterRequest $request) 
+    public function register(RegisterRequest $request)
     {
         // 1. Check if user already exists
         $existingUser = \App\Models\User::where('email', $request->email)->first();
@@ -77,18 +78,18 @@ class AuthController extends Controller
 
         // Case C: New User -> Create Account (Atomic Transaction)
         DB::beginTransaction();
-        
+
         try {
             Log::info('Registration attempt for email: ' . $request->email);
-            
+
             $user = $this->authService->registerUser($request->validated());
-    
+
             $token = $user->createToken('auth_token')->plainTextToken;
-    
+
             Log::info('User registered successfully: ' . $user->id);
 
             DB::commit();
-    
+
             return response()->json([
                 'message' => 'User registered successfully',
                 'token' => $token,
@@ -118,7 +119,7 @@ class AuthController extends Controller
     {
         $user = \App\Models\User::find($request->route('id'));
 
-        if (! $user) {
+        if (!$user) {
             return response()->json(['message' => 'Invalid user'], 400);
         }
 
@@ -133,5 +134,54 @@ class AuthController extends Controller
 
         // Redirect to frontend login with success
         return redirect(env('FRONTEND_URL', 'http://localhost:5173') . '/login?verified=1');
+    }
+
+    public function inviteAdmin(\App\Http\Requests\AdminInviteRequest $request)
+    {
+        try {
+            $user = $this->authService->inviteAdmin(
+                $request->email,
+                $request->user()->id
+            );
+
+            Log::info('Admin invited successfully by user: ' . $request->user()->id);
+
+            return response()->json([
+                'message' => 'Admin invited successfully',
+                'user' => $user,
+                'default_password' => env('DEFAULT_ADMIN_PASSWORD', 'Admin@123'),
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Admin invitation failed: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to invite admin',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function completeProfile(\App\Http\Requests\CompleteProfileRequest $request)
+    {
+        try {
+            $user = $this->authService->completeProfile(
+                $request->user(),
+                $request->validated()
+            );
+
+            Log::info('Profile completed for user: ' . $user->id);
+
+            return response()->json([
+                'message' => 'Profile completed successfully',
+                'user' => $user,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Profile completion failed: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to complete profile',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

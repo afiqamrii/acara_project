@@ -17,6 +17,7 @@ type LoginResponse = {
     status: string;
     email_verified_at: string | null;
   };
+  profile_completed?: boolean;
 };
 
 const Login: React.FC = () => {
@@ -68,6 +69,17 @@ const Login: React.FC = () => {
       if (res.data.user.email_verified_at === null) {
         setRequiresVerification(true);
         setLoading(false);
+        return;
+      }
+
+      // Check if profile completion is required (handles boolean and 0/1)
+      const isProfileCompleted =
+        res.data.profile_completed === undefined
+          ? true
+          : Boolean(res.data.profile_completed);
+
+      if (!isProfileCompleted) {
+        navigate("/complete-profile");
         return;
       }
 

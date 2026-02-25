@@ -45,6 +45,7 @@ const Navbar = () => {
 
         <button onClick={() => navigate("/")}>Home</button>
         <button onClick={() => navigate("/marketplace")}>Marketplace</button>
+        <button onClick={() => navigate("/admin/register")}>Admin Register</button>
 
         <button className="cart-btn" onClick={() => setCartOpen(true)}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"

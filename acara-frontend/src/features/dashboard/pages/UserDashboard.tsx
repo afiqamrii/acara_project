@@ -1,4 +1,3 @@
-import React from 'react';
 import Navbar from '../../header/pages/navbar';
 
 function UserDashboard() {

@@ -24,8 +24,20 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
-Route::middleware('auth:sanctum')->group(function () {
+// Super admin routes
+Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
+    Route::post('/admin/invite', [AuthController::class, 'inviteAdmin']);
+});
+
+// Profile completion (authenticated users with incomplete profiles)
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/profile/complete', [AuthController::class, 'completeProfile']);
+});
+
+// Protected routes (require completed profile)
+Route::middleware(['auth:sanctum', 'profile.completed'])->group(function () {
     Route::post('/email/resend', [AuthController::class, 'resendVerification']);
+    // Add other routes here that require a complete profile
     Route::post('/vendor/register', [VendorController::class, 'store']);
 });
 

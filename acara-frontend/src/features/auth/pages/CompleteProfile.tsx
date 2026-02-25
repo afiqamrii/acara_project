@@ -96,7 +96,25 @@ const CompleteProfile: React.FC = () => {
             const response = await api.post("/profile/complete", formData);
             // Update user data in localStorage or context if needed
             localStorage.setItem("user", JSON.stringify(response.data.user));
-            navigate("/dashboard");
+            localStorage.setItem("role", response.data?.user?.role || "user");
+            localStorage.setItem("user_name", response.data?.user?.name || "");
+            const role =
+                response.data?.user?.role || localStorage.getItem("role") || "user";
+
+            switch (role) {
+                case "admin":
+                case "super_admin":
+                    navigate("/admin/panel");
+                    break;
+                case "vendor":
+                    navigate("/marketplace");
+                    break;
+                case "crew":
+                    navigate("/crew/jobs");
+                    break;
+                default:
+                    navigate("/dashboard");
+            }
         } catch (err: any) {
             console.error("Profile completion failed:", err);
             setError(err.response?.data?.message || "Failed to complete profile");
