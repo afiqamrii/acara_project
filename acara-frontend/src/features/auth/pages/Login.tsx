@@ -17,6 +17,7 @@ type LoginResponse = {
     status: string;
     email_verified_at: string | null;
   };
+  profile_completed?: boolean;
 };
 
 const Login: React.FC = () => {
@@ -71,6 +72,17 @@ const Login: React.FC = () => {
         return;
       }
 
+      // Check if profile completion is required (handles boolean and 0/1)
+      const isProfileCompleted =
+        res.data.profile_completed === undefined
+          ? true
+          : Boolean(res.data.profile_completed);
+
+      if (!isProfileCompleted) {
+        navigate("/complete-profile");
+        return;
+      }
+
 
       switch (res.data.role) {
         case "vendor":
@@ -80,7 +92,7 @@ const Login: React.FC = () => {
           navigate("/crew/jobs");
           break;
         case "admin":
-          navigate("/admin/panel");
+          navigate("/admin/dashboard");
           break;
         default:
           navigate("/");

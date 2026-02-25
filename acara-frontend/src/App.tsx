@@ -10,6 +10,9 @@ import Marketplace from './features/marketplace/pages/Marketplace';
 import LandingPage from './features/landing_page/pages/LandingPage';
 import AdminDashboard from './features/dashboard/pages/AdminDashboard';
 import VendorVerificationQueue from './features/dashboard/pages/VendorVerificationQueue';
+import Register_admin from './features/register_admin/pages/Register_admin';
+import CompleteProfile from './features/auth/pages/CompleteProfile';
+// import AdminDashboard from './features/dashboard/pages/AdminDashboard';
 
 function App() {
   return (
@@ -22,12 +25,14 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/navbar" element={<Navbar />} />
           <Route path="/dashboard" element={<UserDashboard />} />
-          <Route path="/dashboard" element={<div>Vendor Dashboard</div>} />
           <Route path="/crew/jobs" element={<div>Crew Jobs</div>} />
           <Route path="/admin/panel" element={<div>Admin Panel</div>} />
+          <Route path="/admin/register" element={<Register_admin />} />
+          <Route path="/complete-profile" element={<CompleteProfile />} />
+          {/* <Route path="/marketplace" element={<Marketplace />} /> */}
           <Route path="/vendor/register" element={<VendorRegister />} />
           <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/admindashboard" element={<AdminDashboard />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/verifications/vendors" element={<VendorVerificationQueue />} />
         </Routes>
       </div>
