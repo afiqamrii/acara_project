@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import api from "../../../lib/Api";
 import { AxiosError } from "axios";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import Navbar from "../../header/pages/navbar";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
@@ -102,7 +102,19 @@ const Login: React.FC = () => {
 
     } finally { setLoading(false); }
 
+    const location = useLocation();
+
+    useEffect(() => {
+      const params = new URLSearchParams(location.search);
+
+      if (params.get("expired") === "1") {
+        alert("Session expired. Please login again.");
+      }
+    }, []);
+
   };
+
+
 
   return (
     <div className="min-h-screen bg-white-100">
