@@ -64,3 +64,13 @@ Vendor
 7. Crew hub - customer nak org untuk crew event
 
 
+
+28 Feb
+1. Register service
+2. Vendor Dashboard
+3. Customer Dashboard
+4. Cart
+5. payment
+6. 
+
+
