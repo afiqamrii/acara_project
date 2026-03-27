@@ -156,7 +156,7 @@ const VendorVerificationQueue = () => {
                 <div className="flex h-full w-full flex-col gap-6 p-10">
 
                     <Link
-                        to="/admindashboard"
+                        to="/admin/dashboard"
                         className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:underline"
                     >
                         <FiArrowLeft />
@@ -220,7 +220,7 @@ const VendorVerificationQueue = () => {
                                                     "-"
                                                 )}
 
-                                                 {v.verification_url ? (
+                                                {v.verification_url ? (
                                                     <a
                                                         href={v.verification_url}
                                                         target="_blank"
@@ -293,8 +293,8 @@ const VendorVerificationQueue = () => {
                                     <button
                                         onClick={confirmAction}
                                         className={`px-4 py-2 text-sm text-white rounded-lg ${actionType === "approve"
-                                                ? "bg-emerald-500"
-                                                : "bg-rose-500"
+                                            ? "bg-emerald-500"
+                                            : "bg-rose-500"
                                             }`}
                                     >
                                         Confirm
