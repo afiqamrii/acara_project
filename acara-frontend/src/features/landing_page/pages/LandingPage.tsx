@@ -153,7 +153,7 @@ const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* Become a Vendor Section */}
+            {/* Register a Service Section */}
             <section className="relative py-24 bg-white overflow-hidden">
                 <div className="container mx-auto px-12">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-12">
@@ -163,20 +163,20 @@ const LandingPage: React.FC = () => {
                                 Grow Your Business with Acara
                             </h2>
                             <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                                Join our network of top-tier vendors. Showcase your services, connect with clients, and manage bookings effortlessly.
+                                Join our network of top-tier service providers. Showcase your services, connect with clients, and manage bookings effortlessly.
                             </p>
                             <button
                                 onClick={() => {
                                     const token = localStorage.getItem('token');
                                     if (token) {
-                                        navigate('/vendor/register');
+                                        navigate('/service/register');
                                     } else {
                                         navigate('/register');
                                     }
                                 }}
                                 className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white transition-all duration-200 bg-gray-900 rounded-full hover:bg-gray-800 shadow-lg hover:shadow-xl hover:-translate-y-1 cursor-pointer"
                             >
-                                Become a Vendor
+                                Register Your Service
                             </button>
                         </div>
                         <div className="w-full md:w-1/2 relative" data-aos="fade-left">

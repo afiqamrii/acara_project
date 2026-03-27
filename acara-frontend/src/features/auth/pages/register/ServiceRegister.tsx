@@ -6,7 +6,7 @@ import Navbar from "../../../header/pages/navbar";
 import Stepper from "../../../../components/common/Stepper";
 import { malaysiaLocations, malaysiaBanks, capitalizeFirstLetter, toTitleCase } from "../../../../utils/formHelpers";
 
-const VendorRegister: React.FC = () => {
+const ServiceRegister: React.FC = () => {
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -130,7 +130,7 @@ const VendorRegister: React.FC = () => {
         const isStep3Valid = validateStep(3); // Current step
 
         if (!isStep1Valid) {
-            setSubmitError("Please complete all required fields in Step 1 (Business Details).");
+            setSubmitError("Please complete all required fields in Step 1 (Service Details).");
             setAttemptedNext(true); // Show errors
             return;
         }
@@ -175,8 +175,8 @@ const VendorRegister: React.FC = () => {
             await registerVendor(data);
             setSuccess(true);
         } catch (err: any) {
-            console.error("Vendor registration failed:", err);
-            setSubmitError(err.response?.data?.message || "Failed to register. Please try again.");
+            console.error("Service registration failed:", err);
+            setSubmitError(err.response?.data?.message || "Failed to submit service registration. Please try again.");
             setIsLoading(false);
         }
     };
@@ -212,7 +212,7 @@ const VendorRegister: React.FC = () => {
                         </motion.div>
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">Application Submitted!</h2>
                         <p className="text-gray-600 mb-8">
-                            Your vendor profile has been successfully created. We are verifying your documents and will update you shortly.
+                            Your service profile has been successfully created. We are verifying your documents and will update you shortly.
                         </p>
                         <button
                             onClick={() => navigate("/dashboard")}
@@ -243,16 +243,16 @@ const VendorRegister: React.FC = () => {
                             <li aria-current="page">
                                 <div className="flex items-center">
                                     <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path></svg>
-                                    <span className="ml-1 text-sm font-medium text-gray-400 md:ml-2">Vendor Application</span>
+                                    <span className="ml-1 text-sm font-medium text-gray-400 md:ml-2">Service Application</span>
                                 </div>
                             </li>
                         </ol>
                     </nav>
                 </div>
                 <div className="text-center mb-10 w-full max-w-4xl">
-                    <h1 className="text-4xl font-bold text-gray-900 mb-4">Complete Your Vendor Profile</h1>
+                    <h1 className="text-4xl font-bold text-gray-900 mb-4">Register Your Service</h1>
                     <p className="text-gray-500 max-w-lg mx-auto">
-                        Join Acara's premium network. Please fill out details accurately.
+                        Share your service details accurately so we can review and publish your profile.
                     </p>
                 </div>
 
@@ -275,8 +275,8 @@ const VendorRegister: React.FC = () => {
                     >
                         {/* Step 1: Business Basics */}
                         <div className="w-full px-2 md:px-8">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-2">Business Details</h2>
-                            <p className="text-gray-500 mb-6 text-sm">Core information about your service.</p>
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">Service Details</h2>
+                            <p className="text-gray-500 mb-6 text-sm">Core information about the service you provide.</p>
 
                             <div className="grid grid-cols-1 gap-5">
                                 <div>
@@ -553,4 +553,4 @@ const VendorRegister: React.FC = () => {
     );
 };
 
-export default VendorRegister;
+export default ServiceRegister;
