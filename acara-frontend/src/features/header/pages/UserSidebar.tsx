@@ -1,19 +1,21 @@
 "use client";
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { useLocation, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  IconLayoutDashboard,
+  IconBell,
   IconCalendarEvent,
-  IconShoppingBag,
-  IconReceipt,
-  IconUser,
-  IconSettings,
-  IconLogout,
   IconChevronLeft,
   IconChevronRight,
-  IconBell,
+  IconLayoutDashboard,
+  IconLogout,
+  IconMenu2,
+  IconReceipt,
+  IconSettings,
+  IconShoppingBag,
   IconStar,
+  IconUser,
+  IconX,
 } from "@tabler/icons-react";
 
 const navItems = [
@@ -29,16 +31,12 @@ const navItems = [
 
 export function UserSidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   const userName = localStorage.getItem("user_name") || "User";
   const userEmail = localStorage.getItem("user_email") || "";
-
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/login");
-  };
 
   const initials = userName
     .split(" ")
@@ -47,57 +45,72 @@ export function UserSidebar() {
     .toUpperCase()
     .slice(0, 2);
 
-  return (
-    <motion.aside
-      animate={{ width: collapsed ? 72 : 240 }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="relative flex flex-col h-screen bg-white border-r border-gray-100 shadow-sm overflow-hidden shrink-0 z-10"
-    >
-      {/* Toggle Button */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-6 z-20 w-6 h-6 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-500 hover:text-indigo-600 hover:border-indigo-300 transition-colors"
-      >
-        {collapsed ? (
-          <IconChevronRight size={12} />
-        ) : (
-          <IconChevronLeft size={12} />
-        )}
-      </button>
+  const handleNavigate = (href: string) => {
+    navigate(href);
+    setMobileOpen(false);
+  };
 
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-50">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shrink-0">
-          <span className="text-white text-xs font-bold">AC</span>
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/login");
+    setMobileOpen(false);
+  };
+
+  const sidebarContent = (isMobile = false) => (
+    <>
+      {!isMobile && (
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute -right-3 top-6 z-20 hidden h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:border-indigo-300 hover:text-indigo-600 md:flex"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <IconChevronRight size={12} /> : <IconChevronLeft size={12} />}
+        </button>
+      )}
+
+      <div className="flex items-center justify-between gap-3 border-b border-gray-50 px-4 py-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600">
+            <span className="text-xs font-bold text-white">AC</span>
+          </div>
+          <AnimatePresence initial={false}>
+            {(isMobile || !collapsed) && (
+              <motion.span
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="whitespace-nowrap text-lg font-bold text-gray-900"
+              >
+                ACARA
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.span
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className="text-lg font-bold text-gray-900 whitespace-nowrap"
-            >
-              ACARA
-            </motion.span>
-          )}
-        </AnimatePresence>
+
+        {isMobile && (
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-500 transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+            aria-label="Close navigation menu"
+          >
+            <IconX size={18} />
+          </button>
+        )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
         {navItems.map(({ label, href, icon: Icon }) => {
           const isActive = location.pathname === href;
+
           return (
             <button
               key={href}
-              onClick={() => navigate(href)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
-                ${
-                  isActive
-                    ? "bg-indigo-50 text-indigo-700"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
+              onClick={() => handleNavigate(href)}
+              className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                isActive
+                  ? "bg-indigo-50 text-indigo-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              }`}
             >
               <div
                 className={`shrink-0 transition-colors ${
@@ -108,8 +121,9 @@ export function UserSidebar() {
               >
                 <Icon size={18} />
               </div>
-              <AnimatePresence>
-                {!collapsed && (
+
+              <AnimatePresence initial={false}>
+                {(isMobile || !collapsed) && (
                   <motion.span
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -120,10 +134,11 @@ export function UserSidebar() {
                   </motion.span>
                 )}
               </AnimatePresence>
-              {isActive && !collapsed && (
+
+              {isActive && (isMobile || !collapsed) && (
                 <motion.div
-                  layoutId="activeIndicator"
-                  className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-600"
+                  layoutId={isMobile ? "mobileActiveIndicator" : "activeIndicator"}
+                  className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-600"
                 />
               )}
             </button>
@@ -131,39 +146,42 @@ export function UserSidebar() {
         })}
       </nav>
 
-      {/* User Profile & Logout */}
       <div className="border-t border-gray-100 p-3">
         <div
-          className={`flex items-center gap-3 px-2 py-2 rounded-xl ${collapsed ? "justify-center" : ""}`}
+          className={`flex items-center gap-3 rounded-xl px-2 py-2 ${
+            !isMobile && collapsed ? "justify-center" : ""
+          }`}
         >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shrink-0">
-            <span className="text-white text-xs font-semibold">{initials}</span>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600">
+            <span className="text-xs font-semibold text-white">{initials}</span>
           </div>
-          <AnimatePresence>
-            {!collapsed && (
+
+          <AnimatePresence initial={false}>
+            {(isMobile || !collapsed) && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex-1 min-w-0"
+                className="min-w-0 flex-1"
               >
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  {userName}
-                </p>
+                <p className="truncate text-sm font-semibold text-gray-900">{userName}</p>
                 {userEmail && (
-                  <p className="text-xs text-gray-400 truncate">{userEmail}</p>
+                  <p className="truncate text-xs text-gray-400">{userEmail}</p>
                 )}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
+
         <button
           onClick={handleLogout}
-          className={`mt-1 w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors ${collapsed ? "justify-center" : ""}`}
+          className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 ${
+            !isMobile && collapsed ? "justify-center" : ""
+          }`}
         >
           <IconLogout size={18} />
-          <AnimatePresence>
-            {!collapsed && (
+          <AnimatePresence initial={false}>
+            {(isMobile || !collapsed) && (
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -176,6 +194,51 @@ export function UserSidebar() {
           </AnimatePresence>
         </button>
       </div>
-    </motion.aside>
+    </>
+  );
+
+  return (
+    <>
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="fixed left-4 top-4 z-40 flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-600 shadow-md transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 md:hidden"
+        aria-label="Open navigation menu"
+      >
+        <IconMenu2 size={20} />
+      </button>
+
+      <motion.aside
+        animate={{ width: collapsed ? 72 : 240 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="relative z-10 hidden h-screen shrink-0 overflow-hidden border-r border-gray-100 bg-white shadow-sm md:flex md:flex-col"
+      >
+        {sidebarContent()}
+      </motion.aside>
+
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileOpen(false)}
+              className="fixed inset-0 z-40 bg-gray-900/40 backdrop-blur-[1px] md:hidden"
+              aria-label="Close navigation overlay"
+            />
+
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="fixed inset-y-0 left-0 z-50 flex w-[86vw] max-w-[320px] flex-col bg-white shadow-2xl md:hidden"
+            >
+              {sidebarContent(true)}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
