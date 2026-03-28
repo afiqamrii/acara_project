@@ -5,6 +5,7 @@ import Login from "./features/auth/pages/Login";
 import Register from "./features/auth/pages/register/Register";
 import UserDashboard from './features/dashboard/pages/UserDashboard';
 import ServiceRegister from './features/auth/pages/register/ServiceRegister';
+import VendorRegister from './features/auth/pages/register/VendorRegister';
 import Navbar from './features/header/pages/navbar';
 import Marketplace from './features/marketplace/pages/Marketplace';
 import LandingPage from './features/landing_page/pages/LandingPage';
@@ -30,7 +31,7 @@ function App() {
           <Route path="/admin/register" element={<Register_admin />} />
           <Route path="/complete-profile" element={<CompleteProfile />} />
           {/* <Route path="/marketplace" element={<Marketplace />} /> */}
-          <Route path="/vendor/register" element={<ServiceRegister />} />
+          <Route path="/vendor/register" element={<VendorRegister />} />
           <Route path="/service/register" element={<ServiceRegister />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />

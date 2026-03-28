@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\VendorProfile;
 
 class VendorVerificationController extends Controller
@@ -17,17 +16,13 @@ class VendorVerificationController extends Controller
                 return [
                     'id' => $vendor->id,
                     'business_name' => $vendor->business_name,
-                    'vendor_category' => $vendor->vendor_category,
-                    'service_area' => $vendor->service_area,
-                    'pricing_starting_from' => $vendor->pricing_starting_from,
-                    'pricing_unit' => $vendor->pricing_unit,
+                    'ssm_number' => $vendor->ssm_number,
+                    'business_link' => $vendor->business_link,
+                    'years_of_experience' => $vendor->years_of_experience,
                     'status' => $vendor->status,
                     'submitted_at' => $vendor->created_at->format('Y-m-d h:i A'),
-                    'portfolio_url' => $vendor->portfolio_path
-                        ? asset('storage/' . $vendor->portfolio_path)
-                        : null,
-                    'verification_url' => $vendor->verification_documents_path
-                        ? asset('storage/' . $vendor->verification_documents_path)
+                    'ssm_document_url' => $vendor->ssm_document_path
+                        ? asset('storage/' . $vendor->ssm_document_path)
                         : null,
                 ];
             });
@@ -39,9 +34,9 @@ class VendorVerificationController extends Controller
     {
         $vendor = VendorProfile::findOrFail($id);
 
-        if ($vendor->status !== 'pending_verification') {
+        if (!in_array($vendor->status, ['pending_verification', 'pending_completion'], true)) {
             return response()->json([
-                'message' => 'Vendor already processed'
+                'message' => 'Vendor already processed',
             ], 400);
         }
 
@@ -49,7 +44,7 @@ class VendorVerificationController extends Controller
         $vendor->save();
 
         return response()->json([
-            'message' => 'Vendor approved successfully'
+            'message' => 'Vendor approved successfully',
         ]);
     }
 
@@ -57,9 +52,9 @@ class VendorVerificationController extends Controller
     {
         $vendor = VendorProfile::findOrFail($id);
 
-        if ($vendor->status !== 'pending_verification') {
+        if (!in_array($vendor->status, ['pending_verification', 'pending_completion'], true)) {
             return response()->json([
-                'message' => 'Vendor already processed'
+                'message' => 'Vendor already processed',
             ], 400);
         }
 
@@ -67,7 +62,7 @@ class VendorVerificationController extends Controller
         $vendor->save();
 
         return response()->json([
-            'message' => 'Vendor rejected successfully'
+            'message' => 'Vendor rejected successfully',
         ]);
     }
 }

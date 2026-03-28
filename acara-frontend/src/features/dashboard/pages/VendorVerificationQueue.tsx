@@ -13,14 +13,12 @@ import {
 type Vendor = {
     id: number;
     business_name: string;
-    vendor_category: string | null;
-    service_area: string | null;
-    pricing_starting_from: string;
-    pricing_unit: string;
-    status: "pending_verification" | "approved" | "rejected";
+    ssm_number: string | null;
+    business_link: string | null;
+    years_of_experience: number | null;
+    status: "pending_completion" | "pending_verification" | "approved" | "rejected";
     submitted_at: string;
-    portfolio_url?: string | null;
-    verification_url?: string | null;
+    ssm_document_url?: string | null;
 };
 
 type ActionType = "approve" | "reject";
@@ -33,7 +31,7 @@ const VendorVerificationQueue = () => {
 
     const [search] = useState("");
     const [statusFilter] = useState<
-        "all" | "pending_verification" | "approved" | "rejected"
+        "all" | "pending_completion" | "pending_verification" | "approved" | "rejected"
     >("all");
 
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -43,7 +41,6 @@ const VendorVerificationQueue = () => {
 
     const token = localStorage.getItem("token");
 
-    // FETCH VENDORS
     const fetchVendors = async () => {
         try {
             const res = await axios.get(API_URL, {
@@ -110,10 +107,10 @@ const VendorVerificationQueue = () => {
                 (v.business_name ?? "")
                     .toLowerCase()
                     .includes(search.toLowerCase()) ||
-                (v.vendor_category ?? "")
+                (v.business_link ?? "")
                     .toLowerCase()
                     .includes(search.toLowerCase()) ||
-                (v.service_area ?? "")
+                (v.ssm_number ?? "")
                     .toLowerCase()
                     .includes(search.toLowerCase());
 
@@ -125,7 +122,7 @@ const VendorVerificationQueue = () => {
     }, [vendors, search, statusFilter]);
 
     const badge = (status: Vendor["status"]) => {
-        if (status === "pending_verification") {
+        if (status === "pending_verification" || status === "pending_completion") {
             return (
                 <span className="inline-flex items-center gap-2 rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
                     <FiClock /> Pending
@@ -172,8 +169,8 @@ const VendorVerificationQueue = () => {
                             <thead className="bg-neutral-50">
                                 <tr>
                                     <th className="px-6 py-3">Business</th>
-                                    <th className="px-6 py-3">Category</th>
-                                    <th className="px-6 py-3">Service Area</th>
+                                    <th className="px-6 py-3">SSM Number</th>
+                                    <th className="px-6 py-3">Experience</th>
                                     <th className="px-6 py-3">Status</th>
                                     <th className="px-6 py-3">Documents</th>
                                     <th className="px-6 py-3">Actions</th>
@@ -183,8 +180,14 @@ const VendorVerificationQueue = () => {
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-8 text-center">
+                                        <td colSpan={6} className="px-6 py-8 text-center">
                                             Loading vendors...
+                                        </td>
+                                    </tr>
+                                ) : filtered.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center">
+                                            No vendors found.
                                         </td>
                                     </tr>
                                 ) : (
@@ -195,11 +198,11 @@ const VendorVerificationQueue = () => {
                                             </td>
 
                                             <td className="px-6 py-4">
-                                                {v.vendor_category ?? "-"}
+                                                {v.ssm_number ?? "-"}
                                             </td>
 
                                             <td className="px-6 py-4">
-                                                {v.service_area ?? "-"}
+                                                {v.years_of_experience != null ? `${v.years_of_experience} years` : "-"}
                                             </td>
 
                                             <td className="px-6 py-4">
@@ -207,34 +210,21 @@ const VendorVerificationQueue = () => {
                                             </td>
 
                                             <td className="px-6 py-4 flex flex-grid gap-5">
-                                                {v.portfolio_url ? (
+                                                {v.ssm_document_url ? (
                                                     <a
-                                                        href={v.portfolio_url}
+                                                        href={v.ssm_document_url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="text-indigo-600 text-xs font-semibold hover:underline"
                                                     >
-                                                        View Portfolio
-                                                    </a>
-                                                ) : (
-                                                    "-"
-                                                )}
-
-                                                {v.verification_url ? (
-                                                    <a
-                                                        href={v.verification_url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-sky-600 text-xs font-semibold hover:underline"
-                                                    >
-                                                        View Documents
+                                                        View SSM Document
                                                     </a>
                                                 ) : (
                                                     "-"
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 space-x-2">
-                                                {v.status === "pending_verification" && (
+                                                {(v.status === "pending_verification" || v.status === "pending_completion") && (
                                                     <>
                                                         <button
                                                             onClick={() => openConfirm("approve", v)}
@@ -259,7 +249,6 @@ const VendorVerificationQueue = () => {
                         </table>
                     </div>
 
-                    {/* Confirmation*/}
                     {confirmOpen && selectedVendor && (
                         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
                             <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
@@ -274,13 +263,6 @@ const VendorVerificationQueue = () => {
                                     <strong>{actionType}</strong>{" "}
                                     {selectedVendor.business_name}?
                                 </p>
-
-                                {/* <textarea
-                                    value={adminNote}
-                                    onChange={(e) => setAdminNote(e.target.value)}
-                                    placeholder="Optional admin note"
-                                    className="mt-4 w-full border rounded-lg p-3 text-sm"
-                                /> */}
 
                                 <div className="mt-6 flex justify-end gap-2">
                                     <button

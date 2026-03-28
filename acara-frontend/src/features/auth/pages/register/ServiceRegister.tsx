@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { registerVendor } from "../../vendorApi";
+import { registerService } from "../../vendorApi";
 import Navbar from "../../../header/pages/navbar";
 import Stepper from "../../../../components/common/Stepper";
-import { malaysiaLocations, malaysiaBanks, capitalizeFirstLetter, toTitleCase } from "../../../../utils/formHelpers";
+import { capitalizeFirstLetter, toTitleCase } from "../../../../utils/formHelpers";
 
 const ServiceRegister: React.FC = () => {
     const navigate = useNavigate();
@@ -14,26 +14,19 @@ const ServiceRegister: React.FC = () => {
 
     // Form Data State
     const [formData, setFormData] = useState({
-        business_name: "",
-        vendor_category: "",
-        vendor_category_other: "",
-        services_offered: "",
+        service_name: "",
+        service_category: "",
+        service_category_other: "",
+        service_details: "",
         pricing_starting_from: "",
         pricing_unit: "",
-        pricing_description: "",
-        service_area_state: "",
-        service_area_town: "",
-        bank_name: "",
-        bank_account_number: "",
-        bank_holder_name: ""
+        pricing_description: ""
     });
 
     const [files, setFiles] = useState<{
         portfolio: File | null;
-        verification_documents: File | null;
     }>({
         portfolio: null,
-        verification_documents: null,
     });
 
     // Validation State
@@ -48,16 +41,16 @@ const ServiceRegister: React.FC = () => {
 
         // Apply formatting logic based on field name
         if (e.target.tagName === 'INPUT' && e.target.type === 'text') {
-            if (['services_offered', 'pricing_description'].includes(name)) {
+            if (['service_details', 'pricing_description'].includes(name)) {
                 // Step 2: Sentence Case (First letter only)
                 formattedValue = capitalizeFirstLetter(value);
-            } else if (['business_name', 'vendor_category_other', 'bank_holder_name', 'bank_name'].includes(name)) {
+            } else if (['service_name', 'service_category_other'].includes(name)) {
                 // Step 1 & 3: Title Case (Every word)
                 formattedValue = toTitleCase(value);
             }
             // other text fields (if any) or textarea will be handled below or ignored
         } else if (e.target.tagName === 'TEXTAREA') {
-            if (['services_offered', 'pricing_description'].includes(name)) {
+            if (['service_details', 'pricing_description'].includes(name)) {
                 formattedValue = capitalizeFirstLetter(value);
             }
         }
@@ -86,23 +79,17 @@ const ServiceRegister: React.FC = () => {
         let isValid = true;
 
         if (step === 1) {
-            if (!formData.business_name) newErrors.business_name = true;
-            if (!formData.vendor_category) newErrors.vendor_category = true;
-            if (formData.vendor_category === 'Other' && !formData.vendor_category_other) newErrors.vendor_category_other = true;
-            if (!formData.service_area_state) newErrors.service_area_state = true;
-            if (!formData.service_area_town) newErrors.service_area_town = true;
+            if (!formData.service_name) newErrors.service_name = true;
+            if (!formData.service_category) newErrors.service_category = true;
+            if (formData.service_category === 'Other' && !formData.service_category_other) newErrors.service_category_other = true;
         }
         else if (step === 2) {
-            if (!formData.services_offered) newErrors.services_offered = true;
+            if (!formData.service_details) newErrors.service_details = true;
             if (!formData.pricing_starting_from) newErrors.pricing_starting_from = true;
             if (!formData.pricing_unit) newErrors.pricing_unit = true;
         }
         else if (step === 3) {
-            if (!formData.bank_name) newErrors.bank_name = true;
-            if (!formData.bank_account_number) newErrors.bank_account_number = true;
-            if (!formData.bank_holder_name) newErrors.bank_holder_name = true;
             if (!files.portfolio) newErrors.portfolio = true;
-            if (!files.verification_documents) newErrors.verification_documents = true;
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -150,29 +137,20 @@ const ServiceRegister: React.FC = () => {
         try {
             const data = new FormData();
 
-            const finalCategory = formData.vendor_category === 'Other' ? formData.vendor_category_other : formData.vendor_category;
-            const finalServiceArea = `${formData.service_area_town}, ${formData.service_area_state}`;
+            const finalCategory = formData.service_category === 'Other' ? formData.service_category_other : formData.service_category;
 
-            data.append('business_name', formData.business_name);
-            data.append('vendor_category', finalCategory);
-            data.append('services_offered', formData.services_offered);
+            data.append('service_name', formData.service_name);
+            data.append('service_category', finalCategory);
+            data.append('service_details', formData.service_details);
 
             // Structured Pricing matches backend
             data.append('pricing_starting_from', formData.pricing_starting_from);
             data.append('pricing_unit', formData.pricing_unit);
             data.append('pricing_description', formData.pricing_description || "");
 
-            data.append('service_area', finalServiceArea);
-
-            // Structured Bank Details matches backend
-            data.append('bank_name', formData.bank_name);
-            data.append('bank_account_number', formData.bank_account_number);
-            data.append('bank_holder_name', formData.bank_holder_name);
-
             if (files.portfolio) data.append("portfolio", files.portfolio);
-            if (files.verification_documents) data.append("verification_documents", files.verification_documents);
 
-            await registerVendor(data);
+            await registerService(data);
             setSuccess(true);
         } catch (err: any) {
             console.error("Service registration failed:", err);
@@ -212,7 +190,7 @@ const ServiceRegister: React.FC = () => {
                         </motion.div>
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">Application Submitted!</h2>
                         <p className="text-gray-600 mb-8">
-                            Your service profile has been successfully created. We are verifying your documents and will update you shortly.
+                            Your service profile has been successfully created. We will review your submission and update you shortly.
                         </p>
                         <button
                             onClick={() => navigate("/dashboard")}
@@ -280,27 +258,27 @@ const ServiceRegister: React.FC = () => {
 
                             <div className="grid grid-cols-1 gap-5">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Business Name <span className="text-red-500">*</span></label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Service/Product Name <span className="text-red-500">*</span></label>
                                     <input
                                         type="text"
-                                        name="business_name"
-                                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all ${attemptedNext && errors.business_name ? 'border-red-500 ring-red-200' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
+                                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all ${attemptedNext && errors.service_name ? 'border-red-500 ring-red-200' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
                                             }`}
-                                        placeholder="Enter your business name"
-                                        value={formData.business_name}
+                                        placeholder="Enter your service or product name"
+                                        name="service_name"
+                                        value={formData.service_name}
                                         onChange={handleInputChange}
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="grid grid-cols-1 gap-5">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1.5">Category <span className="text-red-500">*</span></label>
                                         <div className="relative">
                                             <select
-                                                name="vendor_category"
-                                                className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all appearance-none ${attemptedNext && errors.vendor_category ? 'border-red-500 ring-red-200' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
+                                                name="service_category"
+                                                className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all appearance-none ${attemptedNext && errors.service_category ? 'border-red-500 ring-red-200' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
                                                     }`}
-                                                value={formData.vendor_category}
+                                                value={formData.service_category}
                                                 onChange={handleInputChange}
                                             >
                                                 <option value="">Select a category</option>
@@ -318,54 +296,19 @@ const ServiceRegister: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        {formData.vendor_category === 'Other' && (
+                                        {formData.service_category === 'Other' && (
                                             <div className="mt-3">
                                                 <input
                                                     type="text"
-                                                    name="vendor_category_other"
-                                                    className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all ${attemptedNext && errors.vendor_category_other ? 'border-red-500 ring-red-200' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
+                                                    name="service_category_other"
+                                                    className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:outline-none focus:ring-2 transition-all ${attemptedNext && errors.service_category_other ? 'border-red-500 ring-red-200' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
                                                         }`}
                                                     placeholder="Specify your category"
-                                                    value={formData.vendor_category_other}
+                                                    value={formData.service_category_other}
                                                     onChange={handleInputChange}
                                                 />
                                             </div>
                                         )}
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Service Area <span className="text-red-500">*</span></label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <select
-                                                name="service_area_state"
-                                                className={`w-full px-3 py-2.5 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all appearance-none text-sm ${attemptedNext && errors.service_area_state ? 'border-red-500 ring-red-200' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
-                                                    }`}
-                                                value={formData.service_area_state}
-                                                onChange={(e) => {
-                                                    handleInputChange(e);
-                                                    setFormData(prev => ({ ...prev, service_area_town: '' }));
-                                                }}
-                                            >
-                                                <option value="">State</option>
-                                                {Object.keys(malaysiaLocations).sort().map(state => (
-                                                    <option key={state} value={state}>{state}</option>
-                                                ))}
-                                            </select>
-
-                                            <select
-                                                name="service_area_town"
-                                                className={`w-full px-3 py-2.5 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all appearance-none text-sm ${attemptedNext && errors.service_area_town ? 'border-red-500 ring-red-200' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
-                                                    }`}
-                                                value={formData.service_area_town}
-                                                onChange={handleInputChange}
-                                                disabled={!formData.service_area_state}
-                                            >
-                                                <option value="">Town/Area</option>
-                                                {formData.service_area_state && (malaysiaLocations as any)[formData.service_area_state]?.sort().map((town: string) => (
-                                                    <option key={town} value={town}>{town}</option>
-                                                ))}
-                                            </select>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -378,14 +321,14 @@ const ServiceRegister: React.FC = () => {
 
                             <div className="space-y-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Services Offered <span className="text-red-500">*</span></label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Detail Service <span className="text-red-500">*</span></label>
                                     <textarea
-                                        name="services_offered"
+                                        name="service_details"
                                         rows={4}
-                                        className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all resize-none ${attemptedNext && errors.services_offered ? 'border-red-500 ring-red-200' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
+                                        className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all resize-none ${attemptedNext && errors.service_details ? 'border-red-500 ring-red-200' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
                                             }`}
-                                        placeholder="Detailed description of your services..."
-                                        value={formData.services_offered}
+                                        placeholder="Describe your service or product in detail..."
+                                        value={formData.service_details}
                                         onChange={handleInputChange}
                                     />
                                 </div>
@@ -438,105 +381,29 @@ const ServiceRegister: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Step 3: Financial & Verification */}
+                        {/* Step 3: Portfolio */}
                         <div className="w-full px-2 md:px-8">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-2">Verification</h2>
-                            <p className="text-gray-500 mb-6 text-sm">Secure your payouts and verify your business.</p>
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">Portfolio</h2>
+                            <p className="text-gray-500 mb-6 text-sm">Upload supporting samples so we can review your service offering.</p>
 
                             <div className="space-y-6">
-                                <div className="p-6 bg-gray-50 border border-gray-100 rounded-2xl">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Bank Account Details</h3>
-                                    <div className="mb-5 p-3 bg-blue-50 border border-blue-100 text-blue-700 rounded-lg text-sm flex items-start gap-3">
-                                        <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                        <p>Please double-check your bank details before submitting. Accurate information is crucial to ensure smooth and timely payouts.</p>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="col-span-2 md:col-span-1">
-                                            <label className="block text-xs font-semibold text-gray-500 mb-1">Bank Name <span className="text-red-500">*</span></label>
-                                            <select
-                                                name="bank_name"
-                                                className={`w-full px-4 py-2.5 bg-white border rounded-lg focus:outline-none focus:ring-2 transition-all appearance-none text-sm ${attemptedNext && errors.bank_name ? 'border-red-500' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
-                                                    }`}
-                                                value={formData.bank_name}
-                                                onChange={handleInputChange}
-                                            >
-                                                <option value="">Select Bank</option>
-                                                {malaysiaBanks.sort().map(bank => (
-                                                    <option key={bank} value={bank}>{bank}</option>
-                                                ))}
-                                            </select>
+                                <div className={`p-6 border-2 border-dashed rounded-xl transition-colors bg-gray-50/50 ${attemptedNext && errors.portfolio ? 'border-red-300 bg-red-50/30' : 'border-gray-200 hover:border-[#7E57C2]/50'
+                                    }`}>
+                                    <div className="text-center">
+                                        <div className="w-12 h-12 bg-purple-100 text-[#7E57C2] rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                         </div>
-
-                                        <div className="col-span-2 md:col-span-1">
-                                            <label className="block text-xs font-semibold text-gray-500 mb-1">Account Number <span className="text-red-500">*</span></label>
-                                            <input
-                                                type="number"
-                                                name="bank_account_number"
-                                                className={`w-full px-4 py-2.5 bg-white border rounded-lg focus:outline-none focus:ring-2 transition-all text-sm appearance-none [&::-webkit-inner-spin-button]:appearance-none ${attemptedNext && errors.bank_account_number ? 'border-red-500' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
-                                                    }`}
-                                                placeholder="e.g. 1123456789"
-                                                value={formData.bank_account_number}
-                                                onChange={handleInputChange}
-                                            />
-                                        </div>
-
-                                        <div className="col-span-2">
-                                            <label className="block text-xs font-semibold text-gray-500 mb-1">Account Holder Name <span className="text-red-500">*</span></label>
-                                            <input
-                                                type="text"
-                                                name="bank_holder_name"
-                                                className={`w-full px-4 py-2.5 bg-white border rounded-lg focus:outline-none focus:ring-2 transition-all text-sm ${attemptedNext && errors.bank_holder_name ? 'border-red-500' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
-                                                    }`}
-                                                placeholder="Name as per bank record"
-                                                value={formData.bank_holder_name}
-                                                onChange={handleInputChange}
-                                            />
-                                        </div>
-                                    </div>
-                                    {attemptedNext && (errors.bank_name || errors.bank_account_number || errors.bank_holder_name) &&
-                                        <p className="text-red-500 text-xs mt-3 bg-red-50 p-2 rounded">All bank details are required</p>
-                                    }
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className={`p-6 border-2 border-dashed rounded-xl transition-colors bg-gray-50/50 ${attemptedNext && errors.portfolio ? 'border-red-300 bg-red-50/30' : 'border-gray-200 hover:border-[#7E57C2]/50'
-                                        }`}>
-                                        <div className="text-center">
-                                            <div className="w-12 h-12 bg-purple-100 text-[#7E57C2] rounded-full flex items-center justify-center mx-auto mb-3">
-                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                            </div>
-                                            <label className="block text-sm font-semibold text-gray-900 mb-1">Portfolio <span className="text-red-500">*</span></label>
-                                            <p className="text-xs text-gray-500 mb-4">Upload work samples (PDF/Images)</p>
-                                            <input
-                                                type="file"
-                                                name="portfolio"
-                                                accept=".pdf,.jpg,.jpeg,.png"
-                                                onChange={handleFileChange}
-                                                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#7E57C2] file:text-white hover:file:bg-[#6C4AB8] cursor-pointer"
-                                            />
-                                            {files.portfolio && <p className="mt-2 text-xs text-green-600 font-medium truncate">{files.portfolio.name}</p>}
-                                            {attemptedNext && errors.portfolio && <p className="text-red-500 text-xs mt-2">File required</p>}
-                                        </div>
-                                    </div>
-
-                                    <div className={`p-6 border-2 border-dashed rounded-xl transition-colors bg-gray-50/50 ${attemptedNext && errors.verification_documents ? 'border-red-300 bg-red-50/30' : 'border-gray-200 hover:border-[#7E57C2]/50'
-                                        }`}>
-                                        <div className="text-center">
-                                            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                            </div>
-                                            <label className="block text-sm font-semibold text-gray-900 mb-1">Business Documents <span className="text-red-500">*</span></label>
-                                            <p className="text-xs text-gray-500 mb-4">SSM, Licenses, ID (PDF/Images)</p>
-                                            <input
-                                                type="file"
-                                                name="verification_documents"
-                                                accept=".pdf,.jpg,.jpeg,.png"
-                                                onChange={handleFileChange}
-                                                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#7E57C2] file:text-white hover:file:bg-[#6C4AB8] cursor-pointer"
-                                            />
-                                            {files.verification_documents && <p className="mt-2 text-xs text-green-600 font-medium truncate">{files.verification_documents.name}</p>}
-                                            {attemptedNext && errors.verification_documents && <p className="text-red-500 text-xs mt-2">File required</p>}
-                                        </div>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-1">Portfolio <span className="text-red-500">*</span></label>
+                                        <p className="text-xs text-gray-500 mb-4">Upload work samples, past projects, or product visuals (PDF/Images)</p>
+                                        <input
+                                            type="file"
+                                            name="portfolio"
+                                            accept=".pdf,.jpg,.jpeg,.png"
+                                            onChange={handleFileChange}
+                                            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#7E57C2] file:text-white hover:file:bg-[#6C4AB8] cursor-pointer"
+                                        />
+                                        {files.portfolio && <p className="mt-2 text-xs text-green-600 font-medium truncate">{files.portfolio.name}</p>}
+                                        {attemptedNext && errors.portfolio && <p className="text-red-500 text-xs mt-2">File required</p>}
                                     </div>
                                 </div>
                                 {isLoading && (

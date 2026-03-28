@@ -15,22 +15,50 @@ import {
 
 import adminBannerImg from "../../../img/admin_rightside.png";
 
-type VendorMini = {
+type ServiceMini = {
     id: number;
-    business_name: string;
+    service_name: string;
     status: "pending_verification" | "approved" | "rejected";
 };
 
-
-
-
+type VendorMini = {
+    id: number;
+    business_name: string;
+    status: "pending_completion" | "pending_verification" | "approved" | "rejected";
+};
 
 const AdminDashboard = () => {
+    const [pendingServices, setPendingServices] = useState<ServiceMini[]>([]);
     const [pendingVendors, setPendingVendors] = useState<VendorMini[]>([]);
 
+    const [pendingServiceCount, setPendingServiceCount] = useState(0);
     const [pendingVendorCount, setPendingVendorCount] = useState(0);
 
     useEffect(() => {
+        const fetchPendingServices = async () => {
+            try {
+                const token = localStorage.getItem("token");
+
+                const res = await axios.get(
+                    "http://127.0.0.1:8000/api/admin/services",
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+
+                const allPending = res.data.filter(
+                    (v: ServiceMini) => v.status === "pending_verification"
+                );
+
+                setPendingServiceCount(allPending.length);
+                setPendingServices(allPending.slice(0, 3));
+            } catch (err) {
+                console.error("Failed to load pending services", err);
+            }
+        };
+
         const fetchPendingVendors = async () => {
             try {
                 const token = localStorage.getItem("token");
@@ -44,35 +72,27 @@ const AdminDashboard = () => {
                     }
                 );
 
-                // filter only pending and take first 3
-                const pending = res.data
-                    .filter((v: VendorMini) => v.status === "pending_verification")
-                    .slice(0, 3);
-
-                setPendingVendors(pending);
-
                 const allPending = res.data.filter(
-                    (v: VendorMini) => v.status === "pending_verification"
+                    (v: VendorMini) => v.status === "pending_verification" || v.status === "pending_completion"
                 );
 
                 setPendingVendorCount(allPending.length);
-
                 setPendingVendors(allPending.slice(0, 3));
-
             } catch (err) {
                 console.error("Failed to load pending vendors", err);
             }
         };
 
+        fetchPendingServices();
         fetchPendingVendors();
     }, []);
 
     const stats = [
         { label: "Total Users", value: "1,284", icon: <FiUsers /> },
         { label: "Active Organizers", value: "512", icon: <FiUsers /> },
+        { label: "Services Pending", value: pendingServiceCount.toString(), icon: <FiClipboard /> },
         { label: "Vendors Pending", value: pendingVendorCount.toString(), icon: <FiClipboard /> },
         { label: "Crew Pending", value: "18", icon: <FiClipboard /> },
-
         { label: "Escrow Held (RM)", value: "RM 24,580", icon: <FiDollarSign /> },
         { label: "Pending Releases", value: "12", icon: <FiClock /> },
         { label: "Disputes Open", value: "3", icon: <FiAlertTriangle /> },
@@ -89,19 +109,16 @@ const AdminDashboard = () => {
 
                         <div className="w-full rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-700 to-purple-600 p-8 shadow-lg">
                             <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-
-                                {/* LEFT CONTENT */}
                                 <div className="max-w-3xl">
                                     <h1 className="text-3xl font-semibold text-white">
                                         Welcome to ACARA Admin Dashboard
                                     </h1>
 
                                     <p className="mt-4 text-base leading-relaxed text-indigo-100">
-                                        Verify vendors and event crew, monitor conflicts, manage users and role status,
+                                        Verify services, vendors, and event crew, monitor conflicts, manage users and role status,
                                         and oversee escrow transactions to keep the marketplace secure.
                                     </p>
 
-                                    {/* BUTTONS */}
                                     <div className="mt-6 flex flex-wrap gap-4">
                                         <Link
                                             to="/admin/verifications"
@@ -129,7 +146,6 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
 
-                                {/* RIGHT IMAGE */}
                                 <div className="flex justify-center md:justify-end">
                                     <img
                                         src={adminBannerImg}
@@ -140,7 +156,6 @@ const AdminDashboard = () => {
                             </div>
                         </div>
 
-                        {/* KPI CARDS */}
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             {stats.map((s, idx) => (
                                 <div
@@ -164,10 +179,50 @@ const AdminDashboard = () => {
                             ))}
                         </div>
 
-                        {/* ACTION SECTION */}
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <FiClipboard className="text-indigo-600 dark:text-indigo-300" />
+                                        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
+                                            Service Verification Queue
+                                        </h2>
+                                    </div>
 
-                            {/* Vendor Verification Queue */}
+                                    <span className="text-sm font-semibold text-neutral-400 dark:text-neutral-500">
+                                        Latest
+                                    </span>
+                                </div>
+
+                                <div className="mt-4 space-y-3">
+                                    {pendingServices.length === 0 ? (
+                                        <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                                            No pending service verifications
+                                        </div>
+                                    ) : (
+                                        pendingServices.map((v) => (
+                                            <div
+                                                key={v.id}
+                                                className="flex items-center justify-between rounded-xl bg-neutral-50 px-4 py-3 dark:bg-neutral-900"
+                                            >
+                                                <div>
+                                                    <div className="font-semibold text-neutral-900 dark:text-white">
+                                                        {v.service_name}
+                                                    </div>
+                                                    <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                                                        Pending documents review
+                                                    </div>
+                                                </div>
+
+                                                <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-300">
+                                                    Pending
+                                                </span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
                             <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
@@ -181,7 +236,7 @@ const AdminDashboard = () => {
                                         to="/admin/verifications/vendors"
                                         className="text-sm font-semibold text-indigo-700 hover:underline dark:text-indigo-300"
                                     >
-                                        View All
+                                        View Vendors
                                     </Link>
                                 </div>
 
@@ -201,7 +256,7 @@ const AdminDashboard = () => {
                                                         {v.business_name}
                                                     </div>
                                                     <div className="text-sm text-neutral-500 dark:text-neutral-400">
-                                                        Pending documents review
+                                                        Pending vendor review
                                                     </div>
                                                 </div>
 
@@ -214,7 +269,6 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Crew Verification Queue */}
                             <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
@@ -255,7 +309,6 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Disputes */}
                             <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
@@ -299,7 +352,6 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Escrow Releases */}
                             <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
@@ -345,7 +397,6 @@ const AdminDashboard = () => {
                             </div>
                         </div>
 
-                        {/* RECENT ACTIVITY */}
                         <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-950">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">

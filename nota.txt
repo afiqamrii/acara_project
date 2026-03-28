@@ -74,3 +74,8 @@ Vendor
 6. 
 
 
+28/3
+
+1. Admin reject kena attach reason untuk vendor resubmit application
+
+

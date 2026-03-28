@@ -15,8 +15,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\VendorVerificationController;
+use App\Http\Controllers\ServiceVerificationController;
+use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\VendorController;
+use App\Http\Controllers\VendorVerificationController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -35,6 +37,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/profile/complete', [AuthController::class, 'completeProfile']);
     Route::post('/email/resend', [AuthController::class, 'resendVerification']);
     
+    Route::get('/admin/services', [ServiceVerificationController::class, 'index']);
+
+    Route::patch('/admin/services/{id}/approve', [ServiceVerificationController::class, 'approve']);
+
+    Route::patch('/admin/services/{id}/reject', [ServiceVerificationController::class, 'reject']);
+
     Route::get('/admin/vendors', [VendorVerificationController::class, 'index']);
 
     Route::patch('/admin/vendors/{id}/approve', [VendorVerificationController::class, 'approve']);
@@ -45,6 +53,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 // Protected routes (require completed profile)
 Route::middleware(['auth:sanctum', 'profile.completed'])->group(function () {
     // Add other routes here that require a complete profile
+    Route::post('/service/register', [ServiceController::class, 'store']);
     Route::post('/vendor/register', [VendorController::class, 'store']);
 });
 
