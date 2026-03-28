@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\VendorProfile;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 
 class VendorController extends Controller
@@ -12,18 +12,16 @@ class VendorController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'ssm_number' => 'nullable|string|max:255',
+            'ssm_document' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'business_name' => 'required|string|max:255',
-            'vendor_category' => 'required|string|max:255',
-            'services_offered' => 'required|string',
-            'pricing_starting_from' => 'required|numeric',
-            'pricing_unit' => 'required|string',
-            'pricing_description' => 'nullable|string',
-            'service_area' => 'required|string|max:255',
-            'portfolio' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
+            'business_link' => 'required|string|max:500',
+            'years_of_experience' => 'required|integer|min:0|max:100',
+            'service_area_state' => 'required|string|max:255',
+            'service_area_town' => 'required|string|max:255',
             'bank_name' => 'required|string|max:255',
             'bank_account_number' => 'required|string|max:255',
             'bank_holder_name' => 'required|string|max:255',
-            'verification_documents' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
         ]);
 
         if ($validator->fails()) {
@@ -31,49 +29,42 @@ class VendorController extends Controller
         }
 
         try {
-            // Generate Standardized Filenames
             $timestamp = now()->format('Ymd_His');
-            $slugName = \Illuminate\Support\Str::slug($request->business_name);
+            $slugName = Str::slug($request->business_name);
 
-            // Handle Portfolio Upload
-            $portfolioPath = null;
-            if ($request->hasFile('portfolio')) {
-                $extension = $request->file('portfolio')->getClientOriginalExtension();
-                $filename = "{$slugName}_portfolio_{$timestamp}.{$extension}";
-                $portfolioPath = $request->file('portfolio')->storeAs('vendor_portfolios', $filename, 'public');
+            $ssmDocumentPath = null;
+            if ($request->hasFile('ssm_document')) {
+                $extension = $request->file('ssm_document')->getClientOriginalExtension();
+                $filename = "{$slugName}_ssm_{$timestamp}.{$extension}";
+                $ssmDocumentPath = $request->file('ssm_document')->storeAs('vendor_ssm_documents', $filename, 'public');
             }
 
-            // Handle Verification Upload
-            $verificationPath = null;
-            if ($request->hasFile('verification_documents')) {
-                $extension = $request->file('verification_documents')->getClientOriginalExtension();
-                $filename = "{$slugName}_verification_{$timestamp}.{$extension}";
-                $verificationPath = $request->file('verification_documents')->storeAs('vendor_verifications', $filename, 'public');
-            }
-
-            $vendorProfile = VendorProfile::create([
-                'user_id' => $request->user()->id,
-                'business_name' => $request->business_name,
-                'vendor_category' => $request->vendor_category,
-                'services_offered' => $request->services_offered,
-                'pricing_starting_from' => $request->pricing_starting_from,
-                'pricing_unit' => $request->pricing_unit,
-                'pricing_description' => $request->pricing_description,
-                'service_area' => $request->service_area,
-                'portfolio_path' => $portfolioPath,
-                'bank_name' => $request->bank_name,
-                'bank_account_number' => $request->bank_account_number,
-                'bank_holder_name' => $request->bank_holder_name,
-                'verification_documents_path' => $verificationPath,
-                'status' => 'pending_verification',
-            ]);
+            $vendorProfile = VendorProfile::updateOrCreate(
+                ['user_id' => $request->user()->id],
+                [
+                    'ssm_number' => $request->ssm_number,
+                    'ssm_document_path' => $ssmDocumentPath,
+                    'business_name' => $request->business_name,
+                    'business_link' => $request->business_link,
+                    'years_of_experience' => $request->years_of_experience,
+                    'service_area_state' => $request->service_area_state,
+                    'service_area_town' => $request->service_area_town,
+                    'bank_name' => $request->bank_name,
+                    'bank_account_number' => $request->bank_account_number,
+                    'bank_holder_name' => $request->bank_holder_name,
+                    'status' => 'pending_verification',
+                ]
+            );
 
             return response()->json([
-                'message' => 'Vendor application submitted successfully',
-                'data' => $vendorProfile
+                'message' => 'Vendor business details submitted successfully',
+                'data' => $vendorProfile,
             ], 201);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to create vendor profile', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'message' => 'Failed to create vendor profile',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 }

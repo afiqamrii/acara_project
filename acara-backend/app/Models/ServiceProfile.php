@@ -5,22 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class VendorProfile extends Model
+class ServiceProfile extends Model
 {
     use HasFactory;
 
+    protected $table = 'service_profiles';
+
     protected $fillable = [
         'user_id',
-        'ssm_number',
-        'ssm_document_path',
-        'business_name',
-        'business_link',
-        'years_of_experience',
-        'service_area_state',
-        'service_area_town',
-        'bank_name',
-        'bank_account_number',
-        'bank_holder_name',
+        'service_name',
+        'service_category',
+        'service_details',
+        'pricing_starting_from',
+        'pricing_unit',
+        'pricing_description',
+        'portfolio_path',
         'status',
     ];
 

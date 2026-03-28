@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { AdminSidebar } from "../../header/pages/AdminSidebar";
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
 
 import {
     FiCheckCircle,
@@ -14,14 +13,12 @@ import {
 type Vendor = {
     id: number;
     business_name: string;
-    vendor_category: string | null;
-    service_area: string | null;
-    pricing_starting_from: string;
-    pricing_unit: string;
-    status: "pending_verification" | "approved" | "rejected";
+    ssm_number: string | null;
+    business_link: string | null;
+    years_of_experience: number | null;
+    status: "pending_completion" | "pending_verification" | "approved" | "rejected";
     submitted_at: string;
-    portfolio_url?: string | null;
-    verification_url?: string | null;
+    ssm_document_url?: string | null;
 };
 
 type ActionType = "approve" | "reject";
@@ -34,7 +31,7 @@ const VendorVerificationQueue = () => {
 
     const [search] = useState("");
     const [statusFilter] = useState<
-        "all" | "pending_verification" | "approved" | "rejected"
+        "all" | "pending_completion" | "pending_verification" | "approved" | "rejected"
     >("all");
 
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -44,7 +41,6 @@ const VendorVerificationQueue = () => {
 
     const token = localStorage.getItem("token");
 
-    // FETCH VENDORS
     const fetchVendors = async () => {
         try {
             const res = await axios.get(API_URL, {
@@ -111,10 +107,10 @@ const VendorVerificationQueue = () => {
                 (v.business_name ?? "")
                     .toLowerCase()
                     .includes(search.toLowerCase()) ||
-                (v.vendor_category ?? "")
+                (v.business_link ?? "")
                     .toLowerCase()
                     .includes(search.toLowerCase()) ||
-                (v.service_area ?? "")
+                (v.ssm_number ?? "")
                     .toLowerCase()
                     .includes(search.toLowerCase());
 
@@ -126,7 +122,7 @@ const VendorVerificationQueue = () => {
     }, [vendors, search, statusFilter]);
 
     const badge = (status: Vendor["status"]) => {
-        if (status === "pending_verification") {
+        if (status === "pending_verification" || status === "pending_completion") {
             return (
                 <span className="inline-flex items-center gap-2 rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
                     <FiClock /> Pending
@@ -155,49 +151,26 @@ const VendorVerificationQueue = () => {
 
             <main className="flex flex-1 overflow-auto">
                 <div className="flex h-full w-full flex-col gap-6 p-10">
-            
+
                     <Link
-                        to="/admindashboard"
+                        to="/admin/dashboard"
                         className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:underline"
                     >
                         <FiArrowLeft />
                         Back to Dashboard
                     </Link>
 
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, ease: "easeOut" }}
-                        className="flex items-center justify-between"
-                    >
-                        <div>
-                            <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
-                                Vendor Verification
-                            </h1>
-                            <p className="mt-1 text-sm text-gray-500">
-                                Review and manage vendor onboarding requests
-                            </p>
-                        </div>
-
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                            className="rounded-xl bg-yellow-50 px-4 py-2 shadow-sm border border-yellow-500"
-                        >
-                            <span className="text-sm font-medium text-yellow-600">
-                                {vendors.filter(v => v.status === "pending_verification").length} Pending
-                            </span>
-                        </motion.div>
-                    </motion.div>
+                    <h1 className="text-2xl font-semibold">
+                        Vendor Verification Queue
+                    </h1>
 
                     <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-neutral-300">
+                            <thead className="bg-neutral-50">
                                 <tr>
                                     <th className="px-6 py-3">Business</th>
-                                    <th className="px-6 py-3">Category</th>
-                                    <th className="px-6 py-3">Service Area</th>
+                                    <th className="px-6 py-3">SSM Number</th>
+                                    <th className="px-6 py-3">Experience</th>
                                     <th className="px-6 py-3">Status</th>
                                     <th className="px-6 py-3">Documents</th>
                                     <th className="px-6 py-3">Actions</th>
@@ -211,6 +184,12 @@ const VendorVerificationQueue = () => {
                                             Loading vendors...
                                         </td>
                                     </tr>
+                                ) : filtered.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center">
+                                            No vendors found.
+                                        </td>
+                                    </tr>
                                 ) : (
                                     filtered.map((v) => (
                                         <tr key={v.id} className="border-b">
@@ -219,11 +198,11 @@ const VendorVerificationQueue = () => {
                                             </td>
 
                                             <td className="px-6 py-4">
-                                                {v.vendor_category ?? "-"}
+                                                {v.ssm_number ?? "-"}
                                             </td>
 
                                             <td className="px-6 py-4">
-                                                {v.service_area ?? "-"}
+                                                {v.years_of_experience != null ? `${v.years_of_experience} years` : "-"}
                                             </td>
 
                                             <td className="px-6 py-4">
@@ -231,47 +210,34 @@ const VendorVerificationQueue = () => {
                                             </td>
 
                                             <td className="px-6 py-4 flex flex-grid gap-5">
-                                                {v.portfolio_url ? (
+                                                {v.ssm_document_url ? (
                                                     <a
-                                                        href={v.portfolio_url}
+                                                        href={v.ssm_document_url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="text-indigo-600 text-xs font-semibold hover:underline"
                                                     >
-                                                        View Portfolio
-                                                    </a>
-                                                ) : (
-                                                    "-"
-                                                )}
-
-                                                {v.verification_url ? (
-                                                    <a
-                                                        href={v.verification_url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-sky-600 text-xs font-semibold hover:underline"
-                                                    >
-                                                        View Documents
+                                                        View SSM Document
                                                     </a>
                                                 ) : (
                                                     "-"
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 space-x-2">
-                                                {v.status === "pending_verification" && (
+                                                {(v.status === "pending_verification" || v.status === "pending_completion") && (
                                                     <>
                                                         <button
                                                             onClick={() => openConfirm("approve", v)}
-                                                            className="bg-emerald-600 text-white px-3 py-1.5 text-xs rounded-lg hover:bg-emerald-700 transition-all duration-200 shadow-sm hover:shadow inline-flex items-center gap-2"
+                                                            className="bg-emerald-500 text-white px-3 py-1 text-xs rounded hover:bg-emerald-600"
                                                         >
-                                                            <FiCheckCircle />
+                                                            Approve
                                                         </button>
 
                                                         <button
                                                             onClick={() => openConfirm("reject", v)}
-                                                            className="bg-rose-600 text-white px-3 py-1.5 text-xs rounded-lg hover:bg-rose-700 transition-all duration-200 shadow-sm hover:shadow"
+                                                            className="bg-rose-500 text-white px-3 py-1 text-xs rounded hover:bg-rose-600"
                                                         >
-                                                            <FiXCircle />
+                                                            Reject
                                                         </button>
                                                     </>
                                                 )}
@@ -283,7 +249,6 @@ const VendorVerificationQueue = () => {
                         </table>
                     </div>
 
-                    {/* Confirmation*/}
                     {confirmOpen && selectedVendor && (
                         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
                             <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
@@ -298,13 +263,6 @@ const VendorVerificationQueue = () => {
                                     <strong>{actionType}</strong>{" "}
                                     {selectedVendor.business_name}?
                                 </p>
-
-                                {/* <textarea
-                                    value={adminNote}
-                                    onChange={(e) => setAdminNote(e.target.value)}
-                                    placeholder="Optional admin note"
-                                    className="mt-4 w-full border rounded-lg p-3 text-sm"
-                                /> */}
 
                                 <div className="mt-6 flex justify-end gap-2">
                                     <button

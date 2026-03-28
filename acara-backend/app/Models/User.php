@@ -72,6 +72,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get the service profile associated with the user.
+     */
+    public function serviceProfile()
+    {
+        return $this->hasOne(ServiceProfile::class);
+    }
+
+    /**
      * Get the vendor profile associated with the user.
      */
     public function vendorProfile()
