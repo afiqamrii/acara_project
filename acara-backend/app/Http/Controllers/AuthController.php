@@ -115,6 +115,17 @@ class AuthController extends Controller
         return response()->json(['message' => 'Verification link sent!']);
     }
 
+    public function logout(Request $request)
+    {
+        $token = $request->user()?->currentAccessToken();
+
+        if ($token) {
+            $token->delete();
+        }
+
+        return response()->json(['message' => 'Logged out successfully'], 200);
+    }
+
     public function verify(Request $request)
     {
         $user = \App\Models\User::find($request->route('id'));

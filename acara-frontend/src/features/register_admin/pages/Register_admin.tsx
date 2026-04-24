@@ -161,7 +161,7 @@ const Register_admin: React.FC = () => {
 
                                 <button
                                     type="button"
-                                    onClick={() => navigate("/dashboard")}
+                                    onClick={() => navigate("/admin/dashboard")}
                                     className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3.5 rounded-xl transition-all duration-300 text-sm"
                                 >
                                     Back to Dashboard
@@ -218,7 +218,7 @@ const Register_admin: React.FC = () => {
                                     Invite Another Admin
                                 </button>
                                 <button
-                                    onClick={() => navigate("/dashboard")}
+                                    onClick={() => navigate("/")}
                                     className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3.5 rounded-xl transition-all duration-300 text-sm"
                                 >
                                     Back to Dashboard

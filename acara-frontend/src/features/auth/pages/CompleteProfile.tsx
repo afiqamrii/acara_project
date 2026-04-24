@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../lib/Api";
+import { updateStoredUser } from "../../../lib/auth";
 
 const CompleteProfile: React.FC = () => {
     const navigate = useNavigate();
@@ -95,9 +96,7 @@ const CompleteProfile: React.FC = () => {
         try {
             const response = await api.post("/profile/complete", formData);
             // Update user data in localStorage or context if needed
-            localStorage.setItem("user", JSON.stringify(response.data.user));
-            localStorage.setItem("role", response.data?.user?.role || "user");
-            localStorage.setItem("user_name", response.data?.user?.name || "");
+            updateStoredUser(response.data.user);
             const role =
                 response.data?.user?.role || localStorage.getItem("role") || "user";
 
