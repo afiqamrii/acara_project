@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import api from "../../../lib/Api";
 import { AxiosError } from "axios";
 import { useNavigate, Link } from "react-router-dom";
-import Navbar from "../../header/pages/navbar";
+
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
 type LoginResponse = {
@@ -95,7 +95,7 @@ const Login: React.FC = () => {
           navigate("/admin/dashboard");
           break;
         default:
-          navigate("/");
+          navigate("/dashboard");
       }
     } catch (error) {
       const err = error as AxiosError<any>;
@@ -117,8 +117,17 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white-100">
-      <Navbar />
+    <div className="min-h-screen bg-white-100 relative">
+      {/* Back to Home */}
+      <Link
+        to="/"
+        className="absolute top-5 left-5 z-30 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white/80 backdrop-blur-md rounded-full border border-gray-200 shadow-sm transition-all hover:bg-white hover:text-[#7E57C2] hover:border-[#7E57C2]/30 hover:shadow-md"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Home
+      </Link>
 
       <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen">
         {/* LEFT SIDE */}

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { AdminSidebar } from "../../header/pages/AdminSidebar";
+
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 
@@ -146,9 +146,6 @@ const VendorVerificationQueue = () => {
     };
 
     return (
-        <div className="flex h-screen w-full bg-gray-100">
-            <AdminSidebar />
-
             <main className="flex flex-1 overflow-auto">
                 <div className="flex h-full w-full flex-col gap-6 p-10">
 
@@ -287,7 +284,6 @@ const VendorVerificationQueue = () => {
                     )}
                 </div>
             </main>
-        </div>
     );
 };
 

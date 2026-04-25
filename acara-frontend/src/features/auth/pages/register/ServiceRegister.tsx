@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { registerService } from "../../vendorApi";
-import Navbar from "../../../header/pages/navbar";
+
+import { UserSidebar } from "../../../header/pages/UserSidebar";
 import Stepper from "../../../../components/common/Stepper";
 import { capitalizeFirstLetter, toTitleCase } from "../../../../utils/formHelpers";
 
@@ -161,9 +162,9 @@ const ServiceRegister: React.FC = () => {
 
     if (success) {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col">
-                <Navbar />
-                <div className="flex-1 flex items-center justify-center p-4">
+            <div className="flex h-screen w-full overflow-hidden bg-gray-50">
+                <UserSidebar />
+                <div className="flex-1 overflow-y-auto flex items-center justify-center p-4">
                     <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -205,10 +206,10 @@ const ServiceRegister: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navbar />
+        <div className="flex h-screen w-full overflow-hidden bg-gray-50">
+            <UserSidebar />
 
-            <div className="flex-1 flex flex-col items-center justify-center pt-32 pb-12 px-4">
+            <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start pt-10 pb-12 px-4">
                 <div className="w-full max-w-4xl mb-6">
                     <nav className="flex" aria-label="Breadcrumb">
                         <ol className="inline-flex items-center space-x-1 md:space-x-3">
