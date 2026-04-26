@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { AdminSidebar } from "../../header/pages/AdminSidebar";
+
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 
@@ -166,7 +167,6 @@ const VendorVerificationQueue = () => {
 
                     <Link
                         to="/admin/dashboard"
-                        to="/admin/dashboard"
                         className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:underline"
                     >
                         <FiArrowLeft />
@@ -312,8 +312,6 @@ const VendorVerificationQueue = () => {
                                     <button
                                         onClick={confirmAction}
                                         className={`px-4 py-2 text-sm text-white rounded-lg ${actionType === "approve"
-                                            ? "bg-emerald-500"
-                                            : "bg-rose-500"
                                             ? "bg-emerald-500"
                                             : "bg-rose-500"
                                             }`}

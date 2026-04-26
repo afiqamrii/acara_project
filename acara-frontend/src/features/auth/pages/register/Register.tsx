@@ -156,6 +156,17 @@ const Register: React.FC = () => {
             {/* Success Modal */}
             <SuccessModal isOpen={isSuccess} />
 
+            {/* Back to Home */}
+            <button
+                onClick={() => navigate("/")}
+                className="absolute top-5 right-5 z-30 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white/80 backdrop-blur-md rounded-full border border-gray-200 shadow-sm transition-all hover:bg-white hover:text-[#6C5CE7] hover:border-[#6C5CE7]/30 hover:shadow-md"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Home
+            </button>
+
             {/* LEFT SIDE - Dynamic Carousel Background */}
             <div className="hidden lg:block relative w-3/5 min-h-screen bg-gray-900 overflow-hidden rounded-r-none">
                 {/* Background Images */}

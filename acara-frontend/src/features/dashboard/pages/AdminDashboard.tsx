@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { AdminSidebar } from "../../header/pages/AdminSidebar";
 import axios from "axios";
 import { useEffect, useState } from "react";
 
@@ -100,10 +99,7 @@ const AdminDashboard = () => {
     ];
 
     return (
-        <div className="flex h-screen w-full bg-gray-100 dark:bg-neutral-800">
-            <AdminSidebar />
-
-            <main className="flex flex-1 overflow-auto">
+            <main className="flex flex-1 overflow-auto bg-gray-100 dark:bg-neutral-800">
                 <div className="flex flex-1">
                     <div className="flex h-full w-full flex-1 flex-col gap-6 p-4 md:p-10 dark:border-neutral-700 dark:bg-neutral-900">
 
@@ -465,7 +461,6 @@ const AdminDashboard = () => {
                     </div>
                 </div>
             </main>
-        </div>
     );
 };
 

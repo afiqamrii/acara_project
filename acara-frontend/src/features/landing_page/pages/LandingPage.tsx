@@ -82,7 +82,18 @@ const LandingPage: React.FC = () => {
                     </p>
 
                     <button
-                        onClick={() => navigate('/login')}
+                        onClick={() => {
+                            const token = localStorage.getItem('token');
+                            if (token) {
+                                const role = localStorage.getItem('role') || 'user';
+                                if (role === 'admin' || role === 'super_admin') navigate('/admin/dashboard');
+                                else if (role === 'vendor') navigate('/marketplace');
+                                else if (role === 'crew') navigate('/crew/jobs');
+                                else navigate('/dashboard');
+                            } else {
+                                navigate('/login');
+                            }
+                        }}
                         className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white transition-all duration-200 bg-[#7E57C2] rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 hover:bg-[#6C4AB8] shadow-lg hover:shadow-purple-500/30 hover:-translate-y-1"
                     >
                         Find Vendors Now
@@ -116,7 +127,7 @@ const LandingPage: React.FC = () => {
             </section>
 
             {/* How It Works Section */}
-            <section className="relative py-32 bg-gray-50">
+            <section id="how-it-works" className="relative py-32 bg-gray-50">
                 <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
 
                 <div className="container mx-auto px-4">

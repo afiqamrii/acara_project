@@ -150,3 +150,18 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Global pointer cursor for all interactive elements */
+button,
+[role="button"],
+a,
+select,
+input[type="submit"],
+input[type="button"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+label[for],
+summary {
+  cursor: pointer;
+}
