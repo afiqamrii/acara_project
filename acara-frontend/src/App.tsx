@@ -13,11 +13,13 @@ import AdminDashboard from './features/dashboard/pages/AdminDashboard';
 import VendorVerificationQueue from './features/dashboard/pages/VendorVerificationQueue';
 import Register_admin from './features/register_admin/pages/Register_admin';
 import CompleteProfile from './features/auth/pages/CompleteProfile';
+import AuthSessionManager from './components/common/AuthSessionManager';
 // import AdminDashboard from './features/dashboard/pages/AdminDashboard';
 
 function App() {
   return (
     <BrowserRouter>
+      <AuthSessionManager />
       <div className="App">
 
         <Routes>

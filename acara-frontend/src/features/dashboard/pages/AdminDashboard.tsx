@@ -121,7 +121,7 @@ const AdminDashboard = () => {
 
                                     <div className="mt-6 flex flex-wrap gap-4">
                                         <Link
-                                            to="/admin/verifications"
+                                            to="/admin/verifications/vendors"
                                             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-500"
                                         >
                                             <FiClipboard className="text-lg" />

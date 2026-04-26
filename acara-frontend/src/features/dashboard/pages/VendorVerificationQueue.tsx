@@ -9,6 +9,7 @@ import {
     FiClock,
     FiArrowLeft,
 } from "react-icons/fi";
+import { logoutClient } from "../../../lib/auth";
 
 type Vendor = {
     id: number;
@@ -38,6 +39,7 @@ const VendorVerificationQueue = () => {
     const [actionType, setActionType] = useState<ActionType | null>(null);
     const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
     const [adminNote, setAdminNote] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
     const token = localStorage.getItem("token");
 
@@ -47,8 +49,14 @@ const VendorVerificationQueue = () => {
                 headers: { Authorization: `Bearer ${token}` },
             });
             setVendors(res.data);
-        } catch (error) {
-            console.error("Failed to fetch vendors:", error);
+        } catch (err: any) {
+            console.error("Failed to fetch vendors:", err);
+
+            if (err.response?.status === 401) {
+                setError("Session expired. Please login again.");
+            } else {
+                setError("Something went wrong while fetching vendors.");
+            }
         } finally {
             setLoading(false);
         }
@@ -57,6 +65,10 @@ const VendorVerificationQueue = () => {
     useEffect(() => {
         fetchVendors();
     }, []);
+
+    const handleSessionRedirect = () => {
+        logoutClient("session_expired");
+    };
 
     const handleApprove = async (id: number) => {
         await axios.patch(
@@ -144,8 +156,8 @@ const VendorVerificationQueue = () => {
             </span>
         );
     };
-
     return (
+
         <div className="flex h-screen w-full bg-gray-100">
             <AdminSidebar />
 
@@ -154,19 +166,44 @@ const VendorVerificationQueue = () => {
 
                     <Link
                         to="/admin/dashboard"
+                        to="/admin/dashboard"
                         className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:underline"
                     >
                         <FiArrowLeft />
                         Back to Dashboard
                     </Link>
 
-                    <h1 className="text-2xl font-semibold">
-                        Vendor Verification Queue
-                    </h1>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900">
+                                Vendor Verification Queue
+                            </h1>
+                            <p className="mt-1 text-sm text-gray-500">
+                                Review and manage vendor applications awaiting approval.
+                            </p>
+                        </div>
+
+                        <div className="rounded-xl bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700">
+                            {vendors.length} Total Vendors
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 flex justify-between items-center">
+                            <span>{error}</span>
+
+                            <button
+                                onClick={handleSessionRedirect}
+                                className="ml-4 bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    )}
 
                     <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-neutral-50">
+                            <thead className="bg-neutral-300">
                                 <tr>
                                     <th className="px-6 py-3">Business</th>
                                     <th className="px-6 py-3">SSM Number</th>
@@ -277,6 +314,8 @@ const VendorVerificationQueue = () => {
                                         className={`px-4 py-2 text-sm text-white rounded-lg ${actionType === "approve"
                                             ? "bg-emerald-500"
                                             : "bg-rose-500"
+                                            ? "bg-emerald-500"
+                                            : "bg-rose-500"
                                             }`}
                                     >
                                         Confirm
@@ -292,3 +331,4 @@ const VendorVerificationQueue = () => {
 };
 
 export default VendorVerificationQueue;
+

@@ -8,13 +8,21 @@ import {
   IconUserBolt,
 } from "@tabler/icons-react";
 import { motion } from "motion/react";
-// import { cn } from "../../../lib/utils";
+import { performLogout } from "../../../lib/auth";
+
+
 
 export function AdminSidebar() {
+  const [open, setOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await performLogout();
+  };
+
   const links = [
     {
       label: "Dashboard",
-      href: "/admindashboard",
+      href: "/admin/dashboard",
       icon: (
         <IconBrandTabler className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
@@ -33,15 +41,8 @@ export function AdminSidebar() {
         <IconSettings className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
     },
-    {
-      label: "Logout",
-      href: "/login",
-      icon: (
-        <IconArrowLeft className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
-      ),
-    },
   ];
-  const [open, setOpen] = useState(false);
+
   return (
 
     <Sidebar open={open} setOpen={setOpen}>

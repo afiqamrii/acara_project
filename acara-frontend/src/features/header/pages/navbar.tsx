@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import CartDrawer from "./cartdrawer";
 import './navbar.css';
+import { performLogout } from "../../../lib/auth";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -11,9 +12,8 @@ const Navbar = () => {
   const token = localStorage.getItem("token");
   const userName = localStorage.getItem("user_name");
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/login");
+  const handleLogout = async () => {
+    await performLogout();
   };
 
   useEffect(() => {

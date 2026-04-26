@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import Navbar from "../../header/pages/navbar";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import { setAuthSession } from "../../../lib/auth";
 
 type LoginResponse = {
   message: string;
@@ -62,9 +63,12 @@ const Login: React.FC = () => {
     try {
       const res = await api.post<LoginResponse>("/login", { email, password });
 
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("role", res.data.role);
-      localStorage.setItem("user_name", res.data.user.name);
+      setAuthSession({
+        token: res.data.token,
+        role: res.data.role,
+        userName: res.data.user.name,
+        user: res.data.user,
+      });
 
       if (res.data.user.email_verified_at === null) {
         setRequiresVerification(true);

@@ -34,6 +34,7 @@ Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
 
 // Profile completion (authenticated users with incomplete profiles)
 Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/profile/complete', [AuthController::class, 'completeProfile']);
     Route::post('/email/resend', [AuthController::class, 'resendVerification']);
     
