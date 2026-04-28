@@ -1,28 +1,98 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import api from '../../../lib/Api';
 
 
 // grid image background
 import hero1 from '../../../img/wedimg1.jpg';
 import hero2 from '../../../img/wedimg2.jpg';
 import hero3 from '../../../img/wedimg3.jpg';
-import hero4 from '../../../img/wedimg4.jpg';
-import hero5 from '../../../img/wedimg5.jpg';
 import hero6 from '../../../img/wedimg6.jpg';
 import hero7 from '../../../img/wedimg7.jpg';
-import hero8 from '../../../img/wedimg8.jpg';
-import hero9 from '../../../img/wedimg9.jpg';
+import audience from '../../../img/audience.jpg';
+import marketplaceBg from '../../../img/bg_marketplace.jpg';
+import marketplaceBgAlt from '../../../img/bg3_marketplace.jpg';
+import onlineVendor from '../../../img/onlinevendor1.jpg';
 
-const heroImages = [hero1, hero2, hero3, hero4, hero5, hero6, hero7, hero8, hero9];
+const heroImages = [hero1, hero2, hero3, hero6, hero7, audience, marketplaceBg, marketplaceBgAlt, onlineVendor];
+const LOADING_ANIMATION_MS = 10;
 
-const servicesData = [
-    { id: 1, title: "Wedding Catering Package", category: "Catering", price: "RM 2,500 – RM 6,000", location: "Selangor", vendor: "Delicious Events" },
-    { id: 2, title: "Corporate Catering Package", category: "Catering", price: "RM 3,000 – RM 8,000", location: "Kuala Lumpur", vendor: "Elite Buffet" },
-    { id: 3, title: "Birthday Catering Package", category: "Catering", price: "RM 1,500 – RM 4,000", location: "Johor", vendor: "Party Bites" },
-    { id: 4, title: "Luxury Wedding Photography", category: "Photography", price: "RM 4,000 – RM 10,000", location: "Penang", vendor: "Pixel Perfect" },
-    { id: 5, title: "Garden Decor Set", category: "Decoration", price: "RM 2,000 – RM 5,000", location: "Melaka", vendor: "Floral Dreams" },
-    { id: 6, title: "Grand Ballroom Setup", category: "Decoration", price: "RM 10,000 – RM 20,000", location: "Selangor", vendor: "Royal Decor" },
-];
+const wait = (ms: number) =>
+    new Promise<void>((resolve) => {
+        window.setTimeout(resolve, ms);
+    });
+
+const waitForLoadingAnimation = async (startedAt: number) => {
+    const remainingTime = LOADING_ANIMATION_MS - (Date.now() - startedAt);
+
+    if (remainingTime > 0) {
+        await wait(remainingTime);
+    }
+};
+
+const MarketplaceLoader = ({ message }: { message: string }) => (
+    <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="col-span-full flex flex-col items-center justify-center rounded-[32px] bg-white p-12 text-center shadow-sm"
+    >
+        <div className="relative h-16 w-16">
+            <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 rounded-full border-4 border-purple-100 border-t-purple-600"
+            />
+            <motion.div
+                animate={{ scale: [0.85, 1.1, 0.85], opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-4 rounded-full bg-purple-500"
+            />
+        </div>
+        <p className="mt-5 text-sm font-semibold text-purple-700">{message}</p>
+    </motion.div>
+);
+
+type MarketplaceService = {
+    id: number;
+    title: string;
+    category: string;
+    description?: string | null;
+    price: string;
+    price_value: number;
+    location: string;
+    vendor: string;
+    portfolio_url?: string | null;
+};
+
+type MarketplaceResponse = {
+    data: MarketplaceService[];
+    current_page: number;
+    last_page: number;
+    total: number;
+};
+
+const getServiceImageUrl = (item: MarketplaceService) => {
+    const portfolioUrl = item.portfolio_url ?? '';
+    const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(portfolioUrl);
+
+    return isImage ? portfolioUrl : heroImages[item.id % heroImages.length];
+};
+
+type AppliedFilters = {
+    search: string;
+    category: string;
+    location: string;
+    minPrice: string;
+    maxPrice: string;
+};
+
+const emptyFilters: AppliedFilters = {
+    search: '',
+    category: '',
+    location: '',
+    minPrice: '',
+    maxPrice: '',
+};
 
 const Marketplace: React.FC = () => {
     const [serviceType, setServiceType] = useState('');
@@ -31,6 +101,91 @@ const Marketplace: React.FC = () => {
     const [maxPrice, setMaxPrice] = useState('');
     const [search, setSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
+    const [servicesData, setServicesData] = useState<MarketplaceService[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>(emptyFilters);
+    const [filtering, setFiltering] = useState(false);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalServices, setTotalServices] = useState(0);
+    const [loadedImages, setLoadedImages] = useState<Record<number, boolean>>({});
+    const responseCache = useRef(new Map<string, MarketplaceResponse>());
+    const itemsPerPage = 6;
+
+    useEffect(() => {
+        const controller = new AbortController();
+
+        const fetchMarketplaceServices = async () => {
+            const loadingStartedAt = Date.now();
+            const params = {
+                page: currentPage,
+                per_page: itemsPerPage,
+                search: appliedFilters.search || undefined,
+                category: appliedFilters.category || undefined,
+                location: appliedFilters.location || undefined,
+                min_price: appliedFilters.minPrice || undefined,
+                max_price: appliedFilters.maxPrice || undefined,
+            };
+            const cacheKey = JSON.stringify(params);
+            setError('');
+            setLoading(true);
+
+            if (responseCache.current.has(cacheKey)) {
+                const cached = responseCache.current.get(cacheKey)!;
+                await waitForLoadingAnimation(loadingStartedAt);
+                if (controller.signal.aborted) return;
+
+                setServicesData(cached.data);
+                setTotalPages(Math.max(1, cached.last_page));
+                setTotalServices(cached.total);
+                setFiltering(false);
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const response = await api.get<MarketplaceResponse>('/marketplace/services', {
+                    signal: controller.signal,
+                    params,
+                });
+                await waitForLoadingAnimation(loadingStartedAt);
+                if (controller.signal.aborted) return;
+
+                responseCache.current.set(cacheKey, response.data);
+                setServicesData(response.data.data);
+                setTotalPages(Math.max(1, response.data.last_page));
+                setTotalServices(response.data.total);
+            } catch (err: any) {
+                if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
+                console.error('Failed to load marketplace services:', err);
+                setError('Unable to load marketplace services right now.');
+            } finally {
+                if (!controller.signal.aborted) {
+                    setFiltering(false);
+                    setLoading(false);
+                }
+            }
+        };
+
+        fetchMarketplaceServices();
+        return () => controller.abort();
+    }, [currentPage, appliedFilters]);
+
+    const handleFilter = () => {
+        setFiltering(true);
+        setLoading(true);
+        // setServicesData([]);
+        // setTotalServices(0);
+        setLoadedImages({});
+        setAppliedFilters({
+            search: search.trim(),
+            category: serviceType,
+            location,
+            minPrice,
+            maxPrice,
+        });
+        setCurrentPage(1);
+    };
 
     const handleReset = () => {
         setServiceType('');
@@ -38,6 +193,11 @@ const Marketplace: React.FC = () => {
         setMinPrice('');
         setMaxPrice('');
         setSearch('');
+        setFiltering(true);
+        setLoading(true);
+        setLoadedImages({});
+        setAppliedFilters(emptyFilters);
+        setCurrentPage(1);
     };
 
     const malaysiaLocations = [
@@ -45,9 +205,6 @@ const Marketplace: React.FC = () => {
         "Perak", "Perlis", "Pulau Pinang", "Sabah", "Sarawak", "Selangor",
         "Terengganu", "Kuala Lumpur", "Putrajaya", "Labuan",
     ];
-
-    const itemsPerPage = 6;
-    const totalPages = Math.ceil(servicesData.length / itemsPerPage);
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -59,20 +216,24 @@ const Marketplace: React.FC = () => {
         visible: { y: 0, opacity: 1 }
     };
 
+    const visibleHeroImages = heroImages.slice(0,4);
+
     return (
+        
         <div className="flex-1 overflow-y-auto bg-[#fcfaff]">
 
                 {/* --- HERO SECTION WITH GRID MOTION --- */}
                 <div className="relative h-[50vh] md:h-[60vh] overflow-hidden bg-[#640D5F] flex items-center justify-center rounded-b-[40px] shadow-2xl">
                     <div className="absolute inset-0 opacity-70 grid grid-cols-4 md:grid-cols-6 gap-4 rotate-12 scale-125">
-                        {[...Array(24)].map((_, i) => (
+
+                        {[...Array(12)].map((_, i) => (
                             <motion.div
                                 key={i}
                                 initial={{ y: i % 2 === 0 ? 0 : -100 }}
                                 animate={{ y: i % 2 === 0 ? -100 : 0 }}
                                 transition={{ duration: 20, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
                                 className="h-40 md:h-64 w-full bg-cover bg-center rounded-2xl"
-                                style={{ backgroundImage: `url(${heroImages[i % heroImages.length]})` }}
+                                style={{ backgroundImage: `url(${visibleHeroImages[i % visibleHeroImages.length]})` }}
                             />
                         ))}
                     </div>
@@ -144,7 +305,7 @@ const Marketplace: React.FC = () => {
                                 <input type="number" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-1/2 lg:w-24 rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-400" />
                             </div>
                             <div className="flex gap-2 w-full lg:w-auto">
-                                <button className="flex-1 lg:w-auto bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-purple-200">Filter</button>
+                                <button onClick={handleFilter} disabled={loading} className="flex-1 lg:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white px-8 py-3 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-purple-200">Filter</button>
                                 <button onClick={handleReset} className="px-5 py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">RESET</button>
                             </div>
                         </div>
@@ -159,7 +320,29 @@ const Marketplace: React.FC = () => {
                         animate="visible"
                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                     >
-                        {servicesData.map((item) => (
+                        {loading && servicesData.length === 0 && (
+                            <MarketplaceLoader message={filtering ? "Filtering services..." : "Loading marketplace services..."} />
+                        )}
+
+                        {loading && servicesData.length > 0 && (
+                            <div className="col-span-full rounded-2xl bg-purple-50 px-5 py-3 text-center text-sm font-semibold text-purple-700">
+                                Updating results...
+                            </div>
+                        )}
+
+                        {!loading && error && servicesData.length === 0 && (
+                            <div className="col-span-full rounded-[32px] bg-white p-10 text-center text-red-500 shadow-sm">
+                                {error}
+                            </div>
+                        )}
+
+                        {!loading && !error && servicesData.length === 0 && (
+                            <div className="col-span-full rounded-[32px] bg-white p-10 text-center text-gray-500 shadow-sm">
+                                No approved services found.
+                            </div>
+                        )}
+
+                        {!error && servicesData.map((item, index) => (
                             <motion.div
                                 key={item.id}
                                 variants={itemVariants}
@@ -170,10 +353,42 @@ const Marketplace: React.FC = () => {
                                     <motion.img
                                         whileHover={{ scale: 1.1 }}
                                         transition={{ duration: 0.6 }}
-                                        src={`https://picsum.photos/600/400?random=${item.id}`}
+                                        src={getServiceImageUrl(item)}
                                         alt={item.title}
-                                        className="w-full h-full object-cover"
+                                        loading={index === 0 ? "eager" : "lazy"}
+                                        fetchPriority={index === 0 ? "high" : "auto"}
+                                        decoding="async"
+                                        onLoad={() => {
+                                            setLoadedImages((current) => ({
+                                                ...current,
+                                                [item.id]: true,
+                                            }));
+                                        }}
+                                        onError={(event) => {
+                                            const fallbackImage = heroImages[item.id % heroImages.length];
+
+                                            if (event.currentTarget.dataset.fallbackApplied !== "true") {
+                                                event.currentTarget.dataset.fallbackApplied = "true";
+                                                event.currentTarget.src = fallbackImage;
+                                                return;
+                                            }
+
+                                            setLoadedImages((current) => ({
+                                                ...current,
+                                                [item.id]: true,
+                                            }));
+                                        }}
+                                        className={`w-full h-full object-cover transition-opacity duration-500 ${loadedImages[item.id] ? "opacity-100" : "opacity-0"}`}
                                     />
+                                    {!loadedImages[item.id] && (
+                                        <div className="absolute inset-0 bg-gradient-to-br from-purple-100 via-gray-100 to-purple-50">
+                                            <motion.div
+                                                animate={{ x: ["-100%", "100%"] }}
+                                                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                                                className="h-full w-1/2 bg-white/50 blur-xl"
+                                            />
+                                        </div>
+                                    )}
                                     <div className="absolute top-4 left-4">
                                         <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-purple-600 shadow-sm">
                                             {item.category}
@@ -204,13 +419,15 @@ const Marketplace: React.FC = () => {
                     </motion.div>
 
                     {/* --- PAGINATION --- */}
+                    {!error && totalServices > 0 && (
                     <div className="flex justify-center items-center gap-3 mt-16">
-                        <button disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm">←</button>
+                        <button disabled={loading || currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm">←</button>
                         {[...Array(totalPages)].map((_, i) => (
-                            <button key={i} onClick={() => setCurrentPage(i + 1)} className={`w-12 h-12 rounded-2xl font-bold transition-all ${currentPage === i + 1 ? "bg-purple-600 text-white shadow-lg shadow-purple-200" : "hover:bg-white border border-transparent hover:border-gray-200"}`}>{i + 1}</button>
+                            <button key={i} disabled={loading} onClick={() => setCurrentPage(i + 1)} className={`w-12 h-12 rounded-2xl font-bold transition-all disabled:opacity-50 ${currentPage === i + 1 ? "bg-purple-600 text-white shadow-lg shadow-purple-200" : "hover:bg-white border border-transparent hover:border-gray-200"}`}>{i + 1}</button>
                         ))}
-                        <button disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm">→</button>
+                        <button disabled={loading || currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm">→</button>
                     </div>
+                    )}
                 </div>
 
         </div>

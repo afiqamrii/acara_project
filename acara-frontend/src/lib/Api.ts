@@ -5,17 +5,20 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   // withCredentials: true,
   headers: {
-    "Content-Type": "application/json",
     Accept: "application/json",
   },
 });
 
 // Request interceptor (auth token)
 api.interceptors.request.use((config) => {
+  const requestUrl = config.url || "";
+  const isPublicMarketplaceRequest = requestUrl.startsWith("/marketplace/services");
   const token = localStorage.getItem("token");
-  if (token) {
+
+  if (token && !isPublicMarketplaceRequest) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
 
