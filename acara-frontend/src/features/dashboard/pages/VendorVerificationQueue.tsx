@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { AdminSidebar } from "../../header/pages/AdminSidebar";
+
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 
@@ -157,176 +157,170 @@ const VendorVerificationQueue = () => {
         );
     };
     return (
+        <main className="flex flex-1 overflow-auto">
+            <div className="flex h-full w-full flex-col gap-6 p-10">
 
-        <div className="flex h-screen w-full bg-gray-100">
-            <AdminSidebar />
+                <Link
+                    to="/admin/dashboard"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:underline"
+                >
+                    <FiArrowLeft />
+                    Back to Dashboard
+                </Link>
 
-            <main className="flex flex-1 overflow-auto">
-                <div className="flex h-full w-full flex-col gap-6 p-10">
-
-                    <Link
-                        to="/admin/dashboard"
-                        to="/admin/dashboard"
-                        className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:underline"
-                    >
-                        <FiArrowLeft />
-                        Back to Dashboard
-                    </Link>
-
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">
-                                Vendor Verification Queue
-                            </h1>
-                            <p className="mt-1 text-sm text-gray-500">
-                                Review and manage vendor applications awaiting approval.
-                            </p>
-                        </div>
-
-                        <div className="rounded-xl bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700">
-                            {vendors.length} Total Vendors
-                        </div>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">
+                            Vendor Verification Queue
+                        </h1>
+                        <p className="mt-1 text-sm text-gray-500">
+                            Review and manage vendor applications awaiting approval.
+                        </p>
                     </div>
 
-                    {error && (
-                        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 flex justify-between items-center">
-                            <span>{error}</span>
+                    <div className="rounded-xl bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700">
+                        {vendors.length} Total Vendors
+                    </div>
+                </div>
 
-                            <button
-                                onClick={handleSessionRedirect}
-                                className="ml-4 bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700"
-                            >
-                                OK
-                            </button>
-                        </div>
-                    )}
+                {error && (
+                    <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 flex justify-between items-center">
+                        <span>{error}</span>
 
-                    <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-neutral-300">
+                        <button
+                            onClick={handleSessionRedirect}
+                            className="ml-4 bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700"
+                        >
+                            OK
+                        </button>
+                    </div>
+                )}
+
+                <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-neutral-300">
+                            <tr>
+                                <th className="px-6 py-3">Business</th>
+                                <th className="px-6 py-3">SSM Number</th>
+                                <th className="px-6 py-3">Experience</th>
+                                <th className="px-6 py-3">Status</th>
+                                <th className="px-6 py-3">Documents</th>
+                                <th className="px-6 py-3">Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {loading ? (
                                 <tr>
-                                    <th className="px-6 py-3">Business</th>
-                                    <th className="px-6 py-3">SSM Number</th>
-                                    <th className="px-6 py-3">Experience</th>
-                                    <th className="px-6 py-3">Status</th>
-                                    <th className="px-6 py-3">Documents</th>
-                                    <th className="px-6 py-3">Actions</th>
+                                    <td colSpan={6} className="px-6 py-8 text-center">
+                                        Loading vendors...
+                                    </td>
                                 </tr>
-                            </thead>
-
-                            <tbody>
-                                {loading ? (
-                                    <tr>
-                                        <td colSpan={6} className="px-6 py-8 text-center">
-                                            Loading vendors...
+                            ) : filtered.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-8 text-center">
+                                        No vendors found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filtered.map((v) => (
+                                    <tr key={v.id} className="border-b">
+                                        <td className="px-6 py-4 font-semibold">
+                                            {v.business_name}
                                         </td>
-                                    </tr>
-                                ) : filtered.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="px-6 py-8 text-center">
-                                            No vendors found.
+
+                                        <td className="px-6 py-4">
+                                            {v.ssm_number ?? "-"}
                                         </td>
-                                    </tr>
-                                ) : (
-                                    filtered.map((v) => (
-                                        <tr key={v.id} className="border-b">
-                                            <td className="px-6 py-4 font-semibold">
-                                                {v.business_name}
-                                            </td>
 
-                                            <td className="px-6 py-4">
-                                                {v.ssm_number ?? "-"}
-                                            </td>
+                                        <td className="px-6 py-4">
+                                            {v.years_of_experience != null ? `${v.years_of_experience} years` : "-"}
+                                        </td>
 
-                                            <td className="px-6 py-4">
-                                                {v.years_of_experience != null ? `${v.years_of_experience} years` : "-"}
-                                            </td>
+                                        <td className="px-6 py-4">
+                                            {badge(v.status)}
+                                        </td>
 
-                                            <td className="px-6 py-4">
-                                                {badge(v.status)}
-                                            </td>
-
-                                            <td className="px-6 py-4 flex flex-grid gap-5">
-                                                {v.ssm_document_url ? (
-                                                    <a
-                                                        href={v.ssm_document_url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-indigo-600 text-xs font-semibold hover:underline"
+                                        <td className="px-6 py-4 flex flex-grid gap-5">
+                                            {v.ssm_document_url ? (
+                                                <a
+                                                    href={v.ssm_document_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-indigo-600 text-xs font-semibold hover:underline"
+                                                >
+                                                    View SSM Document
+                                                </a>
+                                            ) : (
+                                                "-"
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 space-x-2">
+                                            {(v.status === "pending_verification" || v.status === "pending_completion") && (
+                                                <>
+                                                    <button
+                                                        onClick={() => openConfirm("approve", v)}
+                                                        className="bg-emerald-500 text-white px-3 py-1 text-xs rounded hover:bg-emerald-600"
                                                     >
-                                                        View SSM Document
-                                                    </a>
-                                                ) : (
-                                                    "-"
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 space-x-2">
-                                                {(v.status === "pending_verification" || v.status === "pending_completion") && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => openConfirm("approve", v)}
-                                                            className="bg-emerald-500 text-white px-3 py-1 text-xs rounded hover:bg-emerald-600"
-                                                        >
-                                                            Approve
-                                                        </button>
+                                                        Approve
+                                                    </button>
 
-                                                        <button
-                                                            onClick={() => openConfirm("reject", v)}
-                                                            className="bg-rose-500 text-white px-3 py-1 text-xs rounded hover:bg-rose-600"
-                                                        >
-                                                            Reject
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                                    <button
+                                                        onClick={() => openConfirm("reject", v)}
+                                                        className="bg-rose-500 text-white px-3 py-1 text-xs rounded hover:bg-rose-600"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-                    {confirmOpen && selectedVendor && (
-                        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-                                <h2 className="text-lg font-semibold">
-                                    {actionType === "approve"
-                                        ? "Approve Vendor"
-                                        : "Reject Vendor"}
-                                </h2>
+                {confirmOpen && selectedVendor && (
+                    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+                            <h2 className="text-lg font-semibold">
+                                {actionType === "approve"
+                                    ? "Approve Vendor"
+                                    : "Reject Vendor"}
+                            </h2>
 
-                                <p className="mt-2 text-sm text-neutral-600">
-                                    Are you sure you want to{" "}
-                                    <strong>{actionType}</strong>{" "}
-                                    {selectedVendor.business_name}?
-                                </p>
+                            <p className="mt-2 text-sm text-neutral-600">
+                                Are you sure you want to{" "}
+                                <strong>{actionType}</strong>{" "}
+                                {selectedVendor.business_name}?
+                            </p>
 
-                                <div className="mt-6 flex justify-end gap-2">
-                                    <button
-                                        onClick={() => setConfirmOpen(false)}
-                                        className="px-4 py-2 text-sm border rounded-lg"
-                                    >
-                                        Cancel
-                                    </button>
+                            <div className="mt-6 flex justify-end gap-2">
+                                <button
+                                    onClick={() => setConfirmOpen(false)}
+                                    className="px-4 py-2 text-sm border rounded-lg"
+                                >
+                                    Cancel
+                                </button>
 
-                                    <button
-                                        onClick={confirmAction}
-                                        className={`px-4 py-2 text-sm text-white rounded-lg ${actionType === "approve"
+                                <button
+                                    onClick={confirmAction}
+                                    className={`px-4 py-2 text-sm text-white rounded-lg ${actionType === "approve"
+                                        ? "bg-emerald-500"
+                                        : "bg-rose-500"
                                             ? "bg-emerald-500"
                                             : "bg-rose-500"
-                                            ? "bg-emerald-500"
-                                            : "bg-rose-500"
-                                            }`}
-                                    >
-                                        Confirm
-                                    </button>
-                                </div>
+                                        }`}
+                                >
+                                    Confirm
+                                </button>
                             </div>
                         </div>
-                    )}
-                </div>
-            </main>
-        </div>
+                    </div>
+                )}
+            </div>
+        </main>
     );
 };
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, type Variants } from "framer-motion";
-import { UserSidebar } from "../../header/pages/UserSidebar";
 import api from "../../../lib/Api";
 import {
   IconAlertCircle,
@@ -289,9 +288,6 @@ const UserDashboard = () => {
   );
 
   return (
-    <div className="flex min-h-screen w-full bg-[#f7f8fc] md:h-screen md:overflow-hidden">
-      <UserSidebar />
-
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex-none border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-6 md:pl-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -804,7 +800,6 @@ const UserDashboard = () => {
           </div>
         </div>
       </main>
-    </div>
   );
 };
 

@@ -30,7 +30,7 @@ This feature allows super admins to invite new admins by email only. The system 
 ### Frontend Implementation
 
 #### Components
-- **[Register_admin.tsx](file:///Users/farid/Desktop/workspace/acara_project/acara-frontend/src/features/register_admin/pages/Register_admin.tsx)**:
+- **[Register_admin.tsx](file:///Users/farid/Desktop/workspace/acara_project/acara-frontend/src/features/register_admin/pages/Register_admin.tsx)**
     - New clean UI for inviting admins.
     - Displays default password upon successful invitation.
 - **[CompleteProfile.tsx](file:///Users/farid/Desktop/workspace/acara_project/acara-frontend/src/features/auth/pages/CompleteProfile.tsx)**:
