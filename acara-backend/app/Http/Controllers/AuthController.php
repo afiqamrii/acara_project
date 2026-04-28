@@ -31,6 +31,7 @@ class AuthController extends Controller
             return response()->json(['message' => 'Email or password is incorrect.'], 401);
         }
 
+        /** @var \App\Models\User $user */  // ← Add this line
         $user = Auth::user();
 
         if ($user->status !== 'active') {
@@ -38,6 +39,7 @@ class AuthController extends Controller
             Log::info('Login attempt for inactive account: ' . $user->email);
             return response()->json(['message' => 'Account not active'], 403);
         }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         Log::info('User logged in successfully: ' . $user->email);
@@ -96,7 +98,6 @@ class AuthController extends Controller
                 'role' => $user->role,
                 'user' => $user
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Registration failed: ' . $e->getMessage());
@@ -162,7 +163,6 @@ class AuthController extends Controller
                 'user' => $user,
                 'default_password' => env('DEFAULT_ADMIN_PASSWORD', 'Admin@123'),
             ], 201);
-
         } catch (\Exception $e) {
             Log::error('Admin invitation failed: ' . $e->getMessage());
             return response()->json([
@@ -186,7 +186,6 @@ class AuthController extends Controller
                 'message' => 'Profile completed successfully',
                 'user' => $user,
             ], 200);
-
         } catch (\Exception $e) {
             Log::error('Profile completion failed: ' . $e->getMessage());
             return response()->json([

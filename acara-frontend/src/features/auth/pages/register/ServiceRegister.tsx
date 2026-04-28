@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { registerService } from "../../vendorApi";
 
-import { UserSidebar } from "../../../header/pages/UserSidebar";
+// import { UserSidebar } from "../../../header/pages/UserSidebar";
 import Stepper from "../../../../components/common/Stepper";
 import { capitalizeFirstLetter, toTitleCase } from "../../../../utils/formHelpers";
 
@@ -163,7 +163,7 @@ const ServiceRegister: React.FC = () => {
     if (success) {
         return (
             <div className="flex h-screen w-full overflow-hidden bg-gray-50">
-                <UserSidebar />
+               
                 <div className="flex-1 overflow-y-auto flex items-center justify-center p-4">
                     <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -207,7 +207,7 @@ const ServiceRegister: React.FC = () => {
 
     return (
         <div className="flex h-screen w-full overflow-hidden bg-gray-50">
-            <UserSidebar />
+           
 
             <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start pt-10 pb-12 px-4">
                 <div className="w-full max-w-4xl mb-6">

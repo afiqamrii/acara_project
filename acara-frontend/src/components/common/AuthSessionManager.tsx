@@ -11,10 +11,11 @@ import {
   touchSessionActivity,
 } from "../../lib/auth";
 
+let lastValidationAt = 0;
+let isLoggingOut = false;
+
 const AuthSessionManager = () => {
   useEffect(() => {
-    let lastValidationAt = 0;
-    let isLoggingOut = false;
 
     const validateServerSession = async (force = false) => {
       if (!hasAuthToken()) {
@@ -23,7 +24,7 @@ const AuthSessionManager = () => {
 
       const now = Date.now();
       if (!force && now - lastValidationAt < AUTH_SESSION_VALIDATION_INTERVAL_MS) {
-        return;
+        return; 
       }
 
       lastValidationAt = now;
@@ -61,12 +62,12 @@ const AuthSessionManager = () => {
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        void enforceSession(true, false);
+        void enforceSession(true, false); 
       }
     };
 
     const handleFocus = () => {
-      void enforceSession(true, false);
+      void enforceSession(true, false); 
     };
 
     const handleStorage = (event: StorageEvent) => {
@@ -95,10 +96,10 @@ const AuthSessionManager = () => {
     ];
 
     ensureSessionTimestamps();
-    void enforceSession(true, true);
+    void enforceSession(true, true); 
 
     const intervalId = window.setInterval(() => {
-      void enforceSession(false, false);
+      void enforceSession(false, false); 
     }, 30_000);
 
     activityEvents.forEach((eventName) => {

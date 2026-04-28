@@ -8,7 +8,7 @@ const AUTH_STORAGE_KEYS = {
 } as const;
 
 const AUTH_LOGOUT_EVENT = "auth:logout";
-const DEFAULT_IDLE_TIMEOUT_MINUTES = 40; // 5 minutes of inactivity before considering the session idle and eligible for automatic logout
+const DEFAULT_IDLE_TIMEOUT_MINUTES = 50; // 5 minutes of inactivity before considering the session idle and eligible for automatic logout
 const DEFAULT_VALIDATION_INTERVAL_MS = 60_000;
 const ACTIVITY_WRITE_THROTTLE_MS = 15_000;
 

@@ -185,9 +185,12 @@ const AdminDashboard = () => {
                                         </h2>
                                     </div>
 
-                                    <span className="text-sm font-semibold text-neutral-400 dark:text-neutral-500">
-                                        Latest
-                                    </span>
+                                    <Link
+                                        to="/admin/verifications/services"
+                                        className="text-sm font-semibold text-indigo-700 hover:underline dark:text-indigo-300"
+                                    >
+                                        View Verification Queue
+                                    </Link>
                                 </div>
 
                                 <div className="mt-4 space-y-3">
@@ -229,7 +232,7 @@ const AdminDashboard = () => {
                                     </div>
 
                                     <Link
-                                        to="/admin/verifications/vendors"
+                                        to="/admin/verifications/vendors" //utk approved vendor yg register
                                         className="text-sm font-semibold text-indigo-700 hover:underline dark:text-indigo-300"
                                     >
                                         View Vendors

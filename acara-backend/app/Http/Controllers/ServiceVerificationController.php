@@ -17,8 +17,10 @@ class ServiceVerificationController extends Controller
                     'id' => $service->id,
                     'service_name' => $service->service_name,
                     'service_category' => $service->service_category,
+                    'service_details' => $service->service_details,
                     'pricing_starting_from' => $service->pricing_starting_from,
                     'pricing_unit' => $service->pricing_unit,
+                    'pricing_description' => $service->pricing_description,
                     'status' => $service->status,
                     'submitted_at' => $service->created_at->format('Y-m-d h:i A'),
                     'portfolio_url' => $service->portfolio_path

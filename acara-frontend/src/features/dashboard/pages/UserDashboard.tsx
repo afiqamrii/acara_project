@@ -370,9 +370,9 @@ const UserDashboard = () => {
                 </div>
 
                 <div className="mt-4">
-                  <p className="text-xl font-bold leading-none text-gray-900 sm:text-2xl">
+                  <div className="text-xl font-bold leading-none text-gray-900 sm:text-2xl">
                     {loading ? <Skeleton className="h-7 w-24" /> : stat.value}
-                  </p>
+                  </div>
                   <p className="mt-1 text-sm font-medium text-gray-500">
                     {stat.label}
                   </p>
