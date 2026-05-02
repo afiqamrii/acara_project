@@ -1,5 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import Loader from '../../../components/common/Loader';
 import api from '../../../lib/Api';
 
 
@@ -15,20 +17,9 @@ import marketplaceBgAlt from '../../../img/bg3_marketplace.jpg';
 import onlineVendor from '../../../img/onlinevendor1.jpg';
 
 const heroImages = [hero1, hero2, hero3, hero6, hero7, audience, marketplaceBg, marketplaceBgAlt, onlineVendor];
-const LOADING_ANIMATION_MS = 10;
-
-const wait = (ms: number) =>
-    new Promise<void>((resolve) => {
-        window.setTimeout(resolve, ms);
-    });
-
-const waitForLoadingAnimation = async (startedAt: number) => {
-    const remainingTime = LOADING_ANIMATION_MS - (Date.now() - startedAt);
-
-    if (remainingTime > 0) {
-        await wait(remainingTime);
-    }
-};
+const ITEMS_PER_PAGE = 6;
+const MARKETPLACE_STALE_TIME = 1000 * 60 * 5;
+const MARKETPLACE_CACHE_TIME = 1000 * 60 * 30;
 
 const MarketplaceLoader = ({ message }: { message: string }) => (
     <motion.div
@@ -94,88 +85,78 @@ const emptyFilters: AppliedFilters = {
     maxPrice: '',
 };
 
+const buildMarketplaceParams = (filters: AppliedFilters, page: number) => ({
+    page,
+    per_page: ITEMS_PER_PAGE,
+    search: filters.search || undefined,
+    category: filters.category || undefined,
+    location: filters.location || undefined,
+    min_price: filters.minPrice || undefined,
+    max_price: filters.maxPrice || undefined,
+});
+
+type MarketplaceParams = ReturnType<typeof buildMarketplaceParams>;
+
+const marketplaceServicesQueryKey = (params: MarketplaceParams) => ['marketplace-services', params] as const;
+
+const fetchMarketplaceServices = async (params: MarketplaceParams, signal?: AbortSignal) => {
+    const response = await api.get<MarketplaceResponse>('/marketplace/services', {
+        signal,
+        params,
+    });
+
+    return response.data;
+};
+
 const Marketplace: React.FC = () => {
+    const queryClient = useQueryClient();
     const [serviceType, setServiceType] = useState('');
     const [location, setLocation] = useState('');
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
     const [search, setSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [servicesData, setServicesData] = useState<MarketplaceService[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
     const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>(emptyFilters);
-    const [filtering, setFiltering] = useState(false);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalServices, setTotalServices] = useState(0);
     const [loadedImages, setLoadedImages] = useState<Record<number, boolean>>({});
-    const responseCache = useRef(new Map<string, MarketplaceResponse>());
-    const itemsPerPage = 6;
+
+    const marketplaceParams = useMemo(
+        () => buildMarketplaceParams(appliedFilters, currentPage),
+        [appliedFilters, currentPage],
+    );
+
+    const marketplaceQuery = useQuery({
+        queryKey: marketplaceServicesQueryKey(marketplaceParams),
+        queryFn: ({ signal }) => fetchMarketplaceServices(marketplaceParams, signal),
+        placeholderData: keepPreviousData,
+        staleTime: MARKETPLACE_STALE_TIME,
+        gcTime: MARKETPLACE_CACHE_TIME,
+    });
+
+    const servicesData = marketplaceQuery.data?.data ?? [];
+    const totalPages = Math.max(1, marketplaceQuery.data?.last_page ?? 1);
+    const totalServices = marketplaceQuery.data?.total ?? 0;
+    const loading = marketplaceQuery.isPending;
+    const updating = marketplaceQuery.isFetching && !marketplaceQuery.isPending;
+    const queryBusy = loading || updating;
+    const hasActiveFilters = Object.values(appliedFilters).some(Boolean);
+    const error = marketplaceQuery.isError && servicesData.length === 0
+        ? 'Unable to load marketplace services right now.'
+        : '';
 
     useEffect(() => {
-        const controller = new AbortController();
+        if (!marketplaceQuery.data || currentPage >= totalPages) return;
 
-        const fetchMarketplaceServices = async () => {
-            const loadingStartedAt = Date.now();
-            const params = {
-                page: currentPage,
-                per_page: itemsPerPage,
-                search: appliedFilters.search || undefined,
-                category: appliedFilters.category || undefined,
-                location: appliedFilters.location || undefined,
-                min_price: appliedFilters.minPrice || undefined,
-                max_price: appliedFilters.maxPrice || undefined,
-            };
-            const cacheKey = JSON.stringify(params);
-            setError('');
-            setLoading(true);
+        const nextPageParams = buildMarketplaceParams(appliedFilters, currentPage + 1);
 
-            if (responseCache.current.has(cacheKey)) {
-                const cached = responseCache.current.get(cacheKey)!;
-                await waitForLoadingAnimation(loadingStartedAt);
-                if (controller.signal.aborted) return;
-
-                setServicesData(cached.data);
-                setTotalPages(Math.max(1, cached.last_page));
-                setTotalServices(cached.total);
-                setFiltering(false);
-                setLoading(false);
-                return;
-            }
-
-            try {
-                const response = await api.get<MarketplaceResponse>('/marketplace/services', {
-                    signal: controller.signal,
-                    params,
-                });
-                await waitForLoadingAnimation(loadingStartedAt);
-                if (controller.signal.aborted) return;
-
-                responseCache.current.set(cacheKey, response.data);
-                setServicesData(response.data.data);
-                setTotalPages(Math.max(1, response.data.last_page));
-                setTotalServices(response.data.total);
-            } catch (err: any) {
-                if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') return;
-                console.error('Failed to load marketplace services:', err);
-                setError('Unable to load marketplace services right now.');
-            } finally {
-                if (!controller.signal.aborted) {
-                    setFiltering(false);
-                    setLoading(false);
-                }
-            }
-        };
-
-        fetchMarketplaceServices();
-        return () => controller.abort();
-    }, [currentPage, appliedFilters]);
+        queryClient.prefetchQuery({
+            queryKey: marketplaceServicesQueryKey(nextPageParams),
+            queryFn: ({ signal }) => fetchMarketplaceServices(nextPageParams, signal),
+            staleTime: MARKETPLACE_STALE_TIME,
+            gcTime: MARKETPLACE_CACHE_TIME,
+        });
+    }, [appliedFilters, currentPage, marketplaceQuery.data, queryClient, totalPages]);
 
     const handleFilter = () => {
-        setFiltering(true);
-        setLoading(true);
-        // setServicesData([]);
-        // setTotalServices(0);
         setLoadedImages({});
         setAppliedFilters({
             search: search.trim(),
@@ -193,8 +174,6 @@ const Marketplace: React.FC = () => {
         setMinPrice('');
         setMaxPrice('');
         setSearch('');
-        setFiltering(true);
-        setLoading(true);
         setLoadedImages({});
         setAppliedFilters(emptyFilters);
         setCurrentPage(1);
@@ -217,6 +196,16 @@ const Marketplace: React.FC = () => {
     };
 
     const visibleHeroImages = heroImages.slice(0,4);
+
+    if (loading && servicesData.length === 0) {
+        return (
+            <Loader
+                fullScreen
+                title="ACARA Marketplace"
+                message={hasActiveFilters ? "Finding matching vendors..." : "Preparing vendor listings..."}
+            />
+        );
+    }
 
     return (
         
@@ -305,7 +294,7 @@ const Marketplace: React.FC = () => {
                                 <input type="number" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-1/2 lg:w-24 rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-400" />
                             </div>
                             <div className="flex gap-2 w-full lg:w-auto">
-                                <button onClick={handleFilter} disabled={loading} className="flex-1 lg:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white px-8 py-3 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-purple-200">Filter</button>
+                                <button onClick={handleFilter} disabled={queryBusy} className="flex-1 lg:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white px-8 py-3 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-purple-200">Filter</button>
                                 <button onClick={handleReset} className="px-5 py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">RESET</button>
                             </div>
                         </div>
@@ -321,10 +310,10 @@ const Marketplace: React.FC = () => {
                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                     >
                         {loading && servicesData.length === 0 && (
-                            <MarketplaceLoader message={filtering ? "Filtering services..." : "Loading marketplace services..."} />
+                            <MarketplaceLoader message={hasActiveFilters ? "Filtering services..." : "Loading marketplace services..."} />
                         )}
 
-                        {loading && servicesData.length > 0 && (
+                        {updating && servicesData.length > 0 && (
                             <div className="col-span-full rounded-2xl bg-purple-50 px-5 py-3 text-center text-sm font-semibold text-purple-700">
                                 Updating results...
                             </div>
@@ -421,11 +410,11 @@ const Marketplace: React.FC = () => {
                     {/* --- PAGINATION --- */}
                     {!error && totalServices > 0 && (
                     <div className="flex justify-center items-center gap-3 mt-16">
-                        <button disabled={loading || currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm">←</button>
+                        <button disabled={queryBusy || currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm">←</button>
                         {[...Array(totalPages)].map((_, i) => (
-                            <button key={i} disabled={loading} onClick={() => setCurrentPage(i + 1)} className={`w-12 h-12 rounded-2xl font-bold transition-all disabled:opacity-50 ${currentPage === i + 1 ? "bg-purple-600 text-white shadow-lg shadow-purple-200" : "hover:bg-white border border-transparent hover:border-gray-200"}`}>{i + 1}</button>
+                            <button key={i} disabled={queryBusy} onClick={() => setCurrentPage(i + 1)} className={`w-12 h-12 rounded-2xl font-bold transition-all disabled:opacity-50 ${currentPage === i + 1 ? "bg-purple-600 text-white shadow-lg shadow-purple-200" : "hover:bg-white border border-transparent hover:border-gray-200"}`}>{i + 1}</button>
                         ))}
-                        <button disabled={loading || currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm">→</button>
+                        <button disabled={queryBusy || currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm">→</button>
                     </div>
                     )}
                 </div>

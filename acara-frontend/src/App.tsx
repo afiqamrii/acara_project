@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import AuthSessionManager from './components/common/AuthSessionManager';
 import ComingSoon from './components/common/ComingSoon';
+import Loader from './components/common/Loader';
 import ProtectedRoute from './components/common/ProtectedRoute';
 
 import UserLayout from './components/layouts/UserLayout';
@@ -26,7 +27,7 @@ function App() {
     <BrowserRouter>
       <AuthSessionManager />
       <div className="App">
-        <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
+        <Suspense fallback={<Loader fullScreen message="Loading page..." />}>
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
