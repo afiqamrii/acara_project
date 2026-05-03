@@ -29,7 +29,7 @@ class MarketplaceController extends Controller
             'max_price' => $maxPrice,
         ]));
 
-        $payload = Cache::remember($cacheKey, now()->addSeconds(30), function () use (
+        $payload = Cache::remember($cacheKey, now()->addSeconds(5), function () use (
             $page,
             $perPage,
             $search,
