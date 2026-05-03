@@ -2,6 +2,8 @@ import { useNavigate } from "react-router-dom";
 
 import { motion } from "framer-motion";
 import Navbar from "../../features/header/pages/navbar";
+import Footer from "./Footer";
+import { usePageTitle } from "../../utils/usePageTitle";
 
 interface ComingSoonProps {
     title?: string;
@@ -14,6 +16,7 @@ const ComingSoon: React.FC<ComingSoonProps> = ({
     description = "This feature is currently under development. We're working hard to bring it to you.",
     isPublic = false,
 }) => {
+    usePageTitle(title);
     const navigate = useNavigate();
     const role = localStorage.getItem("role") || "user";
     const isAdmin = role === "admin" || role === "super_admin";
@@ -90,9 +93,12 @@ const ComingSoon: React.FC<ComingSoonProps> = ({
 
     if (isPublic) {
         return (
-            <div className="flex h-screen w-full overflow-hidden bg-gray-50">
+            <div className="flex flex-col min-h-screen w-full bg-gray-50">
                 <Navbar />
-                {content}
+                <div className="flex-1">
+                    {content}
+                </div>
+                <Footer />
             </div>
         );
     }

@@ -3,6 +3,8 @@ import api from "../../../lib/Api";
 import { AxiosError } from "axios";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import Navbar from "../../header/pages/navbar";
+import { usePageTitle } from "../../../utils/usePageTitle";
+
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { setAuthSession } from "../../../lib/auth";
 
@@ -22,6 +24,7 @@ type LoginResponse = {
 };
 
 const Login: React.FC = () => {
+  usePageTitle("Login");
   const [email, setEmail] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [password, setPassword] = useState("");
@@ -87,7 +90,6 @@ const Login: React.FC = () => {
         return;
       }
 
-
       switch (res.data.role) {
         case "vendor":
           navigate("/marketplace");
@@ -110,13 +112,13 @@ const Login: React.FC = () => {
         message = "Cannot connect to server. Please try again.";
       } else {
         message =
-          err.response.data?.message ||
-          "Email or password is incorrect.";
+          err.response.data?.message || "Email or password is incorrect.";
       }
 
       setErrorMsg(message);
-
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
 
     const location = useLocation();
 
@@ -127,10 +129,7 @@ const Login: React.FC = () => {
         alert("Session expired. Please login again.");
       }
     }, []);
-
   };
-
-
 
   return (
     <div className="min-h-screen bg-white-100 relative">
@@ -139,8 +138,19 @@ const Login: React.FC = () => {
         to="/"
         className="absolute top-5 left-5 z-30 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 bg-white/80 backdrop-blur-md rounded-full border border-gray-200 shadow-sm transition-all hover:bg-white hover:text-[#7E57C2] hover:border-[#7E57C2]/30 hover:shadow-md"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-4 h-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M10 19l-7-7m0 0l7-7m-7 7h18"
+          />
         </svg>
         Home
       </Link>
@@ -149,17 +159,21 @@ const Login: React.FC = () => {
         {/* LEFT SIDE */}
         <div className="flex items-center justify-center px-6">
           <div className="w-full max-w-md rounded-2xl bg-white/30 backdrop-blur-xl border border-white/40 shadow-xl p-10">
-
             <div className="text-center mb-6">
               <img src="/src/img/acara-logo.png" className="mx-auto w-40" />
-              <h3 className="text-2xl text-black font-bold mt-6">Welcome back 👋</h3>
+              <h3 className="text-2xl text-black font-bold mt-6">
+                Welcome back 👋
+              </h3>
               <p className="text-gray-600 mt-2">
                 Log in to manage your events & vendors
               </p>
             </div>
 
             {successMsg && (
-              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+              <div
+                className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"
+                role="alert"
+              >
                 <span className="block sm:inline">{successMsg}</span>
               </div>
             )}
@@ -171,11 +185,14 @@ const Login: React.FC = () => {
             )}
 
             {requiresVerification && (
-              <div className={`border px-4 py-4 rounded relative mb-4 flex flex-col items-center gap-2 transition-colors duration-300
-                   ${resendSuccess ? "bg-green-100 border-green-400 text-green-700" : "bg-yellow-100 border-yellow-400 text-yellow-700"}`}>
-
+              <div
+                className={`border px-4 py-4 rounded relative mb-4 flex flex-col items-center gap-2 transition-colors duration-300
+                   ${resendSuccess ? "bg-green-100 border-green-400 text-green-700" : "bg-yellow-100 border-yellow-400 text-yellow-700"}`}
+              >
                 <span className="font-bold">
-                  {resendSuccess ? "Verification Sent!" : "Email Verification Required"}
+                  {resendSuccess
+                    ? "Verification Sent!"
+                    : "Email Verification Required"}
                 </span>
 
                 <span className="text-sm text-center">
@@ -207,8 +224,6 @@ const Login: React.FC = () => {
                 required
                 className="w-full px-4 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 focus:bg-white transition-all text-sm text-gray-900 placeholder:text-gray-400"
               />
-
-
 
               <div className="relative w-full group">
                 <input
@@ -245,7 +260,11 @@ const Login: React.FC = () => {
                     className={`block transition-all duration-200 ease-in-out
         ${showPassword ? "scale-100 opacity-100" : "scale-90 opacity-80"}`}
                   >
-                    {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                    {showPassword ? (
+                      <FiEyeOff size={18} />
+                    ) : (
+                      <FiEye size={18} />
+                    )}
                   </span>
                 </button>
               </div>
@@ -306,8 +325,9 @@ const Login: React.FC = () => {
             <div className="w-20 h-1.5 bg-linear-to-r from-pink-500 to-purple-500 rounded-full mb-8" />
 
             <p className="mb-10 text-xl leading-relaxed text-gray-100/90 font-medium">
-              Your all-in-one platform to plan, manage, and elevate unforgettable
-              events. Built for organizers and vendors who demand excellence.
+              Your all-in-one platform to plan, manage, and elevate
+              unforgettable events. Built for organizers and vendors who demand
+              excellence.
             </p>
 
             {/* Feature List */}
@@ -349,8 +369,8 @@ const Login: React.FC = () => {
           <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-purple-500/30 rounded-full blur-3xl" />
           <div className="absolute bottom-[-5%] left-[-5%] w-64 h-64 bg-pink-500/20 rounded-full blur-3xl" />
         </div>
-      </div >
-    </div >
+      </div>
+    </div>
   );
 };
 

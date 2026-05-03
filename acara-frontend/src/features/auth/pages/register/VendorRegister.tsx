@@ -6,8 +6,10 @@ import { UserSidebar } from "../../../header/pages/UserSidebar";
 import { registerVendor } from "../../vendorApi";
 import { malaysiaBanks, malaysiaLocations, toTitleCase } from "../../../../utils/formHelpers";
 import Stepper from "../../../../components/common/Stepper";
+import { usePageTitle } from "../../../../utils/usePageTitle";
 
 const VendorRegister: React.FC = () => {
+    usePageTitle("Vendor Registration");
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);

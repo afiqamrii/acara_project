@@ -51,31 +51,30 @@ export function AdminSidebar() {
 
   const sidebarContent = (isMobile = false) => (
     <>
-      {!isMobile && (
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-6 z-20 hidden h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:border-indigo-300 hover:text-indigo-600 md:flex"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <IconChevronRight size={12} /> : <IconChevronLeft size={12} />}
-        </button>
-      )}
 
       {/* Brand / Logo */}
-      <div className="flex items-center justify-between gap-3 border-b border-gray-50 px-4 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600">
-            <span className="text-xs font-bold text-white">AC</span>
-          </div>
-          <AnimatePresence initial={false}>
-            {(isMobile || !collapsed) && (
+      <div className={`flex items-center gap-3 border-b border-gray-50 px-4 py-5 ${!isMobile && collapsed ? "justify-center" : "justify-between"}`}>
+        <div className="flex items-center overflow-hidden">
+          <AnimatePresence mode="wait" initial={false}>
+            {(isMobile || !collapsed) ? (
               <motion.span
+                key="full-logo"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                className="whitespace-nowrap text-lg font-bold text-gray-900"
+                className="whitespace-nowrap text-2xl font-black tracking-tight text-gray-900"
               >
-                ACARA
+                Acara<span className="text-[#7E57C2]">.</span>
+              </motion.span>
+            ) : (
+              <motion.span
+                key="short-logo"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="whitespace-nowrap text-2xl font-black tracking-tight text-gray-900 text-center"
+              >
+                A<span className="text-[#7E57C2]">.</span>
               </motion.span>
             )}
           </AnimatePresence>
@@ -215,13 +214,23 @@ export function AdminSidebar() {
       </button>
 
       {/* Desktop sidebar */}
-      <motion.aside
-        animate={{ width: collapsed ? 72 : 240 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="relative z-10 hidden h-screen shrink-0 overflow-hidden border-r border-gray-100 bg-white shadow-sm md:flex md:flex-col"
-      >
-        {sidebarContent()}
-      </motion.aside>
+      <div className="relative z-10 hidden h-screen shrink-0 md:flex">
+        <motion.aside
+          animate={{ width: collapsed ? 72 : 240 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="flex h-full w-full flex-col overflow-hidden border-r border-gray-100 bg-white shadow-sm"
+        >
+          {sidebarContent()}
+        </motion.aside>
+        
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute -right-3 top-6 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:border-indigo-300 hover:text-indigo-600"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <IconChevronRight size={12} /> : <IconChevronLeft size={12} />}
+        </button>
+      </div>
 
       {/* Mobile overlay + drawer */}
       <AnimatePresence>
