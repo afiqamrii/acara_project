@@ -1,8 +1,10 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../lib/Api";
+import { usePageTitle } from "../../../utils/usePageTitle";
 
 const CompleteProfile: React.FC = () => {
+    usePageTitle("Complete Profile");
     const navigate = useNavigate();
     const [showPassword, setShowPassword] = React.useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);

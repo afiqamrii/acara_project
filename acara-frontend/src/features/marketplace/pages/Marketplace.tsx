@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { usePageTitle } from '../../../utils/usePageTitle';
 
 
 // grid image background
@@ -25,6 +26,7 @@ const servicesData = [
 ];
 
 const Marketplace: React.FC = () => {
+    usePageTitle("Marketplace");
     const [serviceType, setServiceType] = useState('');
     const [location, setLocation] = useState('');
     const [minPrice, setMinPrice] = useState('');

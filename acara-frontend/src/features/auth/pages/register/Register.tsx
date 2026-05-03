@@ -1,10 +1,12 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useRegister } from "../../hooks";
+import { usePageTitle } from "../../../../utils/usePageTitle";
 
 import SuccessModal from "../../components/SuccessModal";
 
 const Register: React.FC = () => {
+    usePageTitle("Register");
     const navigate = useNavigate();
     const [currentSlide, setCurrentSlide] = React.useState(0);
     const [showPassword, setShowPassword] = React.useState(false);

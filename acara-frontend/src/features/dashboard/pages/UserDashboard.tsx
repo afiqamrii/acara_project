@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, type Variants } from "framer-motion";
+import { usePageTitle } from "../../../utils/usePageTitle";
 import api from "../../../lib/Api";
 import {
   IconAlertCircle,
@@ -195,6 +196,7 @@ const Skeleton = ({ className }: { className: string }) => (
 );
 
 const UserDashboard = () => {
+  usePageTitle("Dashboard");
   const navigate = useNavigate();
   const userName = localStorage.getItem("user_name") || "there";
 

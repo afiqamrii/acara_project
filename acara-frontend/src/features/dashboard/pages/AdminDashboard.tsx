@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { usePageTitle } from "../../../utils/usePageTitle";
 
 import {
     FiUsers,
@@ -27,6 +28,7 @@ type VendorMini = {
 };
 
 const AdminDashboard = () => {
+    usePageTitle("Admin Panel");
     const [pendingServices, setPendingServices] = useState<ServiceMini[]>([]);
     const [pendingVendors, setPendingVendors] = useState<VendorMini[]>([]);
 

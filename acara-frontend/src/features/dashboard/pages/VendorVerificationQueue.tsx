@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
+import { usePageTitle } from "../../../utils/usePageTitle";
 
 import {
     FiCheckCircle,
@@ -26,6 +27,7 @@ type ActionType = "approve" | "reject";
 const API_URL = "http://127.0.0.1:8000/api/admin/vendors";
 
 const VendorVerificationQueue = () => {
+    usePageTitle("Vendor Verification");
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [loading, setLoading] = useState(true);
 

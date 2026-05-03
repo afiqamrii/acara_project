@@ -4,9 +4,11 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import Navbar from "../../header/pages/navbar";
 import Footer from "../../../components/common/Footer";
+import { usePageTitle } from "../../../utils/usePageTitle";
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
+    usePageTitle("Home");
 
     useEffect(() => {
         AOS.init({ duration: 800, once: true });

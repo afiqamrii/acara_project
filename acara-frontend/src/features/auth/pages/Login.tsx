@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import api from "../../../lib/Api";
 import { AxiosError } from "axios";
 import { useNavigate, Link } from "react-router-dom";
+import { usePageTitle } from "../../../utils/usePageTitle";
 
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
@@ -21,6 +22,7 @@ type LoginResponse = {
 };
 
 const Login: React.FC = () => {
+  usePageTitle("Login");
   const [email, setEmail] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [password, setPassword] = useState("");

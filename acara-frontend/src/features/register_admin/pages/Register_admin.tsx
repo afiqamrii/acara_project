@@ -1,8 +1,10 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../lib/Api";
+import { usePageTitle } from "../../../utils/usePageTitle";
 
 const Register_admin: React.FC = () => {
+    usePageTitle("Invite Admin");
     const navigate = useNavigate();
     const [email, setEmail] = React.useState("");
     const [isLoading, setIsLoading] = React.useState(false);
