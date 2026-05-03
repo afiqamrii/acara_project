@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 
 import { motion } from "framer-motion";
 import Navbar from "../../features/header/pages/navbar";
+import Footer from "./Footer";
 
 interface ComingSoonProps {
     title?: string;
@@ -90,9 +91,12 @@ const ComingSoon: React.FC<ComingSoonProps> = ({
 
     if (isPublic) {
         return (
-            <div className="flex h-screen w-full overflow-hidden bg-gray-50">
+            <div className="flex flex-col min-h-screen w-full bg-gray-50">
                 <Navbar />
-                {content}
+                <div className="flex-1">
+                    {content}
+                </div>
+                <Footer />
             </div>
         );
     }

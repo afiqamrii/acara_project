@@ -61,15 +61,10 @@ const Navbar = () => {
           {/* ── Logo ──────────────────────────── */}
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2.5 group cursor-pointer"
+            className="flex items-center group cursor-pointer"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#7E57C2] to-[#6C4AB8] shadow-md shadow-purple-200/50 transition-all duration-300">
-              <span className="text-xs font-black tracking-tight text-white">
-                AC
-              </span>
-            </div>
-            <span className="text-xl font-extrabold tracking-tight text-gray-900 transition-colors duration-300">
-              ACARA
+            <span className="text-3xl font-black tracking-tight text-gray-900 transition-colors duration-300 group-hover:text-gray-800">
+              Acara<span className="text-[#7E57C2]">.</span>
             </span>
           </button>
 
