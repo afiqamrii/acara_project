@@ -2,21 +2,19 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  IconBell,
-  IconCalendarEvent,
-  IconChevronLeft,
-  IconChevronRight,
-  IconLayoutDashboard,
-  IconLogout,
-  IconMenu2,
-  IconReceipt,
-  IconSettings,
-  IconShoppingBag,
-  IconStar,
-  IconUser,
-  IconX,
-} from "@tabler/icons-react";
+import IconBell from "@tabler/icons-react/dist/esm/icons/IconBell.mjs";
+import IconCalendarEvent from "@tabler/icons-react/dist/esm/icons/IconCalendarEvent.mjs";
+import IconChevronLeft from "@tabler/icons-react/dist/esm/icons/IconChevronLeft.mjs";
+import IconChevronRight from "@tabler/icons-react/dist/esm/icons/IconChevronRight.mjs";
+import IconLayoutDashboard from "@tabler/icons-react/dist/esm/icons/IconLayoutDashboard.mjs";
+import IconLogout from "@tabler/icons-react/dist/esm/icons/IconLogout.mjs";
+import IconMenu2 from "@tabler/icons-react/dist/esm/icons/IconMenu2.mjs";
+import IconReceipt from "@tabler/icons-react/dist/esm/icons/IconReceipt.mjs";
+import IconSettings from "@tabler/icons-react/dist/esm/icons/IconSettings.mjs";
+import IconShoppingBag from "@tabler/icons-react/dist/esm/icons/IconShoppingBag.mjs";
+import IconStar from "@tabler/icons-react/dist/esm/icons/IconStar.mjs";
+import IconUser from "@tabler/icons-react/dist/esm/icons/IconUser.mjs";
+import IconX from "@tabler/icons-react/dist/esm/icons/IconX.mjs";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard },

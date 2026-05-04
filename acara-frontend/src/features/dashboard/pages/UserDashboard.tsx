@@ -2,25 +2,23 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, type Variants } from "framer-motion";
 import api from "../../../lib/Api";
-import {
-  IconAlertCircle,
-  IconArrowDownRight,
-  IconArrowUpRight,
-  IconBell,
-  IconCalendarEvent,
-  IconCheck,
-  IconChevronRight,
-  IconClock,
-  IconConfetti,
-  IconCurrencyDollar,
-  IconMapPin,
-  IconSearch,
-  IconShoppingBag,
-  IconSparkles,
-  IconStar,
-  IconTrendingUp,
-  IconX,
-} from "@tabler/icons-react";
+import IconAlertCircle from "@tabler/icons-react/dist/esm/icons/IconAlertCircle.mjs";
+import IconArrowDownRight from "@tabler/icons-react/dist/esm/icons/IconArrowDownRight.mjs";
+import IconArrowUpRight from "@tabler/icons-react/dist/esm/icons/IconArrowUpRight.mjs";
+import IconBell from "@tabler/icons-react/dist/esm/icons/IconBell.mjs";
+import IconCalendarEvent from "@tabler/icons-react/dist/esm/icons/IconCalendarEvent.mjs";
+import IconCheck from "@tabler/icons-react/dist/esm/icons/IconCheck.mjs";
+import IconChevronRight from "@tabler/icons-react/dist/esm/icons/IconChevronRight.mjs";
+import IconClock from "@tabler/icons-react/dist/esm/icons/IconClock.mjs";
+import IconConfetti from "@tabler/icons-react/dist/esm/icons/IconConfetti.mjs";
+import IconCurrencyDollar from "@tabler/icons-react/dist/esm/icons/IconCurrencyDollar.mjs";
+import IconMapPin from "@tabler/icons-react/dist/esm/icons/IconMapPin.mjs";
+import IconSearch from "@tabler/icons-react/dist/esm/icons/IconSearch.mjs";
+import IconShoppingBag from "@tabler/icons-react/dist/esm/icons/IconShoppingBag.mjs";
+import IconSparkles from "@tabler/icons-react/dist/esm/icons/IconSparkles.mjs";
+import IconStar from "@tabler/icons-react/dist/esm/icons/IconStar.mjs";
+import IconTrendingUp from "@tabler/icons-react/dist/esm/icons/IconTrendingUp.mjs";
+import IconX from "@tabler/icons-react/dist/esm/icons/IconX.mjs";
 
 type Booking = {
   id: number;

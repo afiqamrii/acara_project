@@ -2,18 +2,16 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  IconChevronLeft,
-  IconChevronRight,
-  IconLayoutDashboard,
-  IconLogout,
-  IconMenu2,
-  IconSettings,
-  IconShield,
-  IconUserCheck,
-  IconUsers,
-  IconX,
-} from "@tabler/icons-react";
+import IconChevronLeft from "@tabler/icons-react/dist/esm/icons/IconChevronLeft.mjs";
+import IconChevronRight from "@tabler/icons-react/dist/esm/icons/IconChevronRight.mjs";
+import IconLayoutDashboard from "@tabler/icons-react/dist/esm/icons/IconLayoutDashboard.mjs";
+import IconLogout from "@tabler/icons-react/dist/esm/icons/IconLogout.mjs";
+import IconMenu2 from "@tabler/icons-react/dist/esm/icons/IconMenu2.mjs";
+import IconSettings from "@tabler/icons-react/dist/esm/icons/IconSettings.mjs";
+import IconShield from "@tabler/icons-react/dist/esm/icons/IconShield.mjs";
+import IconUserCheck from "@tabler/icons-react/dist/esm/icons/IconUserCheck.mjs";
+import IconUsers from "@tabler/icons-react/dist/esm/icons/IconUsers.mjs";
+import IconX from "@tabler/icons-react/dist/esm/icons/IconX.mjs";
 import { performLogout } from "../../../lib/auth";
 
 const navItems = [

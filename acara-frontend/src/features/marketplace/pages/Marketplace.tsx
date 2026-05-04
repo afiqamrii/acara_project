@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { useMemo, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import Loader from '../../../components/common/Loader';
 import api from '../../../lib/Api';
-import { useTransition } from 'react';
 
 // grid image background
 import hero1 from '../../../img/wedimg1.jpg';
@@ -16,33 +15,12 @@ import marketplaceBg from '../../../img/bg_marketplace.jpg';
 import marketplaceBgAlt from '../../../img/bg3_marketplace.jpg';
 import onlineVendor from '../../../img/onlinevendor1.jpg';
 
-
 const heroImages = [hero1, hero2, hero3, hero6, hero7, audience, marketplaceBg, marketplaceBgAlt, onlineVendor];
 const ITEMS_PER_PAGE = 6;
 const MARKETPLACE_STALE_TIME = 1000 * 60 * 30;
 const MARKETPLACE_CACHE_TIME = 1000 * 60 * 30;
 
-const MarketplaceLoader = ({ message }: { message: string }) => (
-    <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="col-span-full flex flex-col items-center justify-center rounded-[32px] bg-white p-12 text-center shadow-sm"
-    >
-        <div className="relative h-16 w-16">
-            <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 rounded-full border-4 border-purple-100 border-t-purple-600"
-            />
-            <motion.div
-                animate={{ scale: [0.85, 1.1, 0.85], opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute inset-4 rounded-full bg-purple-500"
-            />
-        </div>
-        <p className="mt-5 text-sm font-semibold text-purple-700">{message}</p>
-    </motion.div>
-);
+
 
 type MarketplaceService = {
     id: number;
@@ -53,6 +31,7 @@ type MarketplaceService = {
     price_value: number;
     location: string;
     vendor: string;
+    thumbnail_url?: string | null;
     portfolio_url?: string | null;
 };
 
@@ -63,10 +42,11 @@ type MarketplaceResponse = {
     total: number;
 };
 
-const getServiceImageUrl = (item: MarketplaceService) => {
-    const portfolioUrl = item.portfolio_url ?? '';
-    const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(portfolioUrl);
+const emptyMarketplaceServices: MarketplaceService[] = [];
 
+const getServiceImageUrl = (item: MarketplaceService) => {
+    const portfolioUrl = item.thumbnail_url ?? item.portfolio_url ?? '';
+    const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(portfolioUrl);
     return isImage ? portfolioUrl : heroImages[item.id % heroImages.length];
 };
 
@@ -76,6 +56,7 @@ type AppliedFilters = {
     location: string;
     minPrice: string;
     maxPrice: string;
+    page: number;
 };
 
 const emptyFilters: AppliedFilters = {
@@ -84,10 +65,11 @@ const emptyFilters: AppliedFilters = {
     location: '',
     minPrice: '',
     maxPrice: '',
+    page: 1,
 };
 
-const buildMarketplaceParams = (filters: AppliedFilters, page: number) => ({
-    page,
+const buildMarketplaceParams = (filters: AppliedFilters) => ({
+    page: filters.page,
     per_page: ITEMS_PER_PAGE,
     search: filters.search || undefined,
     category: filters.category || undefined,
@@ -98,31 +80,131 @@ const buildMarketplaceParams = (filters: AppliedFilters, page: number) => ({
 
 type MarketplaceParams = ReturnType<typeof buildMarketplaceParams>;
 
-const marketplaceServicesQueryKey = (params: MarketplaceParams) => ['marketplace-services', params] as const;
+const marketplaceServicesQueryKey = (params: MarketplaceParams) =>
+    ['marketplace-services', params] as const;
 
 const fetchMarketplaceServices = async (params: MarketplaceParams, signal?: AbortSignal) => {
     const response = await api.get<MarketplaceResponse>('/marketplace/services', {
         signal,
         params,
     });
-
     return response.data;
 };
 
+const malaysiaLocations = [
+    'Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang',
+    'Perak', 'Perlis', 'Pulau Pinang', 'Sabah', 'Sarawak', 'Selangor',
+    'Terengganu', 'Kuala Lumpur', 'Putrajaya', 'Labuan',
+];
+
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.04 } },
+};
+
+const itemVariants = {
+    hidden: { y: 8, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { duration: 0.15, ease: [0.25, 0, 0, 1] as [number, number, number, number] } },
+};
+
+const visibleHeroImages = heroImages.slice(0, 4);
+
+const VendorCard: React.FC<{ item: MarketplaceService; index: number }> = ({ item, index }) => {
+    const imageUrl = getServiceImageUrl(item);
+
+    // Initialise from browser cache so already-loaded images skip the shimmer.
+    // Stable key (item.id) means this runs once per unique vendor, not on
+    // every filter change — avoiding the full remount/reload cycle.
+    const [imageLoaded, setImageLoaded] = useState(() => {
+        const img = new Image();
+        img.src = imageUrl;
+        return img.complete && img.naturalWidth > 0;
+    });
+
+    const handleImgRef = (el: HTMLImageElement | null) => {
+        if (el && el.complete && el.naturalWidth > 0) setImageLoaded(true);
+    };
+
+    return (
+        <motion.div
+            variants={itemVariants}
+            whileHover={{ y: -10 }}
+            className="group bg-white rounded-[32px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden"
+        >
+            <div className="relative h-60 overflow-hidden">
+                <img
+                    ref={handleImgRef}
+                    src={imageUrl}
+                    alt={item.title}
+                    loading="eager"
+                    fetchPriority={index < 3 ? 'high' : 'auto'}
+                    decoding="async"
+                    onLoad={() => setImageLoaded(true)}
+                    onError={(event) => {
+                        const fallbackImage = heroImages[item.id % heroImages.length];
+                        if (event.currentTarget.dataset.fallbackApplied !== 'true') {
+                            event.currentTarget.dataset.fallbackApplied = 'true';
+                            event.currentTarget.src = fallbackImage;
+                            return;
+                        }
+                        setImageLoaded(true);
+                    }}
+                    className="relative z-10 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                {!imageLoaded && (
+                    <div className="absolute inset-0 z-0 bg-gradient-to-br from-purple-100 via-gray-100 to-purple-50">
+                        <motion.div
+                            animate={{ x: ['-100%', '100%'] }}
+                            transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                            className="h-full w-1/2 bg-white/50 blur-xl"
+                        />
+                    </div>
+                )}
+                <div className="absolute top-4 left-4 z-20">
+                    <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-purple-600 shadow-sm">
+                        {item.category}
+                    </span>
+                </div>
+            </div>
+            <div className="p-8">
+                <h3 className="text-xl font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
+                    {item.title}
+                </h3>
+                <p className="text-gray-500 text-sm mt-2 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-red-400">
+                        <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z" />
+                        <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span>By {item.vendor} · {item.location}</span>
+                </p>
+                <div className="mt-6 flex items-center justify-between">
+                    <div>
+                        <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Package Price</p>
+                        <p className="text-lg font-black text-purple-700">{item.price}</p>
+                    </div>
+                    <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        className="bg-gray-900 text-white px-5 py-3 rounded-2xl text-sm font-bold hover:bg-purple-600 transition-colors"
+                    >
+                        Details
+                    </motion.button>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
 const Marketplace: React.FC = () => {
-    const queryClient = useQueryClient();
+    const [search, setSearch] = useState('');
     const [serviceType, setServiceType] = useState('');
     const [location, setLocation] = useState('');
     const [minPrice, setMinPrice] = useState('');
     const [maxPrice, setMaxPrice] = useState('');
-    const [search, setSearch] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
     const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>(emptyFilters);
-    const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
 
     const marketplaceParams = useMemo(
-        () => buildMarketplaceParams(appliedFilters, currentPage),
-        [appliedFilters, currentPage],
+        () => buildMarketplaceParams(appliedFilters),
+        [appliedFilters],
     );
 
     const marketplaceQuery = useQuery({
@@ -133,111 +215,54 @@ const Marketplace: React.FC = () => {
         gcTime: MARKETPLACE_CACHE_TIME,
     });
 
-    const servicesData = marketplaceQuery.data?.data ?? [];
+    const servicesData = marketplaceQuery.data?.data ?? emptyMarketplaceServices;
     const totalPages = Math.max(1, marketplaceQuery.data?.last_page ?? 1);
     const totalServices = marketplaceQuery.data?.total ?? 0;
     const loading = marketplaceQuery.isPending;
     const updating = marketplaceQuery.isFetching && !marketplaceQuery.isPending;
     const queryBusy = loading || updating;
-    const hasActiveFilters = Object.values(appliedFilters).some(Boolean);
-    const error = marketplaceQuery.isError && servicesData.length === 0
-        ? 'Unable to load marketplace services right now.'
-        : '';
-
-    useEffect(() => {
-        if (!marketplaceQuery.data || currentPage >= totalPages) return;
-
-        const nextPageParams = buildMarketplaceParams(appliedFilters, currentPage + 1);
-
-        queryClient.prefetchQuery({
-            queryKey: marketplaceServicesQueryKey(nextPageParams),
-            queryFn: ({ signal }) => fetchMarketplaceServices(nextPageParams, signal),
-            staleTime: MARKETPLACE_STALE_TIME,
-            gcTime: MARKETPLACE_CACHE_TIME,
-        });
-    }, [appliedFilters, currentPage, marketplaceQuery.data, queryClient, totalPages]);
-
-
-    const [isPending, startTransition] = useTransition();
+    const hasActiveFilters = Object.values(appliedFilters).some(
+        (v, i) => i < 5 && Boolean(v),
+    );
+    const error =
+        marketplaceQuery.isError && servicesData.length === 0
+            ? 'Unable to load marketplace services right now.'
+            : '';
 
     const handleFilter = () => {
-        startTransition(() => {
-            setAppliedFilters({
-                search: search.trim(),
-                category: serviceType,
-                location,
-                minPrice,
-                maxPrice,
-            });
-            setCurrentPage(1);
+        setAppliedFilters({
+            search: search.trim(),
+            category: serviceType,
+            location,
+            minPrice,
+            maxPrice,
+            page: 1,
         });
-
     };
 
-
     const handleReset = () => {
+        setSearch('');
         setServiceType('');
         setLocation('');
         setMinPrice('');
         setMaxPrice('');
-        setSearch('');
         setAppliedFilters(emptyFilters);
-        setCurrentPage(1);
     };
 
-    const markImageLoaded = (imageUrl: string) => {
-        setLoadedImages((current) => {
-            if (current[imageUrl]) return current;
-
-            return {
-                ...current,
-                [imageUrl]: true,
-            };
-        });
-    };
-
-    const malaysiaLocations = [
-        "Johor", "Kedah", "Kelantan", "Melaka", "Negeri Sembilan", "Pahang",
-        "Perak", "Perlis", "Pulau Pinang", "Sabah", "Sarawak", "Selangor",
-        "Terengganu", "Kuala Lumpur", "Putrajaya", "Labuan",
-    ];
-
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
-    };
-
-    const itemVariants = {
-        hidden: { y: 20, opacity: 0 },
-        visible: { y: 0, opacity: 1 }
-    };
-
-    const visibleHeroImages = heroImages.slice(0, 4);
-
-    if (loading && servicesData.length === 0) {
-        return (
-            <Loader
-                fullScreen
-                title="ACARA Marketplace"
-                message={hasActiveFilters ? "Finding matching vendors..." : "Preparing vendor listings..."}
-            />
-        );
-    }
+    const filterSessionKey = JSON.stringify(appliedFilters);
 
     return (
-
         <div className="flex-1 overflow-y-auto bg-[#fcfaff]">
 
-            {/* --- HERO SECTION WITH GRID MOTION --- */}
+            {/* --- HERO SECTION --- */}
             <div className="relative h-[50vh] md:h-[60vh] overflow-hidden bg-[#640D5F] flex items-center justify-center rounded-b-[40px] shadow-2xl">
                 <div className="absolute inset-0 opacity-70 grid grid-cols-4 md:grid-cols-6 gap-4 rotate-12 scale-125">
-
                     {[...Array(12)].map((_, i) => (
                         <motion.div
                             key={i}
                             initial={{ y: i % 2 === 0 ? 0 : -100 }}
                             animate={{ y: i % 2 === 0 ? -100 : 0 }}
-                            transition={{ duration: 20, repeat: Infinity, repeatType: "mirror", ease: "linear" }}
+                            transition={{ duration: 20, repeat: Infinity, repeatType: 'mirror', ease: 'linear' }}
                             className="h-40 md:h-64 w-full bg-cover bg-center rounded-2xl"
                             style={{ backgroundImage: `url(${visibleHeroImages[i % visibleHeroImages.length]})` }}
                         />
@@ -245,7 +270,6 @@ const Marketplace: React.FC = () => {
                 </div>
 
                 <div className="relative h-[50vh] w-full md:h-[60vh] rounded-b-[40px] bg-transparent">
-                    <div className="absolute inset-0 bg-none" />
                     <div className="relative z-10 h-full flex items-center justify-center text-center px-4">
                         <motion.div
                             initial={{ opacity: 0, y: 30 }}
@@ -256,8 +280,8 @@ const Marketplace: React.FC = () => {
                             <h1 className="md:text-8xl w-full font-black text-white tracking-tight flex flex-col md:flex-row gap-x-4">
                                 <span>Event Vendor</span>
                                 <motion.span
-                                    animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
-                                    transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                                    animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
+                                    transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
                                     className="text-transparent bg-clip-text bg-[linear-gradient(90deg,#B12C00,#ff7ad9,#EB5B00,#B12C00)] bg-[length:300%_300%] drop-shadow-[0_0_20px_rgba(209,41,255,0.5)]"
                                 >
                                     Marketplace
@@ -271,7 +295,7 @@ const Marketplace: React.FC = () => {
                 </div>
             </div>
 
-            {/* --- SEARCH & FILTER BAR --- */}
+            {/* --- FILTER BAR --- */}
             <motion.div
                 initial={{ y: 50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -284,6 +308,7 @@ const Marketplace: React.FC = () => {
                             placeholder="Search vendors..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleFilter()}
                             className="w-full lg:flex-1 min-w-[200px] rounded-2xl border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-purple-400 outline-none transition-all"
                         />
                         <select
@@ -311,144 +336,107 @@ const Marketplace: React.FC = () => {
                             ))}
                         </select>
                         <div className="flex gap-2 w-full lg:w-auto">
-                            <input type="number" placeholder="Min" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} className="w-1/2 lg:w-24 rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-400" />
-                            <input type="number" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} className="w-1/2 lg:w-24 rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-400" />
+                            <input
+                                type="number"
+                                placeholder="Min"
+                                value={minPrice}
+                                onChange={(e) => setMinPrice(e.target.value)}
+                                className="w-1/2 lg:w-24 rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-400"
+                            />
+                            <input
+                                type="number"
+                                placeholder="Max"
+                                value={maxPrice}
+                                onChange={(e) => setMaxPrice(e.target.value)}
+                                className="w-1/2 lg:w-24 rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-purple-400"
+                            />
                         </div>
                         <div className="flex gap-2 w-full lg:w-auto">
                             <button
                                 onClick={handleFilter}
-                                disabled={queryBusy || isPending}
+                                disabled={queryBusy}
                                 className="flex-1 lg:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white px-8 py-3 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-purple-200"
                             >
-                                {isPending ? 'Filtering...' : 'Filter'}
+                                {updating ? 'Filtering...' : 'Filter'}
                             </button>
-                            {/* <button onClick={handleFilter} disabled={queryBusy} className="flex-1 lg:w-auto bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white px-8 py-3 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-purple-200">Filter</button> */}
-                            <button onClick={handleReset} className="px-5 py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">RESET</button>
+                            <button
+                                onClick={handleReset}
+                                className="px-5 py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                            >
+                                RESET
+                            </button>
                         </div>
                     </div>
                 </div>
             </motion.div>
 
             {/* --- VENDOR GRID --- */}
-            <div className="max-w-6xl mx-auto px-4 py-16">
-                {updating && (
-                    <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 rounded-[32px] pointer-events-none" />
-                )}
+            <div className="relative max-w-6xl mx-auto px-4 py-16">
+                {queryBusy ? (
+                    <Loader
+                        title="ACARA Marketplace"
+                        message={hasActiveFilters ? 'Finding matching vendors...' : 'Loading marketplace services...'}
+                    />
+                ) : (
                 <motion.div
+                    key={filterSessionKey}
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                 >
-                    {loading && servicesData.length === 0 && (
-                        <MarketplaceLoader message={hasActiveFilters ? "Filtering services..." : "Loading marketplace services..."} />
-                    )}
-
-                    {updating && servicesData.length > 0 && (
-                        <div className="col-span-full rounded-2xl bg-purple-50 px-5 py-3 text-center text-sm font-semibold text-purple-700">
-                            Updating results...
-                        </div>
-                    )}
-
-
-                    {!loading && error && servicesData.length === 0 && (
+                    {error && (
                         <div className="col-span-full rounded-[32px] bg-white p-10 text-center text-red-500 shadow-sm">
                             {error}
                         </div>
                     )}
 
-                    {!loading && !error && servicesData.length === 0 && (
+                    {!error && servicesData.length === 0 && (
                         <div className="col-span-full rounded-[32px] bg-white p-10 text-center text-gray-500 shadow-sm">
                             No approved services found.
                         </div>
                     )}
 
-                    {!error && servicesData.map((item, index) => {
-                        const imageUrl = getServiceImageUrl(item);
-                        const imageLoaded = loadedImages[imageUrl];
-
-                        return (
-                            <motion.div
-                                key={item.id}
-                                variants={itemVariants}
-                                whileHover={{ y: -10 }}
-                                className="group bg-white rounded-[32px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden"
-                            >
-                                <div className="relative h-60 overflow-hidden">
-                                    <motion.img
-                                        ref={(imageElement) => {
-                                            if (!imageLoaded && imageElement?.complete && imageElement.naturalWidth > 0) {
-                                                markImageLoaded(imageUrl);
-                                            }
-                                        }}
-                                        whileHover={{ scale: 1.1 }}
-                                        transition={{ duration: 0.6 }}
-                                        src={imageUrl}
-                                        alt={item.title}
-                                        loading={index === 0 ? "eager" : "lazy"}
-                                        fetchPriority={index === 0 ? "high" : "auto"}
-                                        decoding="async"
-                                        onLoad={() => markImageLoaded(imageUrl)}
-                                        onError={(event) => {
-                                            const fallbackImage = heroImages[item.id % heroImages.length];
-
-                                            if (event.currentTarget.dataset.fallbackApplied !== "true") {
-                                                event.currentTarget.dataset.fallbackApplied = "true";
-                                                event.currentTarget.src = fallbackImage;
-                                                return;
-                                            }
-
-                                            markImageLoaded(imageUrl);
-                                        }}
-                                        className={`w-full h-full object-cover transition-opacity duration-500 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
-                                    />
-                                    {!imageLoaded && (
-                                        <div className="absolute inset-0 bg-gradient-to-br from-purple-100 via-gray-100 to-purple-50">
-                                            <motion.div
-                                                animate={{ x: ["-100%", "100%"] }}
-                                                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-                                                className="h-full w-1/2 bg-white/50 blur-xl"
-                                            />
-                                        </div>
-                                    )}
-                                    <div className="absolute top-4 left-4">
-                                        <span className="bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-purple-600 shadow-sm">
-                                            {item.category}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="p-8">
-                                    <h3 className="text-xl font-bold text-gray-900 group-hover:text-purple-600 transition-colors">{item.title}</h3>
-                                    <p className="text-gray-500 text-sm mt-2 flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-red-400">
-                                            <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z" />
-                                            <circle cx="12" cy="10" r="3" />
-                                        </svg>
-                                        <span>By {item.vendor} · {item.location}</span>
-                                    </p>
-                                    <div className="mt-6 flex items-center justify-between">
-                                        <div>
-                                            <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Package Price</p>
-                                            <p className="text-lg font-black text-purple-700">{item.price}</p>
-                                        </div>
-                                        <motion.button whileTap={{ scale: 0.9 }} className="bg-gray-900 text-white px-5 py-3 rounded-2xl text-sm font-bold hover:bg-purple-600 transition-colors">
-                                            Details
-                                        </motion.button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        );
-                    })}
+                    {!error && servicesData.map((item, index) => (
+                        <VendorCard
+                            key={item.id}
+                            item={item}
+                            index={index}
+                        />
+                    ))}
                 </motion.div>
+                )}
 
                 {/* --- PAGINATION --- */}
                 {!error && totalServices > 0 && (
                     <div className="flex justify-center items-center gap-3 mt-16">
-                        <button disabled={queryBusy || currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm">←</button>
+                        <button
+                            disabled={queryBusy || appliedFilters.page === 1}
+                            onClick={() => setAppliedFilters((f) => ({ ...f, page: f.page - 1 }))}
+                            className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm"
+                        >
+                            ←
+                        </button>
                         {[...Array(totalPages)].map((_, i) => (
-                            <button key={i} disabled={queryBusy} onClick={() => setCurrentPage(i + 1)} className={`w-12 h-12 rounded-2xl font-bold transition-all disabled:opacity-50 ${currentPage === i + 1 ? "bg-purple-600 text-white shadow-lg shadow-purple-200" : "hover:bg-white border border-transparent hover:border-gray-200"}`}>{i + 1}</button>
+                            <button
+                                key={i}
+                                disabled={queryBusy}
+                                onClick={() => setAppliedFilters((f) => ({ ...f, page: i + 1 }))}
+                                className={`w-12 h-12 rounded-2xl font-bold transition-all disabled:opacity-50 ${appliedFilters.page === i + 1
+                                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
+                                        : 'hover:bg-white border border-transparent hover:border-gray-200'
+                                    }`}
+                            >
+                                {i + 1}
+                            </button>
                         ))}
-                        <button disabled={queryBusy || currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)} className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm">→</button>
+                        <button
+                            disabled={queryBusy || appliedFilters.page === totalPages}
+                            onClick={() => setAppliedFilters((f) => ({ ...f, page: f.page + 1 }))}
+                            className="w-12 h-12 flex items-center justify-center rounded-2xl border border-gray-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm"
+                        >
+                            →
+                        </button>
                     </div>
                 )}
             </div>
