@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -60,6 +61,8 @@ class MarketplaceController extends Controller
                     'vendor_profiles.business_name',
                     'vendor_profiles.service_area_town',
                     'vendor_profiles.service_area_state',
+                    'vendor_profiles.business_started_at',
+                    'vendor_profiles.years_of_experience',
                     'users.name as user_name',
                 ])
                 ->where('service_profiles.status', 'approved')
@@ -104,6 +107,9 @@ class MarketplaceController extends Controller
                     'portfolio_url' => $service->portfolio_path
                         ? $storageUrl . '/' . ltrim($service->portfolio_path, '/')
                         : null,
+                    'vendor_experience' => $service->business_started_at
+                        ? (int) Carbon::parse($service->business_started_at)->diffInYears(Carbon::now())
+                        : ($service->years_of_experience !== null ? (int) $service->years_of_experience : null),
                 ];
             });
 
@@ -117,6 +123,82 @@ class MarketplaceController extends Controller
         });
 
         return response()->json($payload);
+    }
+
+    public function show(int $id)
+    {
+        $storageUrl = rtrim(asset('storage'), '/');
+
+        $cacheKey = 'marketplace:service:' . $id;
+
+        $service = Cache::remember($cacheKey, now()->addSeconds(30), function () use ($id, $storageUrl) {
+            $latestVendorProfiles = DB::table('vendor_profiles')
+                ->selectRaw('MAX(id) as id, user_id')
+                ->groupBy('user_id');
+
+            $row = DB::table('service_profiles')
+                ->leftJoinSub($latestVendorProfiles, 'latest_vendor_profiles', function ($join) {
+                    $join->on('latest_vendor_profiles.user_id', '=', 'service_profiles.user_id');
+                })
+                ->leftJoin('vendor_profiles', 'vendor_profiles.id', '=', 'latest_vendor_profiles.id')
+                ->leftJoin('users', 'users.id', '=', 'service_profiles.user_id')
+                ->select([
+                    'service_profiles.id',
+                    'service_profiles.service_name as title',
+                    'service_profiles.service_category as category',
+                    'service_profiles.service_details as description',
+                    'service_profiles.pricing_starting_from as price_value',
+                    'service_profiles.pricing_unit',
+                    'service_profiles.pricing_description',
+                    'service_profiles.portfolio_path',
+                    'vendor_profiles.business_name',
+                    'vendor_profiles.service_area_town',
+                    'vendor_profiles.service_area_state',
+                    'vendor_profiles.business_started_at',
+                    'vendor_profiles.years_of_experience',
+                    'vendor_profiles.business_link',
+                    'users.name as user_name',
+                ])
+                ->where('service_profiles.id', $id)
+                ->where('service_profiles.status', 'approved')
+                ->first();
+
+            if (! $row) {
+                return null;
+            }
+
+            return [
+                'id'                  => $row->id,
+                'title'               => $row->title,
+                'category'            => $row->category,
+                'description'         => $row->description,
+                'price'               => sprintf(
+                    'RM %s / %s',
+                    number_format((float) $row->price_value, 2),
+                    $row->pricing_unit ?: 'package'
+                ),
+                'price_value'         => (float) $row->price_value,
+                'pricing_unit'        => $row->pricing_unit ?: 'package',
+                'pricing_description' => $row->pricing_description,
+                'location'            => $this->formatLocation($row->service_area_town, $row->service_area_state),
+                'location_town'       => $row->service_area_town,
+                'location_state'      => $row->service_area_state,
+                'vendor'              => $row->business_name ?: ($row->user_name ?: 'ACARA Vendor'),
+                'vendor_experience'   => $row->business_started_at
+                    ? (int) Carbon::parse($row->business_started_at)->diffInYears(Carbon::now())
+                    : ($row->years_of_experience !== null ? (int) $row->years_of_experience : null),
+                'vendor_website'      => $row->business_link,
+                'portfolio_url'       => $row->portfolio_path
+                    ? $storageUrl . '/' . ltrim($row->portfolio_path, '/')
+                    : null,
+            ];
+        });
+
+        if (! $service) {
+            return response()->json(['message' => 'Service not found.'], 404);
+        }
+
+        return response()->json($service);
     }
 
     private function formatLocation(?string $town, ?string $state): string

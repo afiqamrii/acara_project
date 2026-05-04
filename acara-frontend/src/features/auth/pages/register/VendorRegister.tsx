@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
-import { UserSidebar } from "../../../header/pages/UserSidebar";
+// import { UserSidebar } from "../../../header/pages/UserSidebar";
 import { registerVendor } from "../../vendorApi";
 import { malaysiaBanks, malaysiaLocations, toTitleCase } from "../../../../utils/formHelpers";
 import Stepper from "../../../../components/common/Stepper";
@@ -24,7 +24,7 @@ const VendorRegister: React.FC = () => {
         ssm_number: "",
         business_name: "",
         business_link: "",
-        years_of_experience: "",
+        business_started_at: "",
         service_area_state: "",
         service_area_town: "",
         bank_name: "",
@@ -66,7 +66,7 @@ const VendorRegister: React.FC = () => {
 
         if (step === 2) {
             if (!formData.business_link.trim()) newErrors.business_link = true;
-            if (!formData.years_of_experience.trim()) newErrors.years_of_experience = true;
+            if (!formData.business_started_at.trim()) newErrors.business_started_at = true;
             if (!formData.service_area_state.trim()) newErrors.service_area_state = true;
             if (!formData.service_area_town.trim()) newErrors.service_area_town = true;
         }
@@ -132,7 +132,7 @@ const VendorRegister: React.FC = () => {
             const data = new FormData();
             data.append("business_name", formData.business_name.trim());
             data.append("business_link", formData.business_link.trim());
-            data.append("years_of_experience", formData.years_of_experience.trim());
+            data.append("business_started_at", formData.business_started_at.trim());
             data.append("service_area_state", formData.service_area_state);
             data.append("service_area_town", formData.service_area_town);
             data.append("bank_name", formData.bank_name);
@@ -157,7 +157,7 @@ const VendorRegister: React.FC = () => {
     if (success) {
         return (
             <div className="flex h-screen w-full overflow-hidden bg-gray-50">
-                <UserSidebar />
+                {/* <UserSidebar /> */}
                 <div className="flex-1 overflow-y-auto flex items-center justify-center p-4">
                     <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -201,7 +201,7 @@ const VendorRegister: React.FC = () => {
 
     return (
         <div className="flex h-screen w-full overflow-hidden bg-gray-50">
-            <UserSidebar />
+            {/* <UserSidebar /> */}
 
             <div className="flex-1 overflow-y-auto flex flex-col items-center justify-start pt-10 pb-12 px-4">
                 <div className="w-full max-w-3xl mb-6">
@@ -331,16 +331,17 @@ const VendorRegister: React.FC = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Years of Experience <span className="text-red-500">*</span></label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Business Start Date <span className="text-red-500">*</span>
+                                        <span className="ml-2 text-xs text-gray-400 font-normal">— years of experience will be calculated automatically</span>
+                                    </label>
                                     <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        name="years_of_experience"
-                                        value={formData.years_of_experience}
+                                        type="date"
+                                        name="business_started_at"
+                                        value={formData.business_started_at}
                                         onChange={handleInputChange}
-                                        placeholder="e.g. 5"
-                                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all ${attemptedNext && errors.years_of_experience ? "border-red-500 ring-red-200" : "border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]"}`}
+                                        max={new Date().toISOString().split('T')[0]}
+                                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all ${attemptedNext && errors.business_started_at ? "border-red-500 ring-red-200" : "border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]"}`}
                                     />
                                 </div>
                             </div>

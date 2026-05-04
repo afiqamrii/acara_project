@@ -8,12 +8,16 @@ use App\Http\Controllers\ServiceVerificationController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\VendorVerificationController;
+use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\BookingController;
 
 // ─── Public Routes ───────────────────────────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::get('/marketplace/services', [MarketplaceController::class, 'services']);
+Route::get('/marketplace/services/{id}', [MarketplaceController::class, 'show']);
+Route::get('/marketplace/services/{id}/availability', [AvailabilityController::class, 'publicAvailability']);
 
 Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verify'])
     ->middleware('signed')
@@ -29,10 +33,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/profile/complete', [AuthController::class, 'completeProfile']);
 });
 
+// ─── Customer Booking Routes (authenticated) ─────────────────────────────────
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/bookings/cart', [BookingController::class, 'cartIndex']);
+    Route::post('/bookings/cart', [BookingController::class, 'addToCart']);
+    Route::delete('/bookings/cart/{id}', [BookingController::class, 'removeFromCart']);
+    Route::post('/bookings/confirm', [BookingController::class, 'confirmCart']);
+    Route::get('/bookings', [BookingController::class, 'myBookings']);
+});
+
 // ─── Vendor Routes (authenticated + completed profile) ────────────────────────
 Route::middleware(['auth:sanctum', 'profile.completed'])->group(function () {
     Route::post('/service/register', [ServiceController::class, 'store']);
     Route::post('/vendor/register', [VendorController::class, 'store']);
+    Route::get('/vendor/services', [AvailabilityController::class, 'vendorServices']);
+    Route::get('/vendor/availability/{serviceId}', [AvailabilityController::class, 'vendorAvailability']);
+    Route::put('/vendor/availability/{serviceId}', [AvailabilityController::class, 'sync']);
+    Route::post('/vendor/availability/{serviceId}/reopen', [AvailabilityController::class, 'reopenDate']);
 });
 
 // ─── Admin Routes (authenticated + admin role) ────────────────────────────────

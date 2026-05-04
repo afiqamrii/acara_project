@@ -15,12 +15,14 @@ const UserDashboard = lazy(() => import('./features/dashboard/pages/UserDashboar
 const ServiceRegister = lazy(() => import('./features/auth/pages/register/ServiceRegister'));
 const VendorRegister = lazy(() => import('./features/auth/pages/register/VendorRegister'));
 const Marketplace = lazy(() => import('./features/marketplace/pages/Marketplace'));
+const ServiceDetail = lazy(() => import('./features/marketplace/pages/ServiceDetail'));
 const LandingPage = lazy(() => import('./features/landing_page/pages/LandingPage'));
 const AdminDashboard = lazy(() => import('./features/dashboard/pages/AdminDashboard'));
 const VendorVerificationQueue = lazy(() => import('./features/dashboard/pages/VendorVerificationQueue'));
 const ServiceVerificationQueue = lazy(() => import('./features/dashboard/pages/ServiceVerificationQueue'));
 const Register_admin = lazy(() => import('./features/register_admin/pages/Register_admin'));
 const CompleteProfile = lazy(() => import('./features/auth/pages/CompleteProfile'));
+const VendorAvailability = lazy(() => import('./features/vendor/pages/VendorAvailability'));
 
 function App() {
   return (
@@ -40,7 +42,9 @@ function App() {
             <Route element={<ProtectedRoute><UserLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<UserDashboard />} />
               <Route path="/marketplace" element={<Marketplace />} />
+              <Route path="/marketplace/:serviceId" element={<ServiceDetail />} />
               <Route path="/vendor/register" element={<VendorRegister />} />
+              <Route path="/vendor/availability" element={<VendorAvailability />} />
               <Route path="/service/register" element={<ServiceRegister />} />
               <Route path="/events" element={<ComingSoon title="My Events" description="Manage all your upcoming and past events in one place. Create, edit, and track event status seamlessly." />} />
               <Route path="/bookings" element={<ComingSoon title="My Bookings" description="View and manage your vendor bookings, check payment status, and coordinate with service providers." />} />

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import IconBell from "@tabler/icons-react/dist/esm/icons/IconBell.mjs";
 import IconCalendarEvent from "@tabler/icons-react/dist/esm/icons/IconCalendarEvent.mjs";
 import IconChevronLeft from "@tabler/icons-react/dist/esm/icons/IconChevronLeft.mjs";
@@ -12,9 +13,12 @@ import IconMenu2 from "@tabler/icons-react/dist/esm/icons/IconMenu2.mjs";
 import IconReceipt from "@tabler/icons-react/dist/esm/icons/IconReceipt.mjs";
 import IconSettings from "@tabler/icons-react/dist/esm/icons/IconSettings.mjs";
 import IconShoppingBag from "@tabler/icons-react/dist/esm/icons/IconShoppingBag.mjs";
+import IconShoppingCart from "@tabler/icons-react/dist/esm/icons/IconShoppingCart.mjs";
 import IconStar from "@tabler/icons-react/dist/esm/icons/IconStar.mjs";
 import IconUser from "@tabler/icons-react/dist/esm/icons/IconUser.mjs";
 import IconX from "@tabler/icons-react/dist/esm/icons/IconX.mjs";
+import IconCalendarStats from "@tabler/icons-react/dist/esm/icons/IconCalendarStats.mjs";
+import { fetchCart } from "./cartdrawer";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard },
@@ -22,16 +26,28 @@ const navItems = [
   { label: "Marketplace", href: "/marketplace", icon: IconShoppingBag },
   { label: "Bookings", href: "/bookings", icon: IconReceipt },
   { label: "Reviews", href: "/reviews", icon: IconStar },
+  { label: "Service Availability", href: "/vendor/availability", icon: IconCalendarStats },
   { label: "Notifications", href: "/notifications", icon: IconBell },
   { label: "Profile", href: "/profile", icon: IconUser },
   { label: "Settings", href: "/settings", icon: IconSettings },
 ];
 
-export function UserSidebar() {
+type UserSidebarProps = {
+  onCartOpen: () => void;
+};
+
+export function UserSidebar({ onCartOpen }: UserSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const { data: cartData } = useQuery({
+    queryKey: ['cart'],
+    queryFn: fetchCart,
+    staleTime: 1000 * 30,
+  });
+  const cartCount = cartData?.items?.length ?? 0;
 
   const userName = localStorage.getItem("user_name") || "User";
   const userEmail = localStorage.getItem("user_email") || "";
@@ -97,6 +113,44 @@ export function UserSidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
+        {/* Cart button */}
+        <button
+          onClick={() => { onCartOpen(); if (isMobile) setMobileOpen(false); }}
+          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+        >
+          <div className="shrink-0 text-gray-400 group-hover:text-gray-600 transition-colors relative">
+            <IconShoppingCart size={18} />
+            {cartCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center rounded-full bg-purple-600 text-[9px] font-bold text-white leading-none">
+                {cartCount > 9 ? '9+' : cartCount}
+              </span>
+            )}
+          </div>
+          <AnimatePresence initial={false}>
+            {(isMobile || !collapsed) && (
+              <motion.span
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                className="whitespace-nowrap flex-1 text-left"
+              >
+                Cart
+              </motion.span>
+            )}
+          </AnimatePresence>
+          {cartCount > 0 && (isMobile || !collapsed) && (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="ml-auto text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full"
+            >
+              {cartCount}
+            </motion.span>
+          )}
+        </button>
+
+        <div className="my-1 border-t border-gray-50" />
+
         {navItems.map(({ label, href, icon: Icon }) => {
           const isActive = location.pathname === href;
 

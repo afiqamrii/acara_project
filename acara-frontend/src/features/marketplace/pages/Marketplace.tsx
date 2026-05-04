@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import Loader from '../../../components/common/Loader';
@@ -110,6 +111,7 @@ const itemVariants = {
 const visibleHeroImages = heroImages.slice(0, 4);
 
 const VendorCard: React.FC<{ item: MarketplaceService; index: number }> = ({ item, index }) => {
+    const navigate = useNavigate();
     const imageUrl = getServiceImageUrl(item);
 
     // Initialise from browser cache so already-loaded images skip the shimmer.
@@ -184,6 +186,7 @@ const VendorCard: React.FC<{ item: MarketplaceService; index: number }> = ({ ite
                     </div>
                     <motion.button
                         whileTap={{ scale: 0.9 }}
+                        onClick={() => navigate(`/marketplace/${item.id}`)}
                         className="bg-gray-900 text-white px-5 py-3 rounded-2xl text-sm font-bold hover:bg-purple-600 transition-colors"
                     >
                         Details

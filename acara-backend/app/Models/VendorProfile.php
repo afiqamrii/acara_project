@@ -15,7 +15,7 @@ class VendorProfile extends Model
         'ssm_document_path',
         'business_name',
         'business_link',
-        'years_of_experience',
+        'business_started_at',
         'service_area_state',
         'service_area_town',
         'bank_name',
