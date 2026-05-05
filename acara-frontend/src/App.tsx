@@ -1,6 +1,18 @@
 import './App.css'
 import { lazy, Suspense } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import Login from "./features/auth/pages/Login";
+import Register from "./features/auth/pages/register/Register";
+import UserDashboard from './features/dashboard/pages/UserDashboard';
+import ServiceRegister from './features/auth/pages/register/ServiceRegister';
+import VendorRegister from './features/auth/pages/register/VendorRegister';
+import Marketplace from './features/marketplace/pages/Marketplace';
+import LandingPage from './features/landing_page/pages/LandingPage';
+import AdminDashboard from './features/dashboard/pages/AdminDashboard';
+import VendorVerificationQueue from './features/dashboard/pages/VendorVerificationQueue';
+import Register_admin from './features/register_admin/pages/Register_admin';
+import CompleteProfile from './features/auth/pages/CompleteProfile';
+// import AdminDashboard from './features/dashboard/pages/AdminDashboard';
 import AuthSessionManager from './components/common/AuthSessionManager';
 import ComingSoon from './components/common/ComingSoon';
 import Loader from './components/common/Loader';
@@ -8,21 +20,10 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 
 import UserLayout from './components/layouts/UserLayout';
 import AdminLayout from './components/layouts/AdminLayout';
-
-const Login = lazy(() => import("./features/auth/pages/Login"));
-const Register = lazy(() => import("./features/auth/pages/register/Register"));
-const UserDashboard = lazy(() => import('./features/dashboard/pages/UserDashboard'));
-const ServiceRegister = lazy(() => import('./features/auth/pages/register/ServiceRegister'));
-const VendorRegister = lazy(() => import('./features/auth/pages/register/VendorRegister'));
-const Marketplace = lazy(() => import('./features/marketplace/pages/Marketplace'));
 const ServiceDetail = lazy(() => import('./features/marketplace/pages/ServiceDetail'));
-const LandingPage = lazy(() => import('./features/landing_page/pages/LandingPage'));
-const AdminDashboard = lazy(() => import('./features/dashboard/pages/AdminDashboard'));
-const VendorVerificationQueue = lazy(() => import('./features/dashboard/pages/VendorVerificationQueue'));
-const ServiceVerificationQueue = lazy(() => import('./features/dashboard/pages/ServiceVerificationQueue'));
-const Register_admin = lazy(() => import('./features/register_admin/pages/Register_admin'));
-const CompleteProfile = lazy(() => import('./features/auth/pages/CompleteProfile'));
 const VendorAvailability = lazy(() => import('./features/vendor/pages/VendorAvailability'));
+const ServiceVerificationQueue = lazy(() => import('./features/dashboard/pages/ServiceVerificationQueue'));
+
 
 function App() {
   return (

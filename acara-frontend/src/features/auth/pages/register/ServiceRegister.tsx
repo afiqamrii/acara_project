@@ -6,8 +6,10 @@ import { registerService } from "../../vendorApi";
 // import { UserSidebar } from "../../../header/pages/UserSidebar";
 import Stepper from "../../../../components/common/Stepper";
 import { capitalizeFirstLetter, toTitleCase } from "../../../../utils/formHelpers";
+import { usePageTitle } from "../../../../utils/usePageTitle";
 
 const ServiceRegister: React.FC = () => {
+    usePageTitle("Service Registration");
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);

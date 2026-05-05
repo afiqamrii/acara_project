@@ -1,7 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import './navbar.css';
-import { performLogout } from "../../../lib/auth";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -52,25 +50,19 @@ const Navbar = () => {
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          scrolled
-            ? "bg-white/85 backdrop-blur-xl shadow-[0_1px_0_0_rgba(0,0,0,0.04),0_4px_24px_-2px_rgba(0,0,0,0.06)] py-3"
-            : "bg-transparent py-5"
-        }`}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled
+          ? "bg-white/85 backdrop-blur-xl shadow-[0_1px_0_0_rgba(0,0,0,0.04),0_4px_24px_-2px_rgba(0,0,0,0.06)] py-3"
+          : "bg-transparent py-5"
+          }`}
       >
         <div className="relative max-w-7xl mx-auto px-6 flex items-center justify-between h-[52px]">
           {/* ── Logo ──────────────────────────── */}
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2.5 group cursor-pointer"
+            className="flex items-center group cursor-pointer"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#7E57C2] to-[#6C4AB8] shadow-md shadow-purple-200/50 transition-all duration-300">
-              <span className="text-xs font-black tracking-tight text-white">
-                AC
-              </span>
-            </div>
-            <span className="text-xl font-extrabold tracking-tight text-gray-900 transition-colors duration-300">
-              ACARA
+            <span className="text-3xl font-black tracking-tight text-gray-900 transition-colors duration-300 group-hover:text-gray-800">
+              Acara<span className="text-[#7E57C2]">.</span>
             </span>
           </button>
 
@@ -164,23 +156,20 @@ const Navbar = () => {
 
       {/* ── Mobile Menu Drawer ─────────────── */}
       <div
-        className={`fixed inset-0 z-40 transition-all duration-300 md:hidden ${
-          mobileOpen ? "visible" : "invisible"
-        }`}
+        className={`fixed inset-0 z-40 transition-all duration-300 md:hidden ${mobileOpen ? "visible" : "invisible"
+          }`}
       >
         {/* Backdrop */}
         <div
-          className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${
-            mobileOpen ? "opacity-100" : "opacity-0"
-          }`}
+          className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${mobileOpen ? "opacity-100" : "opacity-0"
+            }`}
           onClick={() => setMobileOpen(false)}
         />
 
         {/* Panel */}
         <div
-          className={`absolute top-0 right-0 h-full w-[85vw] max-w-sm bg-white shadow-2xl transition-transform duration-300 ease-out ${
-            mobileOpen ? "translate-x-0" : "translate-x-full"
-          }`}
+          className={`absolute top-0 right-0 h-full w-[85vw] max-w-sm bg-white shadow-2xl transition-transform duration-300 ease-out ${mobileOpen ? "translate-x-0" : "translate-x-full"
+            }`}
         >
           <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
             <span className="text-lg font-bold text-gray-900">Menu</span>
@@ -200,7 +189,7 @@ const Navbar = () => {
             {navLinks.map(({ label, path }) => (
               <button
                 key={label}
-                onClick={() => { 
+                onClick={() => {
                   if (path.startsWith("/#")) {
                     if (window.location.pathname !== "/") {
                       navigate(path);
@@ -210,7 +199,7 @@ const Navbar = () => {
                   } else {
                     navigate(path);
                   }
-                  setMobileOpen(false); 
+                  setMobileOpen(false);
                 }}
                 className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#7E57C2] transition-colors cursor-pointer"
               >

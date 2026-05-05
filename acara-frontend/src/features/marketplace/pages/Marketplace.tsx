@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { usePageTitle } from '../../../utils/usePageTitle';
+
 import Loader from '../../../components/common/Loader';
 import api from '../../../lib/Api';
 
@@ -198,6 +200,7 @@ const VendorCard: React.FC<{ item: MarketplaceService; index: number }> = ({ ite
 };
 
 const Marketplace: React.FC = () => {
+    usePageTitle("Marketplace");
     const [search, setSearch] = useState('');
     const [serviceType, setServiceType] = useState('');
     const [location, setLocation] = useState('');
@@ -381,33 +384,33 @@ const Marketplace: React.FC = () => {
                         message={hasActiveFilters ? 'Finding matching vendors...' : 'Loading marketplace services...'}
                     />
                 ) : (
-                <motion.div
-                    key={filterSessionKey}
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-                >
-                    {error && (
-                        <div className="col-span-full rounded-[32px] bg-white p-10 text-center text-red-500 shadow-sm">
-                            {error}
-                        </div>
-                    )}
+                    <motion.div
+                        key={filterSessionKey}
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                    >
+                        {error && (
+                            <div className="col-span-full rounded-[32px] bg-white p-10 text-center text-red-500 shadow-sm">
+                                {error}
+                            </div>
+                        )}
 
-                    {!error && servicesData.length === 0 && (
-                        <div className="col-span-full rounded-[32px] bg-white p-10 text-center text-gray-500 shadow-sm">
-                            No approved services found.
-                        </div>
-                    )}
+                        {!error && servicesData.length === 0 && (
+                            <div className="col-span-full rounded-[32px] bg-white p-10 text-center text-gray-500 shadow-sm">
+                                No approved services found.
+                            </div>
+                        )}
 
-                    {!error && servicesData.map((item, index) => (
-                        <VendorCard
-                            key={item.id}
-                            item={item}
-                            index={index}
-                        />
-                    ))}
-                </motion.div>
+                        {!error && servicesData.map((item, index) => (
+                            <VendorCard
+                                key={item.id}
+                                item={item}
+                                index={index}
+                            />
+                        ))}
+                    </motion.div>
                 )}
 
                 {/* --- PAGINATION --- */}
@@ -426,8 +429,8 @@ const Marketplace: React.FC = () => {
                                 disabled={queryBusy}
                                 onClick={() => setAppliedFilters((f) => ({ ...f, page: i + 1 }))}
                                 className={`w-12 h-12 rounded-2xl font-bold transition-all disabled:opacity-50 ${appliedFilters.page === i + 1
-                                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
-                                        : 'hover:bg-white border border-transparent hover:border-gray-200'
+                                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-200'
+                                    : 'hover:bg-white border border-transparent hover:border-gray-200'
                                     }`}
                             >
                                 {i + 1}

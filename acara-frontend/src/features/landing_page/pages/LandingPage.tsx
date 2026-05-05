@@ -3,105 +3,139 @@ import { useNavigate } from "react-router-dom";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import Navbar from "../../header/pages/navbar";
-import audienceBg from "../../../img/audience.jpg";
-import LiquidEther from '../components/liquidEther';
+import Footer from "../../../components/common/Footer";
+import { usePageTitle } from "../../../utils/usePageTitle";
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
+    usePageTitle("Home");
 
     useEffect(() => {
         AOS.init({ duration: 800, once: true });
     }, []);
 
+    const handleGetStarted = () => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            const role = localStorage.getItem('role') || 'user';
+            if (role === 'admin' || role === 'super_admin') navigate('/admin/dashboard');
+            else if (role === 'vendor') navigate('/marketplace');
+            else if (role === 'crew') navigate('/crew/jobs');
+            else navigate('/dashboard');
+        } else {
+            navigate('/login');
+        }
+    };
+
     return (
-        <div className="min-h-screen w-full bg-gray-50 text-gray-900 overflow-x-hidden relative text-left selection:bg-purple-200">
+        <div className="min-h-screen w-full bg-[#FCFBFF] text-gray-900 overflow-x-hidden relative text-left selection:bg-purple-200 font-sans">
             <Navbar />
 
-            <div style={{ width: '100%', height: '100vh', position: 'absolute' }}>
-                <LiquidEther
-                    colors={['#5227FF', '#FF9FFC', '#B19EEF']}
-                    mouseForce={20}
-                    cursorSize={60}
-                    isViscous
-                    viscous={30}
-                    iterationsViscous={32}
-                    iterationsPoisson={32}
-                    resolution={0.5}
-                    isBounce={false}
-                    autoDemo
-                    autoSpeed={0.5}
-                    autoIntensity={2.2}
-                    takeoverDuration={0.25}
-                    autoResumeDelay={3000}
-                    autoRampDuration={0.6}
-                />
-            </div>
-
             {/* Hero Section */}
-            <section className="relative min-h-[100vh] w-full overflow-hidden flex items-center justify-center pt-20">
-                {/* Background Elements - Matching Login Page Gradient Vibe */}
-                <div className="absolute inset-0 bg-white/40 z-0"></div>
+            <section className="relative min-h-[100vh] w-full overflow-hidden flex items-center justify-center pt-24 pb-12">
+                {/* Background Elements */}
+                <div className="absolute inset-0 z-0">
+                    {/* Event Background Image Overlay with Gradient Mask */}
+                    <div
+                        className="absolute inset-0 bg-cover bg-center opacity-[0.04] mix-blend-multiply grayscale"
+                        style={{ 
+                            backgroundImage: `url('https://images.unsplash.com/photo-1511556532299-8f662fc26c06?q=80&w=2070&auto=format&fit=crop')`,
+                            maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)',
+                            WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)'
+                        }}
+                    />
 
-                {/* Decorative background blobs matching Login page style */}
-                <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-                <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-pink-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+                    {/* Decorative abstract mesh gradients */}
+                    <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-gradient-to-br from-purple-400/20 to-indigo-400/20 rounded-full blur-[120px] pointer-events-none"></div>
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-gradient-to-tl from-pink-400/20 to-purple-400/20 rounded-full blur-[120px] pointer-events-none"></div>
+                    <div className="absolute top-[20%] right-[10%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[100px] pointer-events-none animate-pulse"></div>
+                </div>
 
-                {/* Event Background Image Overlay */}
                 <div
-                    className="absolute inset-0 bg-cover bg-center opacity-[0.03] mix-blend-multiply pointer-events-none z-0 grayscale"
-                    style={{ backgroundImage: `url(${audienceBg})` }}
-                />
-
-                <div
-                    className="relative z-20 text-center max-w-5xl px-6 flex flex-col items-center"
-                    data-aos="fade-up"
-                    data-aos-delay="200"
+                    className="relative z-20 text-center max-w-6xl px-4 sm:px-6 flex flex-col items-center"
                 >
-                    <span className="inline-block px-4 py-1 mb-6 text-xs font-bold tracking-widest text-purple-600 uppercase bg-purple-50 rounded-full border border-purple-100">
-                        The Future of Event Planning
-                    </span>
+                    {/* Premium Badge */}
+                    <div 
+                        className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full bg-white/60 border border-purple-100/50 shadow-sm backdrop-blur-md"
+                        data-aos="fade-down"
+                    >
+                        <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
+                        </span>
+                        <span className="text-xs font-bold tracking-widest text-purple-700 uppercase">
+                            The Future of Event Planning
+                        </span>
+                    </div>
 
-                    <h1 className="text-4xl md:text-6xl font-bold mb-4 tracking-tight text-gray-900 leading-tight">
-                        Welcome to <span className="text-[#7E57C2]">Acara</span>
+                    {/* Main Headline */}
+                    <h1 
+                        className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight text-gray-900 leading-[1.1] mb-6 drop-shadow-sm"
+                        data-aos="fade-up"
+                        data-aos-delay="100"
+                    >
+                        Craft Your <br/>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600">
+                            Perfect Event
+                        </span>
                     </h1>
 
-                    <h1 className="text-5xl md:text-7xl font-black uppercase text-transparent bg-clip-text bg-gradient-to-r from-[#7E57C2] to-pink-500 drop-shadow-sm my-2 tracking-tight">
-                        Plan Your Perfect
-                    </h1>
-                    <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-gray-700 mt-2">
-                        Event
-                    </h1>
-
-                    <div className="w-24 h-1.5 bg-gradient-to-r from-pink-500 to-[#7E57C2] rounded-full my-8 opactiy-80"></div>
-
-                    <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed font-light">
-                        <strong>Stop juggling ten different vendors.</strong>
-                        <br />
-                        ACARA is the all-in-one platform to find venues, book catering,
-                        and hire crew securely.
+                    {/* Subheadline */}
+                    <p 
+                        className="text-lg sm:text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto mb-10 leading-relaxed font-light"
+                        data-aos="fade-up"
+                        data-aos-delay="200"
+                    >
+                        Stop juggling multiple tabs and endless spreadsheets. <strong className="font-semibold text-gray-800">Acara</strong> is your all-in-one platform to discover venues, book catering, and hire crews securely.
                     </p>
 
-                    <button
-                        onClick={() => {
-                            const token = localStorage.getItem('token');
-                            if (token) {
-                                const role = localStorage.getItem('role') || 'user';
-                                if (role === 'admin' || role === 'super_admin') navigate('/admin/dashboard');
-                                else if (role === 'vendor') navigate('/marketplace');
-                                else if (role === 'crew') navigate('/crew/jobs');
-                                else navigate('/dashboard');
-                            } else {
-                                navigate('/login');
-                            }
-                        }}
-                        className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white transition-all duration-200 bg-[#7E57C2] rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 hover:bg-[#6C4AB8] shadow-lg hover:shadow-purple-500/30 hover:-translate-y-1"
+                    {/* CTA Buttons */}
+                    <div 
+                        className="flex flex-col sm:flex-row gap-4 items-center justify-center w-full"
+                        data-aos="fade-up"
+                        data-aos-delay="300"
                     >
-                        Find Vendors Now
-                        <svg className="w-5 h-5 ml-2 transition-transform duration-200 group-hover:translate-x-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                    </button>
+                        <button
+                            onClick={handleGetStarted}
+                            className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-white transition-all duration-300 bg-gray-900 rounded-full hover:bg-gray-800 hover:shadow-xl hover:shadow-gray-900/20 hover:-translate-y-1 overflow-hidden w-full sm:w-auto"
+                        >
+                            <span className="relative flex items-center gap-2">
+                                Get Started Free
+                                <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="group inline-flex items-center justify-center px-8 py-4 text-lg font-medium text-gray-700 transition-all duration-300 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-full hover:bg-white hover:border-gray-300 hover:shadow-md w-full sm:w-auto"
+                        >
+                            <svg className="w-5 h-5 mr-2 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            See How It Works
+                        </button>
+                    </div>
+
+                    {/* Social Proof / Small avatars */}
+                    <div className="mt-12 flex flex-col items-center gap-3 opacity-80" data-aos="fade-in" data-aos-delay="500">
+                        <div className="flex -space-x-3">
+                            <img className="w-10 h-10 rounded-full border-2 border-[#FCFBFF] object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt="User" />
+                            <img className="w-10 h-10 rounded-full border-2 border-[#FCFBFF] object-cover" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80" alt="User" />
+                            <img className="w-10 h-10 rounded-full border-2 border-[#FCFBFF] object-cover" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80" alt="User" />
+                            <img className="w-10 h-10 rounded-full border-2 border-[#FCFBFF] object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" alt="User" />
+                            <div className="w-10 h-10 rounded-full border-2 border-[#FCFBFF] bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">
+                                +2k
+                            </div>
+                        </div>
+                        <p className="text-sm text-gray-500 font-medium">Trusted by 2,000+ event planners & vendors</p>
+                    </div>
                 </div>
+
             </section>
 
             {/* Stats Section */}
@@ -203,6 +237,8 @@ const LandingPage: React.FC = () => {
                     </div>
                 </div>
             </section>
+
+            <Footer />
         </div>
     );
 };

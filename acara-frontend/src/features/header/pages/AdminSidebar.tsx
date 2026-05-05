@@ -2,17 +2,18 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import IconChevronLeft from "@tabler/icons-react/dist/esm/icons/IconChevronLeft.mjs";
-import IconChevronRight from "@tabler/icons-react/dist/esm/icons/IconChevronRight.mjs";
-import IconLayoutDashboard from "@tabler/icons-react/dist/esm/icons/IconLayoutDashboard.mjs";
-import IconLogout from "@tabler/icons-react/dist/esm/icons/IconLogout.mjs";
-import IconMenu2 from "@tabler/icons-react/dist/esm/icons/IconMenu2.mjs";
-import IconSettings from "@tabler/icons-react/dist/esm/icons/IconSettings.mjs";
-import IconShield from "@tabler/icons-react/dist/esm/icons/IconShield.mjs";
-import IconUserCheck from "@tabler/icons-react/dist/esm/icons/IconUserCheck.mjs";
-import IconUsers from "@tabler/icons-react/dist/esm/icons/IconUsers.mjs";
-import IconX from "@tabler/icons-react/dist/esm/icons/IconX.mjs";
-import { performLogout } from "../../../lib/auth";
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconLayoutDashboard,
+  IconLogout,
+  IconMenu2,
+  IconSettings,
+  IconShield,
+  IconUserCheck,
+  IconUsers,
+  IconX,
+} from "@tabler/icons-react";
 
 const navItems = [
   { label: "Dashboard", href: "/admin/dashboard", icon: IconLayoutDashboard },
@@ -50,30 +51,30 @@ export function AdminSidebar() {
 
   const sidebarContent = (isMobile = false) => (
     <>
-      {!isMobile && (
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-6 z-20 hidden h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:border-indigo-300 hover:text-indigo-600 md:flex"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? <IconChevronRight size={12} /> : <IconChevronLeft size={12} />}
-        </button>
-      )}
 
-      <div className="flex items-center justify-between gap-3 border-b border-gray-50 px-4 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600">
-            <span className="text-xs font-bold text-white">AC</span>
-          </div>
-          <AnimatePresence initial={false}>
-            {(isMobile || !collapsed) && (
+      {/* Brand / Logo */}
+      <div className={`flex items-center gap-3 border-b border-gray-50 px-4 py-5 ${!isMobile && collapsed ? "justify-center" : "justify-between"}`}>
+        <div className="flex items-center overflow-hidden">
+          <AnimatePresence mode="wait" initial={false}>
+            {(isMobile || !collapsed) ? (
               <motion.span
+                key="full-logo"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                className="whitespace-nowrap text-lg font-bold text-gray-900"
+                className="whitespace-nowrap text-2xl font-black tracking-tight text-gray-900"
               >
-                ACARA
+                Acara<span className="text-[#7E57C2]">.</span>
+              </motion.span>
+            ) : (
+              <motion.span
+                key="short-logo"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="whitespace-nowrap text-2xl font-black tracking-tight text-gray-900 text-center"
+              >
+                A<span className="text-[#7E57C2]">.</span>
               </motion.span>
             )}
           </AnimatePresence>
@@ -111,18 +112,16 @@ export function AdminSidebar() {
             <button
               key={href}
               onClick={() => handleNavigate(href)}
-              className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
-                isActive
-                  ? "bg-indigo-50 text-indigo-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
+              className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${isActive
+                ? "bg-indigo-50 text-indigo-700"
+                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
             >
               <div
-                className={`shrink-0 transition-colors ${
-                  isActive
-                    ? "text-indigo-600"
-                    : "text-gray-400 group-hover:text-gray-600"
-                }`}
+                className={`shrink-0 transition-colors ${isActive
+                  ? "text-indigo-600"
+                  : "text-gray-400 group-hover:text-gray-600"
+                  }`}
               >
                 <Icon size={18} />
               </div>
@@ -153,9 +152,8 @@ export function AdminSidebar() {
 
       <div className="border-t border-gray-100 p-3">
         <div
-          className={`flex items-center gap-3 rounded-xl px-2 py-2 ${
-            !isMobile && collapsed ? "justify-center" : ""
-          }`}
+          className={`flex items-center gap-3 rounded-xl px-2 py-2 ${!isMobile && collapsed ? "justify-center" : ""
+            }`}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600">
             <span className="text-xs font-semibold text-white">{initials}</span>
@@ -180,9 +178,8 @@ export function AdminSidebar() {
 
         <button
           onClick={handleLogout}
-          className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 ${
-            !isMobile && collapsed ? "justify-center" : ""
-          }`}
+          className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 ${!isMobile && collapsed ? "justify-center" : ""
+            }`}
         >
           <IconLogout size={18} />
           <AnimatePresence initial={false}>
@@ -212,13 +209,24 @@ export function AdminSidebar() {
         <IconMenu2 size={20} />
       </button>
 
-      <motion.aside
-        animate={{ width: collapsed ? 72 : 240 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="relative z-10 hidden h-screen shrink-0 overflow-hidden border-r border-gray-100 bg-white shadow-sm md:flex md:flex-col"
-      >
-        {sidebarContent()}
-      </motion.aside>
+      {/* Desktop sidebar */}
+      <div className="relative z-10 hidden h-screen shrink-0 md:flex">
+        <motion.aside
+          animate={{ width: collapsed ? 72 : 240 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="flex h-full w-full flex-col overflow-hidden border-r border-gray-100 bg-white shadow-sm"
+        >
+          {sidebarContent()}
+        </motion.aside>
+
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute -right-3 top-6 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:border-indigo-300 hover:text-indigo-600"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <IconChevronRight size={12} /> : <IconChevronLeft size={12} />}
+        </button>
+      </div>
 
       <AnimatePresence>
         {mobileOpen && (
