@@ -14,6 +14,7 @@ import {
   IconUsers,
   IconX,
 } from "@tabler/icons-react";
+import { performLogout } from "../../../lib/auth";
 
 const navItems = [
   { label: "Dashboard", href: "/admin/dashboard", icon: IconLayoutDashboard },

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { performLogout } from "../../../lib/auth";
 
 const Navbar = () => {
   const navigate = useNavigate();

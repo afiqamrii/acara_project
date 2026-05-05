@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import api from "../../../lib/Api";
 import { AxiosError } from "axios";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import Navbar from "../../header/pages/navbar";
 import { usePageTitle } from "../../../utils/usePageTitle";
 
 import { FiEye, FiEyeOff } from "react-icons/fi";
@@ -30,6 +29,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const [successMsg, setSuccessMsg] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [requiresVerification, setRequiresVerification] = useState(false);
@@ -43,6 +43,14 @@ const Login: React.FC = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+
+    if (params.get("expired") === "1") {
+      alert("Session expired. Please login again.");
+    }
+  }, [location.search]);
 
   const handleResend = async () => {
     setResendLoading(true);
@@ -116,19 +124,9 @@ const Login: React.FC = () => {
       }
 
       setErrorMsg(message);
-    } finally {
+  } finally {
       setLoading(false);
     }
-
-    const location = useLocation();
-
-    useEffect(() => {
-      const params = new URLSearchParams(location.search);
-
-      if (params.get("expired") === "1") {
-        alert("Session expired. Please login again.");
-      }
-    }, []);
   };
 
   return (
