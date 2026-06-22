@@ -19,11 +19,11 @@ class BookingController extends Controller
             ->where('bookings.user_id', $userId)
             ->where('bookings.status', 'cart')
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
-            ->join(
+            ->leftJoin(
                 DB::raw('(SELECT user_id, MAX(id) as id FROM vendor_profiles GROUP BY user_id) as vp_latest'),
                 'service_profiles.user_id', '=', 'vp_latest.user_id'
             )
-            ->join('vendor_profiles', 'vp_latest.id', '=', 'vendor_profiles.id')
+            ->leftJoin('vendor_profiles', 'vp_latest.id', '=', 'vendor_profiles.id')
             ->select([
                 'bookings.id',
                 'bookings.selected_date',
@@ -50,11 +50,11 @@ class BookingController extends Controller
                     'service_id'    => $item->service_id,
                     'service_name'  => $item->service_name,
                     'category'      => $item->service_category,
-                    'vendor'        => $item->business_name,
+                    'vendor'        => $item->business_name ?? 'Unknown Vendor',
                     'location'      => $location ?: 'Malaysia',
                     'price'         => 'RM ' . number_format($item->pricing_starting_from, 2),
                     'price_value'   => (float) $item->pricing_starting_from,
-                    'pricing_unit'  => $item->pricing_unit,
+                    'pricing_unit'  => $item->pricing_unit ?? 'pax',
                     'selected_date' => $item->selected_date->format('Y-m-d'),
                 ];
             });
@@ -142,7 +142,9 @@ class BookingController extends Controller
             return response()->json(['message' => 'Your cart is empty.'], 422);
         }
 
-        // Validate all dates still available before committing
+        // Validate all dates still available before committing.
+        // ServiceAvailability is the single source of truth — if the vendor
+        // re-opened a booked date it will exist here, allowing multiple bookings.
         $unavailableIds = [];
         foreach ($cartItems as $item) {
             $dateStr = $item->selected_date->format('Y-m-d');
@@ -151,12 +153,7 @@ class BookingController extends Controller
                 ->where('available_date', $dateStr)
                 ->exists();
 
-            $alreadyBooked = Booking::where('service_profile_id', $item->service_profile_id)
-                ->where('selected_date', $dateStr)
-                ->whereIn('status', ['pending', 'confirmed'])
-                ->exists();
-
-            if (! $stillAvailable || $alreadyBooked) {
+            if (! $stillAvailable) {
                 $unavailableIds[] = $item->id;
             }
         }

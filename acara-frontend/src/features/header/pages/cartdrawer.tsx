@@ -38,7 +38,7 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
   const [error, setError] = useState<string | null>(null);
   const [unavailableIds, setUnavailableIds] = useState<number[]>([]);
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError } = useQuery({
     queryKey: ['cart'],
     queryFn: fetchCart,
     staleTime: 1000 * 30,
@@ -141,6 +141,16 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
                   Array.from({ length: 3 }).map((_, i) => (
                     <div key={i} className="h-28 rounded-2xl bg-gray-100 animate-pulse" />
                   ))
+                ) : isError ? (
+                  <div className="flex flex-col items-center justify-center h-full pt-16 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-8 h-8 text-red-400">
+                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                    </div>
+                    <p className="font-semibold text-gray-500">Failed to load cart</p>
+                    <p className="text-xs text-gray-400 mt-1">Please refresh the page and try again</p>
+                  </div>
                 ) : items.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full pt-16 text-center">
                     <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-4">

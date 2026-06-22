@@ -162,9 +162,9 @@ const ServiceDetailCard: React.FC<{ service: VendorService; selectedDatesCount: 
                         {service.pricing_unit && (
                             <span className="text-gray-400">/ {service.pricing_unit}</span>
                         )}
-                        {service.pricing_description && (
+                        {/* {service.pricing_description && (
                             <span className="text-gray-400 text-xs">— {service.pricing_description}</span>
-                        )}
+                        )} */}
                     </div>
                 )}
 
@@ -243,7 +243,8 @@ const CalendarPanel: React.FC<{ service: VendorService }> = ({ service }) => {
 
     const reopenMutation = useMutation({
         mutationFn: reopenDate,
-        onSuccess: () => {
+        onSuccess: (_, { date }) => {
+            setSelectedDates(prev => new Set([...prev, date]));
             queryClient.invalidateQueries({ queryKey: ['vendor-availability', service.id] });
             setUnlockTarget(null);
         },
@@ -531,7 +532,7 @@ const VendorAvailability: React.FC = () => {
         <main className="flex-1 overflow-y-auto bg-[#f8f7ff] p-4 sm:p-6">
             <div className="max-w-4xl mx-auto">
 
-                <div className="mb-6 pt-12 md:pt-0">
+                <div className="mb-6 pt-12 md:pt-0 text-center">
                     <h1 className="text-5xl font-bold text-gray-900 mb-2">Manage Availability</h1>
                     <p className="text-sm text-gray-400 mt-1">
                         Click dates to toggle availability. Customers only see the dates you mark.
@@ -540,14 +541,14 @@ const VendorAvailability: React.FC = () => {
 
                 {/* Service selector */}
                 <div className="mb-5">
-                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 text-center">
                         Select Service
                     </label>
                     <div className="relative">
                         <select
                             value={selectedServiceId ?? ''}
                             onChange={e => setSelectedServiceId(Number(e.target.value))}
-                            className="w-full appearance-none bg-white border border-gray-200 rounded-2xl px-4 py-3.5 pr-10 text-sm font-semibold text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-colors cursor-pointer"
+                            className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3.5 pr-10 text-sm font-semibold text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-colors cursor-pointer"
                         >
                             {data?.services.map(service => (
                                 <option key={service.id} value={service.id}>
@@ -562,7 +563,7 @@ const VendorAvailability: React.FC = () => {
                         </div>
                     </div>
                     {data?.services && data.services.length > 1 && (
-                        <p className="mt-1.5 text-xs text-gray-400">
+                        <p className="mt-1.5 text-xs text-gray-400 text-center">
                             {data.services.length} services — each has its own availability calendar
                         </p>
                     )}

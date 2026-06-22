@@ -156,7 +156,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
 
     const addToCartMutation = useMutation({
         mutationFn: (data: { service_id: number; date: string }) =>
-            import('../../../lib/Api').then(m => m.default.post('/bookings/cart', data)),
+            api.post('/bookings/cart', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['cart'] });
             setCartError(null);
@@ -368,8 +368,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
                                         className="border-t border-gray-100 px-6 py-4"
                                     >
                                         {cartError && (
-                                            <div className="mb-3 p-3 bg-red-50 border border-red-100 rounded-2xl text-xs text-red-600">
-                                                {cartError}
+                                            <div className={`mb-3 p-3 rounded-2xl text-xs border ${cartError.includes('already in your cart') ? 'bg-purple-50 border-purple-100 text-purple-700' : 'bg-red-50 border-red-100 text-red-600'}`}>
+                                                {cartError.includes('already in your cart')
+                                                    ? 'This item is already in your cart. Open the Cart in the sidebar to review it.'
+                                                    : cartError}
                                             </div>
                                         )}
                                         <div className="flex items-start justify-between gap-3 mb-3">
@@ -387,10 +389,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
                                         <motion.button
                                             whileTap={{ scale: 0.97 }}
                                             onClick={() => addToCartMutation.mutate({ service_id: service.id, date: selectedDate })}
-                                            disabled={addToCartMutation.isPending}
-                                            className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-70 text-white py-3 rounded-2xl font-bold text-sm transition-colors shadow-lg shadow-purple-200"
+                                            disabled={addToCartMutation.isPending || cartError?.includes('already in your cart')}
+                                            className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 rounded-2xl font-bold text-sm transition-colors shadow-lg shadow-purple-200"
                                         >
-                                            {addToCartMutation.isPending ? 'Adding...' : 'Add to Cart'}
+                                            {addToCartMutation.isPending ? 'Adding...' : cartError?.includes('already in your cart') ? 'Already in Cart' : 'Add to Cart'}
                                         </motion.button>
                                     </motion.div>
                                 )}
