@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import type React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -18,15 +19,18 @@ import IconStar from "@tabler/icons-react/dist/esm/icons/IconStar.mjs";
 import IconUser from "@tabler/icons-react/dist/esm/icons/IconUser.mjs";
 import IconX from "@tabler/icons-react/dist/esm/icons/IconX.mjs";
 import IconCalendarStats from "@tabler/icons-react/dist/esm/icons/IconCalendarStats.mjs";
+import IconClipboardCheck from "@tabler/icons-react/dist/esm/icons/IconClipboardCheck.mjs";
 import { fetchCart } from "./cartdrawer";
+import { useCurrentUser } from "../../../hooks/useCurrentUser";
 
-const navItems = [
+const navItems: { label: string; href: string; icon: React.ElementType; roles?: string[] }[] = [
   { label: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard },
   { label: "My Events", href: "/events", icon: IconCalendarEvent },
   { label: "Marketplace", href: "/marketplace", icon: IconShoppingBag },
   { label: "Bookings", href: "/bookings", icon: IconReceipt },
   { label: "Reviews", href: "/reviews", icon: IconStar },
-  { label: "Service Availability", href: "/vendor/availability", icon: IconCalendarStats },
+  { label: "Service Availability", href: "/vendor/availability", icon: IconCalendarStats, roles: ["vendor"] },
+  { label: "Booking Requests", href: "/vendor/bookings", icon: IconClipboardCheck, roles: ["vendor"] },
   { label: "Notifications", href: "/notifications", icon: IconBell },
   { label: "Profile", href: "/profile", icon: IconUser },
   { label: "Settings", href: "/settings", icon: IconSettings },
@@ -49,8 +53,14 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
   });
   const cartCount = cartData?.items?.length ?? 0;
 
-  const userName = localStorage.getItem("user_name") || "User";
-  const userEmail = localStorage.getItem("user_email") || "";
+  const { data: currentUser } = useCurrentUser();
+
+  const userName  = currentUser?.name  ?? localStorage.getItem("user_name")  ?? "User";
+  const userEmail = currentUser?.email ?? localStorage.getItem("user_email") ?? "";
+  const userRole  = currentUser?.role  ?? localStorage.getItem("role")       ?? "";
+  const avatarUrl = currentUser?.avatar_url ?? null;
+
+  const visibleNavItems = navItems.filter(item => !item.roles || item.roles.includes(userRole));
 
   const initials = userName
     .split(" ")
@@ -150,7 +160,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
 
         <div className="my-1 border-t border-gray-50" />
 
-        {navItems.map(({ label, href, icon: Icon }) => {
+        {visibleNavItems.map(({ label, href, icon: Icon }) => {
           const isActive = location.pathname === href;
 
           return (
@@ -179,7 +189,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -8 }}
-                    className="whitespace-nowrap"
+                    className="whitespace-nowrap flex-1 text-left"
                   >
                     {label}
                   </motion.span>
@@ -203,9 +213,17 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
             !isMobile && collapsed ? "justify-center" : ""
           }`}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600">
-            <span className="text-xs font-semibold text-white">{initials}</span>
-          </div>
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={userName}
+              className="h-8 w-8 shrink-0 rounded-full object-cover ring-2 ring-purple-100"
+            />
+          ) : (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600">
+              <span className="text-xs font-semibold text-white">{initials}</span>
+            </div>
+          )}
 
           <AnimatePresence initial={false}>
             {(isMobile || !collapsed) && (

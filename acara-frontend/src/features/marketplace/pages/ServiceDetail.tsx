@@ -52,7 +52,6 @@ const getImageUrl = (service: ServiceDetailData) => {
         : fallbackImages[service.id % fallbackImages.length];
 };
 
-// ── Calendar helpers ──────────────────────────────────────────────────────────
 const MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
@@ -78,7 +77,6 @@ function formatDateLong(iso: string): string {
     });
 }
 
-// ── Icons ────────────────────────────────────────────────────────────────────
 const IconLocation = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
         <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z" />
@@ -139,7 +137,7 @@ const IconCalendar = () => (
     </svg>
 );
 
-// ── Booking Modal ─────────────────────────────────────────────────────────────
+
 type BookingModalProps = {
     service: ServiceDetailData;
     onClose: () => void;
@@ -405,7 +403,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
     );
 };
 
-// ── Page ─────────────────────────────────────────────────────────────────────
 const ServiceDetail: React.FC = () => {
     const { serviceId } = useParams<{ serviceId: string }>();
     const navigate = useNavigate();

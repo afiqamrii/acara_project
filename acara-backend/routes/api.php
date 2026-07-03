@@ -11,6 +11,8 @@ use App\Http\Controllers\VendorVerificationController;
 use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\VendorBookingController;
+use App\Http\Controllers\ProfileController;
 
 // ─── Public Routes ───────────────────────────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login']);
@@ -31,6 +33,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/email/resend', [AuthController::class, 'resendVerification']);
     Route::post('/profile/complete', [AuthController::class, 'completeProfile']);
+
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile', [ProfileController::class, 'update']);
+    Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar']);
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
 });
 
 // ─── Customer Booking Routes (authenticated) ─────────────────────────────────
@@ -50,6 +57,10 @@ Route::middleware(['auth:sanctum', 'profile.completed'])->group(function () {
     Route::get('/vendor/availability/{serviceId}', [AvailabilityController::class, 'vendorAvailability']);
     Route::put('/vendor/availability/{serviceId}', [AvailabilityController::class, 'sync']);
     Route::post('/vendor/availability/{serviceId}/reopen', [AvailabilityController::class, 'reopenDate']);
+
+    Route::get('/vendor/bookings', [VendorBookingController::class, 'index']);
+    Route::patch('/vendor/bookings/{id}/approve', [VendorBookingController::class, 'approve']);
+    Route::patch('/vendor/bookings/{id}/cancel', [VendorBookingController::class, 'cancel']);
 });
 
 // ─── Admin Routes (authenticated + admin role) ────────────────────────────────

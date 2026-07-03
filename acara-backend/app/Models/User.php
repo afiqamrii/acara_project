@@ -24,6 +24,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'phone_number',
+        'avatar_path',
         'status',
         'profile_completed',
         'invited_by',
@@ -85,5 +86,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function vendorProfile()
     {
         return $this->hasOne(VendorProfile::class);
+    }
+
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class);
     }
 }

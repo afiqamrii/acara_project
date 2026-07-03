@@ -206,10 +206,11 @@ const CalendarPanel: React.FC<{ service: VendorService }> = ({ service }) => {
     const initializedRef = useRef(false);
     const queryClient = useQueryClient();
 
-    const { data, isPending } = useQuery({
+    const { data, isPending, refetch } = useQuery({
         queryKey: ['vendor-availability', service.id],
         queryFn: () => fetchServiceAvailability(service.id),
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 30,
+        refetchInterval: 1000 * 60,
     });
 
     const bookedDates = new Set((data?.booked_dates ?? []).map(b => b.date));
@@ -366,17 +367,29 @@ const CalendarPanel: React.FC<{ service: VendorService }> = ({ service }) => {
                                         }
                                     };
 
+                                    const customers = bookedCustomers.get(iso) ?? [];
+                                    const tooltipTitle = isBooked
+                                        ? customers.length > 0
+                                            ? `Booked by: ${customers.join(', ')}${!isSelected ? ' — click to re-open for more bookings' : ' (open for more)'}`
+                                            : 'Booked — click to re-open'
+                                        : undefined;
+
                                     return (
                                         <button
                                             key={iso}
                                             onClick={handleClick}
                                             disabled={isPast}
                                             className={cellClass}
-                                            title={isBooked && !isSelected ? 'Customer booked — click to re-open' : undefined}
+                                            title={tooltipTitle}
                                         >
                                             {day}
                                             {isBooked && (
-                                                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-500" />
+                                                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5">
+                                                    <span className="w-1 h-1 rounded-full bg-amber-500" />
+                                                    {customers.length > 1 && (
+                                                        <span className="text-[7px] font-bold text-amber-600 leading-none">{customers.length}</span>
+                                                    )}
+                                                </span>
                                             )}
                                         </button>
                                     );
@@ -442,10 +455,24 @@ const CalendarPanel: React.FC<{ service: VendorService }> = ({ service }) => {
 
                     {/* Save bar */}
                     <div className="mt-4 flex items-center justify-between bg-white rounded-[20px] shadow-sm border border-gray-100 px-6 py-4">
-                        <p className="text-sm text-gray-500">
-                            <span className="font-bold text-purple-700">{selectedDates.size}</span>
-                            {' '}date{selectedDates.size !== 1 ? 's' : ''} selected
-                        </p>
+                        <div className="flex items-center gap-3">
+                            <p className="text-sm text-gray-500">
+                                <span className="font-bold text-purple-700">{selectedDates.size}</span>
+                                {' '}date{selectedDates.size !== 1 ? 's' : ''} selected
+                            </p>
+                            <button
+                                onClick={() => refetch()}
+                                disabled={isPending}
+                                className="text-xs text-gray-400 hover:text-purple-600 disabled:opacity-40 flex items-center gap-1 transition-colors"
+                                title="Refresh to see latest bookings"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                                    <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+                                    <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+                                </svg>
+                                Refresh
+                            </button>
+                        </div>
                         <div className="flex items-center gap-3">
                             <AnimatePresence>
                                 {saveSuccess && (

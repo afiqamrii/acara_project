@@ -22,7 +22,9 @@ import UserLayout from './components/layouts/UserLayout';
 import AdminLayout from './components/layouts/AdminLayout';
 const ServiceDetail = lazy(() => import('./features/marketplace/pages/ServiceDetail'));
 const VendorAvailability = lazy(() => import('./features/vendor/pages/VendorAvailability'));
+const VendorBookings = lazy(() => import('./features/vendor/pages/VendorBookings'));
 const ServiceVerificationQueue = lazy(() => import('./features/dashboard/pages/ServiceVerificationQueue'));
+const UserProfile = lazy(() => import('./features/profile/pages/UserProfile'));
 
 
 function App() {
@@ -46,12 +48,13 @@ function App() {
               <Route path="/marketplace/:serviceId" element={<ServiceDetail />} />
               <Route path="/vendor/register" element={<VendorRegister />} />
               <Route path="/vendor/availability" element={<VendorAvailability />} />
+              <Route path="/vendor/bookings" element={<VendorBookings />} />
               <Route path="/service/register" element={<ServiceRegister />} />
               <Route path="/events" element={<ComingSoon title="My Events" description="Manage all your upcoming and past events in one place. Create, edit, and track event status seamlessly." />} />
               <Route path="/bookings" element={<ComingSoon title="My Bookings" description="View and manage your vendor bookings, check payment status, and coordinate with service providers." />} />
               <Route path="/reviews" element={<ComingSoon title="Reviews" description="Write and read reviews for vendors. Help the community by sharing your experience." />} />
               <Route path="/notifications" element={<ComingSoon title="Notifications" description="Stay on top of updates - booking confirmations, vendor replies, and platform announcements." />} />
-              <Route path="/profile" element={<ComingSoon title="My Profile" description="Update your personal information, profile picture, and account preferences." />} />
+              <Route path="/profile" element={<UserProfile />} />
               <Route path="/settings" element={<ComingSoon title="Settings" description="Manage your account settings, notification preferences, and security options." />} />
               <Route path="/crew/jobs" element={<ComingSoon title="Crew Job Board" description="Browse available event crew positions, submit applications, and manage your active assignments." />} />
             </Route>
