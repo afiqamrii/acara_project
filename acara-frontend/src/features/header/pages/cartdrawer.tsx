@@ -59,6 +59,7 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
     mutationFn: () => api.post('/bookings/confirm'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
       setConfirmed(true);
       setError(null);
     },

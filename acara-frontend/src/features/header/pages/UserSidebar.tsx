@@ -5,9 +5,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import IconBell from "@tabler/icons-react/dist/esm/icons/IconBell.mjs";
+import IconBriefcase from "@tabler/icons-react/dist/esm/icons/IconBriefcase.mjs";
 import IconCalendarEvent from "@tabler/icons-react/dist/esm/icons/IconCalendarEvent.mjs";
 import IconChevronLeft from "@tabler/icons-react/dist/esm/icons/IconChevronLeft.mjs";
 import IconChevronRight from "@tabler/icons-react/dist/esm/icons/IconChevronRight.mjs";
+import IconCirclePlus from "@tabler/icons-react/dist/esm/icons/IconCirclePlus.mjs";
 import IconLayoutDashboard from "@tabler/icons-react/dist/esm/icons/IconLayoutDashboard.mjs";
 import IconLogout from "@tabler/icons-react/dist/esm/icons/IconLogout.mjs";
 import IconMenu2 from "@tabler/icons-react/dist/esm/icons/IconMenu2.mjs";
@@ -24,13 +26,15 @@ import { fetchCart } from "./cartdrawer";
 import { useCurrentUser } from "../../../hooks/useCurrentUser";
 
 const navItems: { label: string; href: string; icon: React.ElementType; roles?: string[] }[] = [
-  { label: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard },
-  { label: "My Events", href: "/events", icon: IconCalendarEvent },
+  { label: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard, roles: ["user"] },
+  { label: "My Events", href: "/events", icon: IconCalendarEvent, roles: ["user"] },
   { label: "Marketplace", href: "/marketplace", icon: IconShoppingBag },
-  { label: "Bookings", href: "/bookings", icon: IconReceipt },
+  { label: "Bookings", href: "/bookings", icon: IconReceipt, roles: ["user"] },
   { label: "Reviews", href: "/reviews", icon: IconStar },
   { label: "Service Availability", href: "/vendor/availability", icon: IconCalendarStats, roles: ["vendor"] },
   { label: "Booking Requests", href: "/vendor/bookings", icon: IconClipboardCheck, roles: ["vendor"] },
+  { label: "Add Service", href: "/service/register", icon: IconCirclePlus, roles: ["vendor"] },
+  { label: "Vendor Profile", href: "/vendor/register", icon: IconBriefcase, roles: ["vendor"] },
   { label: "Notifications", href: "/notifications", icon: IconBell },
   { label: "Profile", href: "/profile", icon: IconUser },
   { label: "Settings", href: "/settings", icon: IconSettings },
@@ -45,11 +49,13 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const storedRole = localStorage.getItem("role") ?? "user";
 
   const { data: cartData } = useQuery({
     queryKey: ['cart'],
     queryFn: fetchCart,
     staleTime: 1000 * 30,
+    enabled: storedRole === "user",
   });
   const cartCount = cartData?.items?.length ?? 0;
 
@@ -57,7 +63,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
 
   const userName  = currentUser?.name  ?? localStorage.getItem("user_name")  ?? "User";
   const userEmail = currentUser?.email ?? localStorage.getItem("user_email") ?? "";
-  const userRole  = currentUser?.role  ?? localStorage.getItem("role")       ?? "";
+  const userRole  = currentUser?.role  ?? storedRole;
   const avatarUrl = currentUser?.avatar_url ?? null;
 
   const visibleNavItems = navItems.filter(item => !item.roles || item.roles.includes(userRole));
@@ -123,7 +129,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
         {/* Cart button */}
-        <button
+        {userRole === "user" && <button
           onClick={() => { onCartOpen(); if (isMobile) setMobileOpen(false); }}
           className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
         >
@@ -156,7 +162,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
               {cartCount}
             </motion.span>
           )}
-        </button>
+        </button>}
 
         <div className="my-1 border-t border-gray-50" />
 

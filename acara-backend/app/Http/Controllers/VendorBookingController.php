@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\ServiceAvailability;
 use App\Models\ServiceProfile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class VendorBookingController extends Controller
 {
@@ -113,7 +115,16 @@ class VendorBookingController extends Controller
             return response()->json(['message' => 'Booking not found or already cancelled.'], 404);
         }
 
-        $booking->update(['status' => 'cancelled']);
+        DB::transaction(function () use ($booking) {
+            $booking->update(['status' => 'cancelled']);
+
+            if ($booking->selected_date->gte(today())) {
+                ServiceAvailability::firstOrCreate([
+                    'service_profile_id' => $booking->service_profile_id,
+                    'available_date' => $booking->selected_date->format('Y-m-d'),
+                ]);
+            }
+        });
 
         return response()->json(['message' => 'Booking cancelled.', 'status' => 'cancelled']);
     }

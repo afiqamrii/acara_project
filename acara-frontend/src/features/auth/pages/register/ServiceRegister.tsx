@@ -1,17 +1,39 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { registerService } from "../../vendorApi";
+import { fetchVendorProfileStatus, registerService, type VendorProfileStatus } from "../../vendorApi";
 
 // import { UserSidebar } from "../../../header/pages/UserSidebar";
 import Stepper from "../../../../components/common/Stepper";
 import { capitalizeFirstLetter, toTitleCase } from "../../../../utils/formHelpers";
 import { usePageTitle } from "../../../../utils/usePageTitle";
 
+const MAX_PORTFOLIO_SIZE_BYTES = 10 * 1024 * 1024;
+const PORTFOLIO_ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
+const PORTFOLIO_ALLOWED_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png"];
+
+const getApiErrorMessage = (err: any) => {
+    const data = err.response?.data;
+
+    if (data?.errors && typeof data.errors === "object") {
+        const firstMessage = Object.values(data.errors)
+            .flat()
+            .find((message): message is string => typeof message === "string");
+
+        if (firstMessage) {
+            return firstMessage;
+        }
+    }
+
+    return data?.message || "Failed to submit service registration. Please try again.";
+};
+
 const ServiceRegister: React.FC = () => {
     usePageTitle("Service Registration");
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
+    const [statusLoading, setStatusLoading] = useState(true);
+    const [vendorStatus, setVendorStatus] = useState<VendorProfileStatus | null>(null);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
@@ -35,6 +57,34 @@ const ServiceRegister: React.FC = () => {
     // Validation State
     const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
     const [attemptedNext, setAttemptedNext] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+
+        const loadVendorStatus = async () => {
+            try {
+                const status = await fetchVendorProfileStatus();
+                if (active) {
+                    setVendorStatus(status);
+                }
+            } catch (err: any) {
+                if (active) {
+                    setVendorStatus(null);
+                    setSubmitError(err.response?.data?.message || "Only approved vendors can register services.");
+                }
+            } finally {
+                if (active) {
+                    setStatusLoading(false);
+                }
+            }
+        };
+
+        loadVendorStatus();
+
+        return () => {
+            active = false;
+        };
+    }, []);
 
     // Handlers
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -69,7 +119,29 @@ const ServiceRegister: React.FC = () => {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, files: fileList } = e.target;
         if (fileList && fileList[0]) {
-            setFiles((prev) => ({ ...prev, [name]: fileList[0] }));
+            const file = fileList[0];
+            const lowerName = file.name.toLowerCase();
+            const hasAllowedExtension = PORTFOLIO_ALLOWED_EXTENSIONS.some((extension) => lowerName.endsWith(extension));
+            const hasAllowedType = PORTFOLIO_ALLOWED_TYPES.has(file.type);
+
+            if (!hasAllowedType && !hasAllowedExtension) {
+                setFiles((prev) => ({ ...prev, [name]: null }));
+                setErrors(prev => ({ ...prev, [name]: true }));
+                setSubmitError("Portfolio must be a PDF, JPG, JPEG, or PNG file.");
+                e.target.value = "";
+                return;
+            }
+
+            if (file.size > MAX_PORTFOLIO_SIZE_BYTES) {
+                setFiles((prev) => ({ ...prev, [name]: null }));
+                setErrors(prev => ({ ...prev, [name]: true }));
+                setSubmitError("Portfolio file must be 10MB or smaller.");
+                e.target.value = "";
+                return;
+            }
+
+            setFiles((prev) => ({ ...prev, [name]: file }));
+            setSubmitError(null);
             if (errors[name]) {
                 setErrors(prev => ({ ...prev, [name]: false }));
             }
@@ -114,6 +186,11 @@ const ServiceRegister: React.FC = () => {
     };
 
     const handleSubmit = async () => {
+        if (!vendorStatus?.can_register_services) {
+            setSubmitError("Your vendor profile must be approved before you can register services.");
+            return;
+        }
+
         // Validate all previous steps before submitting
         const isStep1Valid = validateStep(1);
         const isStep2Valid = validateStep(2);
@@ -157,7 +234,17 @@ const ServiceRegister: React.FC = () => {
             setSuccess(true);
         } catch (err: any) {
             console.error("Service registration failed:", err);
-            setSubmitError(err.response?.data?.message || "Failed to submit service registration. Please try again.");
+            const apiErrors = err.response?.data?.errors;
+            if (apiErrors && typeof apiErrors === "object") {
+                const nextErrors = Object.keys(apiErrors).reduce<{ [key: string]: boolean }>((acc, key) => {
+                    acc[key] = true;
+                    return acc;
+                }, {});
+
+                setErrors(prev => ({ ...prev, ...nextErrors }));
+                setAttemptedNext(true);
+            }
+            setSubmitError(getApiErrorMessage(err));
             setIsLoading(false);
         }
     };
@@ -203,6 +290,76 @@ const ServiceRegister: React.FC = () => {
                         </button>
                     </motion.div>
                 </div>
+            </div>
+        );
+    }
+
+    if (statusLoading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-gray-50 px-4">
+                <div className="rounded-3xl bg-white p-8 text-center shadow-xl">
+                    <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-purple-100 border-t-[#7E57C2]" />
+                    <p className="font-semibold text-gray-800">Checking vendor approval status...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!vendorStatus?.can_register_services) {
+        const role = localStorage.getItem("role");
+        const isVendor = role === "vendor";
+        const status = vendorStatus?.status;
+        const title = !isVendor
+            ? "Vendor account required"
+            : !vendorStatus?.profile_exists
+                ? "Complete vendor profile first"
+                : status === "pending_verification"
+                    ? "Vendor profile under review"
+                    : status === "rejected"
+                        ? "Vendor profile needs resubmission"
+                        : "Vendor approval required";
+        const description = !isVendor
+            ? "Please register or log in as a vendor before adding services."
+            : !vendorStatus?.profile_exists
+                ? "Submit your business details and SSM document so admin can review your vendor profile."
+                : status === "pending_verification"
+                    ? "Admin must approve your vendor business profile before service registration opens."
+                    : status === "rejected"
+                        ? "Your vendor profile was rejected. Update and resubmit your business details for review."
+                        : "Your vendor profile must be approved by admin before you can register services.";
+
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-gray-50 px-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-full max-w-lg rounded-3xl bg-white p-8 text-center shadow-xl"
+                >
+                    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-50 text-[#7E57C2]">
+                        <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4M7 3h10a2 2 0 012 2v14l-7-3-7 3V5a2 2 0 012-2z" />
+                        </svg>
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+                    <p className="mt-3 text-sm leading-relaxed text-gray-500">{description}</p>
+
+                    <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                        <button
+                            type="button"
+                            onClick={() => navigate("/vendor/register")}
+                            className="rounded-xl bg-[#7E57C2] px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#6C4AB8]"
+                        >
+                            {status === "rejected" || !vendorStatus?.profile_exists ? "Go to Vendor Profile" : "View Vendor Profile"}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => navigate("/dashboard")}
+                            className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-600 transition-colors hover:bg-white"
+                        >
+                            Back to Dashboard
+                        </button>
+                    </div>
+                </motion.div>
             </div>
         );
     }

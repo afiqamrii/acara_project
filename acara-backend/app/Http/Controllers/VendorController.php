@@ -9,6 +9,20 @@ use Illuminate\Support\Facades\Validator;
 
 class VendorController extends Controller
 {
+    public function status(Request $request)
+    {
+        $vendorProfile = VendorProfile::where('user_id', $request->user()->id)
+            ->latest('id')
+            ->first();
+
+        return response()->json([
+            'profile_exists' => (bool) $vendorProfile,
+            'status' => $vendorProfile?->status,
+            'business_name' => $vendorProfile?->business_name,
+            'can_register_services' => $vendorProfile?->status === 'approved',
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [

@@ -185,9 +185,9 @@ const VendorRegister: React.FC = () => {
                                 />
                             </svg>
                         </motion.div>
-                        <h2 className="text-3xl font-bold text-gray-900 mb-2">Vendor Details Saved</h2>
+                        <h2 className="text-3xl font-bold text-gray-900 mb-2">Vendor Profile Submitted</h2>
                         <p className="text-gray-600 mb-8">
-                            Your vendor business details have been submitted. We can continue building the rest of the vendor registration next.
+                            Your business details are now pending admin approval. Service registration will unlock once your vendor profile is approved.
                         </p>
                         <button
                             onClick={() => navigate("/dashboard")}

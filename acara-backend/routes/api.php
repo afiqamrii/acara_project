@@ -41,18 +41,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
 });
 
 // ─── Customer Booking Routes (authenticated) ─────────────────────────────────
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'role:user'])->group(function () {
     Route::get('/bookings/cart', [BookingController::class, 'cartIndex']);
     Route::post('/bookings/cart', [BookingController::class, 'addToCart']);
     Route::delete('/bookings/cart/{id}', [BookingController::class, 'removeFromCart']);
     Route::post('/bookings/confirm', [BookingController::class, 'confirmCart']);
     Route::get('/bookings', [BookingController::class, 'myBookings']);
+    Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
 });
 
 // ─── Vendor Routes (authenticated + completed profile) ────────────────────────
-Route::middleware(['auth:sanctum', 'profile.completed'])->group(function () {
+Route::middleware(['auth:sanctum', 'profile.completed', 'role:vendor'])->group(function () {
     Route::post('/service/register', [ServiceController::class, 'store']);
     Route::post('/vendor/register', [VendorController::class, 'store']);
+    Route::get('/vendor/profile/status', [VendorController::class, 'status']);
     Route::get('/vendor/services', [AvailabilityController::class, 'vendorServices']);
     Route::get('/vendor/availability/{serviceId}', [AvailabilityController::class, 'vendorAvailability']);
     Route::put('/vendor/availability/{serviceId}', [AvailabilityController::class, 'sync']);
@@ -72,6 +74,8 @@ Route::middleware(['auth:sanctum', 'role:admin,super_admin'])->group(function ()
     Route::get('/admin/vendors', [VendorVerificationController::class, 'index']);
     Route::patch('/admin/vendors/{id}/approve', [VendorVerificationController::class, 'approve']);
     Route::patch('/admin/vendors/{id}/reject', [VendorVerificationController::class, 'reject']);
+
+    Route::get('/admin/bookings', [BookingController::class, 'adminBookings']);
 });
 
 // ─── Super Admin Routes ───────────────────────────────────────────────────────

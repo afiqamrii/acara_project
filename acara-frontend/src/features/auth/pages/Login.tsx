@@ -9,7 +9,7 @@ import { setAuthSession } from "../../../lib/auth";
 
 type LoginResponse = {
   message: string;
-  role: "user" | "vendor" | "crew" | "admin";
+  role: "user" | "vendor" | "crew" | "admin" | "super_admin";
   token: string;
   user: {
     id: number;
@@ -106,6 +106,7 @@ const Login: React.FC = () => {
           navigate("/crew/jobs");
           break;
         case "admin":
+        case "super_admin":
           navigate("/admin/dashboard");
           break;
         default:

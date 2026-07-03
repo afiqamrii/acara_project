@@ -408,6 +408,7 @@ const ServiceDetail: React.FC = () => {
     const navigate = useNavigate();
     const [imgLoaded, setImgLoaded] = useState(false);
     const [showBookingModal, setShowBookingModal] = useState(false);
+    const canBook = localStorage.getItem("role") === "user";
 
     const { data: service, isPending, isError } = useQuery({
         queryKey: ['marketplace-service', serviceId],
@@ -569,14 +570,14 @@ const ServiceDetail: React.FC = () => {
                         )}
 
                         <div className="mt-6 space-y-3">
-                            <motion.button
+                            {canBook && <motion.button
                                 whileTap={{ scale: 0.97 }}
                                 onClick={() => setShowBookingModal(true)}
                                 className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-2xl font-bold transition-colors shadow-lg shadow-purple-200 flex items-center justify-center gap-2"
                             >
                                 <IconCalendar />
                                 Book Now
-                            </motion.button>
+                            </motion.button>}
                             <button
                                 onClick={() => navigate('/marketplace')}
                                 className="w-full border border-gray-200 text-gray-600 hover:bg-gray-50 py-3 rounded-2xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
@@ -591,7 +592,7 @@ const ServiceDetail: React.FC = () => {
 
             {/* ── Booking modal ── */}
             <AnimatePresence>
-                {showBookingModal && (
+                {canBook && showBookingModal && (
                     <BookingModal
                         service={service}
                         onClose={() => setShowBookingModal(false)}

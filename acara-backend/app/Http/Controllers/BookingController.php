@@ -10,6 +10,92 @@ use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
 {
+    private function referenceFor(int $id): string
+    {
+        return 'ACR-' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
+    }
+
+    private function locationFrom($item): string
+    {
+        return trim(implode(', ', array_filter([
+            $item->service_area_town,
+            $item->service_area_state,
+        ]))) ?: 'Malaysia';
+    }
+
+    private function priceLabel($amount): string
+    {
+        return 'RM ' . number_format((float) $amount, 2);
+    }
+
+    private function formatDate($value): string
+    {
+        return method_exists($value, 'format')
+            ? $value->format('Y-m-d')
+            : date('Y-m-d', strtotime($value));
+    }
+
+    private function formatDateTime($value): ?string
+    {
+        if (! $value) {
+            return null;
+        }
+
+        return method_exists($value, 'toDateTimeString')
+            ? $value->toDateTimeString()
+            : date('Y-m-d H:i:s', strtotime($value));
+    }
+
+    private function releaseDateIfFuture(Booking $booking): void
+    {
+        if ($booking->selected_date->lt(today())) {
+            return;
+        }
+
+        ServiceAvailability::firstOrCreate([
+            'service_profile_id' => $booking->service_profile_id,
+            'available_date'     => $booking->selected_date->format('Y-m-d'),
+        ]);
+    }
+
+    private function mapCustomerBooking($item): array
+    {
+        $priceValue = (float) $item->pricing_starting_from;
+        $selectedDate = $this->formatDate($item->selected_date);
+
+        return [
+            'id'                => $item->id,
+            'booking_reference' => $this->referenceFor((int) $item->id),
+            'service_id'        => $item->service_id,
+            'service_name'      => $item->service_name,
+            'event_name'        => $item->service_name,
+            'category'          => $item->service_category,
+            'vendor'            => $item->business_name,
+            'vendor_name'       => $item->business_name,
+            'location'          => $this->locationFrom($item),
+            'price'             => $this->priceLabel($priceValue),
+            'price_value'       => $priceValue,
+            'total_amount'      => $priceValue,
+            'pricing_unit'      => $item->pricing_unit,
+            'selected_date'     => $selectedDate,
+            'event_date'        => $selectedDate,
+            'status'            => $item->status,
+            'payment_status'    => $item->status === 'confirmed' ? 'pending' : 'unpaid',
+            'booked_at'         => $this->formatDateTime($item->created_at),
+        ];
+    }
+
+    private function bookingSummary($items): array
+    {
+        return [
+            'total'      => $items->count(),
+            'pending'    => $items->where('status', 'pending')->count(),
+            'confirmed'  => $items->where('status', 'confirmed')->count(),
+            'cancelled'  => $items->where('status', 'cancelled')->count(),
+            'estimate'   => round((float) $items->sum('price_value'), 2),
+        ];
+    }
+
     // GET /bookings/cart
     public function cartIndex(Request $request)
     {
@@ -19,11 +105,11 @@ class BookingController extends Controller
             ->where('bookings.user_id', $userId)
             ->where('bookings.status', 'cart')
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
-            ->leftJoin(
+            ->join(
                 DB::raw('(SELECT user_id, MAX(id) as id FROM vendor_profiles GROUP BY user_id) as vp_latest'),
                 'service_profiles.user_id', '=', 'vp_latest.user_id'
             )
-            ->leftJoin('vendor_profiles', 'vp_latest.id', '=', 'vendor_profiles.id')
+            ->join('vendor_profiles', 'vp_latest.id', '=', 'vendor_profiles.id')
             ->select([
                 'bookings.id',
                 'bookings.selected_date',
@@ -40,22 +126,17 @@ class BookingController extends Controller
             ->orderBy('bookings.created_at', 'desc')
             ->get()
             ->map(function ($item) {
-                $location = trim(implode(', ', array_filter([
-                    $item->service_area_town,
-                    $item->service_area_state,
-                ])));
-
                 return [
                     'id'            => $item->id,
                     'service_id'    => $item->service_id,
                     'service_name'  => $item->service_name,
                     'category'      => $item->service_category,
-                    'vendor'        => $item->business_name ?? 'Unknown Vendor',
-                    'location'      => $location ?: 'Malaysia',
-                    'price'         => 'RM ' . number_format($item->pricing_starting_from, 2),
+                    'vendor'        => $item->business_name,
+                    'location'      => $this->locationFrom($item),
+                    'price'         => $this->priceLabel($item->pricing_starting_from),
                     'price_value'   => (float) $item->pricing_starting_from,
-                    'pricing_unit'  => $item->pricing_unit ?? 'pax',
-                    'selected_date' => $item->selected_date->format('Y-m-d'),
+                    'pricing_unit'  => $item->pricing_unit,
+                    'selected_date' => $this->formatDate($item->selected_date),
                 ];
             });
 
@@ -68,6 +149,7 @@ class BookingController extends Controller
         $validated = $request->validate([
             'service_id' => 'required|integer|exists:service_profiles,id',
             'date'       => 'required|date_format:Y-m-d|after_or_equal:today',
+            'notes'      => 'nullable|string|max:1000',
         ]);
 
         $serviceId = $validated['service_id'];
@@ -105,6 +187,7 @@ class BookingController extends Controller
             'service_profile_id' => $serviceId,
             'selected_date'      => $date,
             'status'             => 'cart',
+            'notes'              => $validated['notes'] ?? null,
         ]);
 
         return response()->json([
@@ -142,21 +225,43 @@ class BookingController extends Controller
             return response()->json(['message' => 'Your cart is empty.'], 422);
         }
 
-        // Validate all dates still available before committing.
-        // ServiceAvailability is the single source of truth — if the vendor
-        // re-opened a booked date it will exist here, allowing multiple bookings.
-        $unavailableIds = [];
-        foreach ($cartItems as $item) {
-            $dateStr = $item->selected_date->format('Y-m-d');
+        $unavailableIds = DB::transaction(function () use ($cartItems) {
+            $lockedItems = [];
+            $unavailableIds = [];
 
-            $stillAvailable = ServiceAvailability::where('service_profile_id', $item->service_profile_id)
-                ->where('available_date', $dateStr)
-                ->exists();
+            foreach ($cartItems as $item) {
+                $dateStr = $item->selected_date->format('Y-m-d');
 
-            if (! $stillAvailable) {
-                $unavailableIds[] = $item->id;
+                $availability = ServiceAvailability::where('service_profile_id', $item->service_profile_id)
+                    ->where('available_date', $dateStr)
+                    ->lockForUpdate()
+                    ->first();
+
+                $alreadyBooked = Booking::where('service_profile_id', $item->service_profile_id)
+                    ->where('selected_date', $dateStr)
+                    ->whereIn('status', ['pending', 'confirmed'])
+                    ->lockForUpdate()
+                    ->exists();
+
+                if (! $availability || $alreadyBooked) {
+                    $unavailableIds[] = $item->id;
+                    continue;
+                }
+
+                $lockedItems[] = [$item, $availability];
             }
-        }
+
+            if (! empty($unavailableIds)) {
+                return $unavailableIds;
+            }
+
+            foreach ($lockedItems as [$item, $availability]) {
+                $availability->delete();
+                $item->update(['status' => 'pending']);
+            }
+
+            return [];
+        });
 
         if (! empty($unavailableIds)) {
             return response()->json([
@@ -165,25 +270,13 @@ class BookingController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($cartItems) {
-            foreach ($cartItems as $item) {
-                $dateStr = $item->selected_date->format('Y-m-d');
-
-                ServiceAvailability::where('service_profile_id', $item->service_profile_id)
-                    ->where('available_date', $dateStr)
-                    ->delete();
-
-                $item->update(['status' => 'pending']);
-            }
-        });
-
         return response()->json([
             'message'       => 'Booking request submitted! Vendors will be notified.',
             'booking_count' => $cartItems->count(),
         ]);
     }
 
-    // GET /bookings — customer booking history
+    // GET /bookings - customer booking history
     public function myBookings(Request $request)
     {
         $userId = $request->user()->id;
@@ -208,25 +301,81 @@ class BookingController extends Controller
                 'service_profiles.pricing_starting_from',
                 'service_profiles.pricing_unit',
                 'vendor_profiles.business_name',
+                'vendor_profiles.service_area_state',
+                'vendor_profiles.service_area_town',
             ])
             ->orderBy('bookings.created_at', 'desc')
             ->get()
+            ->map(fn ($item) => $this->mapCustomerBooking($item));
+
+        return response()->json([
+            'bookings' => $bookings,
+            'stats'    => $this->bookingSummary($bookings),
+        ]);
+    }
+
+    // PATCH /bookings/{id}/cancel - customer cancellation
+    public function cancelBooking(Request $request, int $id)
+    {
+        $booking = Booking::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->first();
+
+        if (! $booking) {
+            return response()->json(['message' => 'Booking not found or cannot be cancelled.'], 404);
+        }
+
+        DB::transaction(function () use ($booking) {
+            $booking->update(['status' => 'cancelled']);
+            $this->releaseDateIfFuture($booking);
+        });
+
+        return response()->json(['message' => 'Booking cancelled.']);
+    }
+
+    // GET /admin/bookings - admin monitor
+    public function adminBookings()
+    {
+        $bookings = Booking::query()
+            ->whereIn('bookings.status', ['pending', 'confirmed', 'cancelled'])
+            ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
+            ->join('users as customers', 'bookings.user_id', '=', 'customers.id')
+            ->join('users as vendors', 'service_profiles.user_id', '=', 'vendors.id')
+            ->leftJoin(
+                DB::raw('(SELECT user_id, MAX(id) as id FROM vendor_profiles GROUP BY user_id) as vp_latest'),
+                'service_profiles.user_id', '=', 'vp_latest.user_id'
+            )
+            ->leftJoin('vendor_profiles', 'vp_latest.id', '=', 'vendor_profiles.id')
+            ->select([
+                'bookings.id',
+                'bookings.selected_date',
+                'bookings.status',
+                'bookings.created_at',
+                'service_profiles.id as service_id',
+                'service_profiles.service_name',
+                'service_profiles.service_category',
+                'service_profiles.pricing_starting_from',
+                'service_profiles.pricing_unit',
+                'customers.name as customer_name',
+                'customers.email as customer_email',
+                DB::raw('COALESCE(vendor_profiles.business_name, vendors.name) as business_name'),
+                'vendor_profiles.service_area_state',
+                'vendor_profiles.service_area_town',
+            ])
+            ->orderByRaw("CASE bookings.status WHEN 'pending' THEN 0 WHEN 'confirmed' THEN 1 ELSE 2 END")
+            ->orderBy('bookings.created_at', 'desc')
+            ->get()
             ->map(function ($item) {
-                return [
-                    'id'            => $item->id,
-                    'service_id'    => $item->service_id,
-                    'service_name'  => $item->service_name,
-                    'category'      => $item->service_category,
-                    'vendor'        => $item->business_name,
-                    'price'         => 'RM ' . number_format($item->pricing_starting_from, 2),
-                    'price_value'   => (float) $item->pricing_starting_from,
-                    'pricing_unit'  => $item->pricing_unit,
-                    'selected_date' => $item->selected_date->format('Y-m-d'),
-                    'status'        => $item->status,
-                    'booked_at'     => $item->created_at->toDateTimeString(),
-                ];
+                return array_merge($this->mapCustomerBooking($item), [
+                    'customer_name'  => $item->customer_name,
+                    'customer_email' => $item->customer_email,
+                ]);
             });
 
-        return response()->json(['bookings' => $bookings]);
+        return response()->json([
+            'bookings' => $bookings,
+            'stats'    => $this->bookingSummary($bookings),
+        ]);
     }
 }

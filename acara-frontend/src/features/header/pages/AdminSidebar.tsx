@@ -8,6 +8,7 @@ import {
   IconLayoutDashboard,
   IconLogout,
   IconMenu2,
+  IconReceipt,
   IconSettings,
   IconShield,
   IconUserCheck,
@@ -20,6 +21,7 @@ const navItems = [
   { label: "Dashboard", href: "/admin/dashboard", icon: IconLayoutDashboard },
   { label: "Service Verifications", href: "/admin/verifications/services", icon: IconShield },
   { label: "Vendor Verifications", href: "/admin/verifications/vendors", icon: IconUserCheck },
+  { label: "Bookings", href: "/admin/bookings", icon: IconReceipt },
   { label: "Users", href: "/admin/users", icon: IconUsers },
   { label: "Settings", href: "/admin/settings", icon: IconSettings },
 ];

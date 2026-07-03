@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ServiceProfile;
+use App\Models\VendorProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -10,6 +11,17 @@ class ServiceController extends Controller
 {
     public function store(Request $request)
     {
+        $approvedVendorProfile = VendorProfile::where('user_id', $request->user()->id)
+            ->where('status', 'approved')
+            ->latest('id')
+            ->first();
+
+        if (! $approvedVendorProfile) {
+            return response()->json([
+                'message' => 'Your vendor profile must be submitted and approved by admin before you can register services.',
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'service_name' => 'required|string|max:255',
             'service_category' => 'required|string|max:255',
@@ -21,7 +33,10 @@ class ServiceController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                'message' => 'Please correct the highlighted fields before submitting your service.',
+                'errors' => $validator->errors(),
+            ], 422);
         }
 
         try {

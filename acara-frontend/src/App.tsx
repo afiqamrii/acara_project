@@ -25,6 +25,8 @@ const VendorAvailability = lazy(() => import('./features/vendor/pages/VendorAvai
 const VendorBookings = lazy(() => import('./features/vendor/pages/VendorBookings'));
 const ServiceVerificationQueue = lazy(() => import('./features/dashboard/pages/ServiceVerificationQueue'));
 const UserProfile = lazy(() => import('./features/profile/pages/UserProfile'));
+const CustomerBookings = lazy(() => import('./features/bookings/pages/CustomerBookings'));
+const AdminBookings = lazy(() => import('./features/bookings/pages/AdminBookings'));
 
 
 function App() {
@@ -43,26 +45,27 @@ function App() {
             <Route path="/contact" element={<ComingSoon isPublic={true} title="Contact Us" description="Have questions or need support? Reach out to our team - we'd love to hear from you." />} />
 
             <Route element={<ProtectedRoute><UserLayout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<UserDashboard />} />
+              <Route path="/dashboard" element={<ProtectedRoute requiredRole={["user"]}><UserDashboard /></ProtectedRoute>} />
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/marketplace/:serviceId" element={<ServiceDetail />} />
-              <Route path="/vendor/register" element={<VendorRegister />} />
-              <Route path="/vendor/availability" element={<VendorAvailability />} />
-              <Route path="/vendor/bookings" element={<VendorBookings />} />
-              <Route path="/service/register" element={<ServiceRegister />} />
-              <Route path="/events" element={<ComingSoon title="My Events" description="Manage all your upcoming and past events in one place. Create, edit, and track event status seamlessly." />} />
-              <Route path="/bookings" element={<ComingSoon title="My Bookings" description="View and manage your vendor bookings, check payment status, and coordinate with service providers." />} />
+              <Route path="/vendor/register" element={<ProtectedRoute requiredRole={["vendor"]}><VendorRegister /></ProtectedRoute>} />
+              <Route path="/vendor/availability" element={<ProtectedRoute requiredRole={["vendor"]}><VendorAvailability /></ProtectedRoute>} />
+              <Route path="/vendor/bookings" element={<ProtectedRoute requiredRole={["vendor"]}><VendorBookings /></ProtectedRoute>} />
+              <Route path="/service/register" element={<ProtectedRoute requiredRole={["vendor"]}><ServiceRegister /></ProtectedRoute>} />
+              <Route path="/events" element={<ProtectedRoute requiredRole={["user"]}><ComingSoon title="My Events" description="Manage all your upcoming and past events in one place. Create, edit, and track event status seamlessly." /></ProtectedRoute>} />
+              <Route path="/bookings" element={<ProtectedRoute requiredRole={["user"]}><CustomerBookings /></ProtectedRoute>} />
               <Route path="/reviews" element={<ComingSoon title="Reviews" description="Write and read reviews for vendors. Help the community by sharing your experience." />} />
               <Route path="/notifications" element={<ComingSoon title="Notifications" description="Stay on top of updates - booking confirmations, vendor replies, and platform announcements." />} />
               <Route path="/profile" element={<UserProfile />} />
               <Route path="/settings" element={<ComingSoon title="Settings" description="Manage your account settings, notification preferences, and security options." />} />
-              <Route path="/crew/jobs" element={<ComingSoon title="Crew Job Board" description="Browse available event crew positions, submit applications, and manage your active assignments." />} />
+              <Route path="/crew/jobs" element={<ProtectedRoute requiredRole={["crew"]}><ComingSoon title="Crew Job Board" description="Browse available event crew positions, submit applications, and manage your active assignments." /></ProtectedRoute>} />
             </Route>
 
             <Route element={<ProtectedRoute requiredRole={["admin", "super_admin"]}><AdminLayout /></ProtectedRoute>}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/verifications/services" element={<ServiceVerificationQueue />} />
               <Route path="/admin/verifications/vendors" element={<VendorVerificationQueue />} />
+              <Route path="/admin/bookings" element={<AdminBookings />} />
               <Route path="/admin/verifications/crew" element={<ComingSoon title="Crew Verification Queue" description="Review and process IC verification documents submitted by event crew members." />} />
               <Route path="/admin/users" element={<ComingSoon title="User Management" description="View, manage, and moderate all registered users, organizers, vendors, and crew members." />} />
               <Route path="/admin/conflicts" element={<ComingSoon title="Conflict Monitor" description="Monitor and resolve conflicts between organizers, vendors, and crew members on the platform." />} />
