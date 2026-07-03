@@ -42,6 +42,7 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
     queryKey: ['cart'],
     queryFn: fetchCart,
     staleTime: 1000 * 30,
+    enabled: open,
   });
 
   const items = data?.items ?? [];

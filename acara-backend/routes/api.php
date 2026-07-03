@@ -12,6 +12,7 @@ use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\VendorBookingController;
+use App\Http\Controllers\VendorDashboardController;
 use App\Http\Controllers\ProfileController;
 
 // ─── Public Routes ───────────────────────────────────────────────────────────
@@ -40,8 +41,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
 });
 
-// ─── Customer Booking Routes (authenticated) ─────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:user'])->group(function () {
+// ─── Planning Booking Routes (organizers and vendors) ────────────────────────
+Route::middleware(['auth:sanctum', 'role:user,vendor'])->group(function () {
     Route::get('/bookings/cart', [BookingController::class, 'cartIndex']);
     Route::post('/bookings/cart', [BookingController::class, 'addToCart']);
     Route::delete('/bookings/cart/{id}', [BookingController::class, 'removeFromCart']);
@@ -52,8 +53,10 @@ Route::middleware(['auth:sanctum', 'role:user'])->group(function () {
 
 // ─── Vendor Routes (authenticated + completed profile) ────────────────────────
 Route::middleware(['auth:sanctum', 'profile.completed', 'role:vendor'])->group(function () {
+    Route::get('/vendor/dashboard', [VendorDashboardController::class, 'show']);
     Route::post('/service/register', [ServiceController::class, 'store']);
     Route::post('/vendor/register', [VendorController::class, 'store']);
+    Route::get('/vendor/profile', [VendorController::class, 'show']);
     Route::get('/vendor/profile/status', [VendorController::class, 'status']);
     Route::get('/vendor/services', [AvailabilityController::class, 'vendorServices']);
     Route::get('/vendor/availability/{serviceId}', [AvailabilityController::class, 'vendorAvailability']);

@@ -108,7 +108,7 @@ const CompleteProfile: React.FC = () => {
           navigate("/admin/panel");
           break;
         case "vendor":
-          navigate("/marketplace");
+          navigate("/vendor/register");
           break;
         case "crew":
           navigate("/crew/jobs");

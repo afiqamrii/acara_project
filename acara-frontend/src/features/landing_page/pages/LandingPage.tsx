@@ -19,7 +19,7 @@ const LandingPage: React.FC = () => {
         if (token) {
             const role = localStorage.getItem('role') || 'user';
             if (role === 'admin' || role === 'super_admin') navigate('/admin/dashboard');
-            else if (role === 'vendor') navigate('/marketplace');
+            else if (role === 'vendor') navigate('/vendor/dashboard');
             else if (role === 'crew') navigate('/crew/jobs');
             else navigate('/dashboard');
         } else {

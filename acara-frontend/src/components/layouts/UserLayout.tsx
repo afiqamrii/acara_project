@@ -5,7 +5,7 @@ import CartDrawer from "../../features/header/pages/cartdrawer";
 
 const UserLayout = () => {
     const [cartOpen, setCartOpen] = useState(false);
-    const isCustomer = localStorage.getItem("role") === "user";
+    const isCustomer = ["user", "vendor"].includes(localStorage.getItem("role") ?? "");
 
     return (
         <div className="flex min-h-screen w-full bg-[#f7f8fc] md:h-screen md:overflow-hidden">

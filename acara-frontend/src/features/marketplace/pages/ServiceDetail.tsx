@@ -408,7 +408,7 @@ const ServiceDetail: React.FC = () => {
     const navigate = useNavigate();
     const [imgLoaded, setImgLoaded] = useState(false);
     const [showBookingModal, setShowBookingModal] = useState(false);
-    const canBook = localStorage.getItem("role") === "user";
+    const canBook = ["user", "vendor"].includes(localStorage.getItem("role") ?? "");
 
     const { data: service, isPending, isError } = useQuery({
         queryKey: ['marketplace-service', serviceId],

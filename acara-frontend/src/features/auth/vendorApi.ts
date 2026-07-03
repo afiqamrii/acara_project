@@ -7,6 +7,27 @@ export type VendorProfileStatus = {
     can_register_services: boolean;
 };
 
+export type CompanyProfile = {
+    id: number;
+    business_name: string;
+    ssm_number: string | null;
+    business_link: string;
+    business_started_at: string;
+    service_area_state: string;
+    service_area_town: string;
+    bank_name: string;
+    bank_account_number: string;
+    bank_holder_name: string;
+    status: "pending_completion" | "pending_verification" | "approved" | "rejected";
+    ssm_document_url: string | null;
+    updated_at: string | null;
+};
+
+export const fetchCompanyProfile = async (): Promise<CompanyProfile | null> => {
+    const response = await api.get<{ profile: CompanyProfile | null }>("/vendor/profile");
+    return response.data.profile;
+};
+
 export const fetchVendorProfileStatus = async (): Promise<VendorProfileStatus> => {
     const response = await api.get<VendorProfileStatus>("/vendor/profile/status");
     return response.data;

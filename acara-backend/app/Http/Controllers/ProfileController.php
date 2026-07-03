@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -13,10 +14,22 @@ class ProfileController extends Controller
     {
         $user = $request->user()->load('vendorProfile');
 
+        $madeBookings = $user->bookings();
+        $receivedBookings = Booking::query()->whereHas('serviceProfile', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        });
+
         $bookingStats = [
-            'total'     => $user->bookings()->whereIn('status', ['pending', 'confirmed', 'cancelled'])->count(),
-            'pending'   => $user->bookings()->where('status', 'pending')->count(),
-            'confirmed' => $user->bookings()->where('status', 'confirmed')->count(),
+            'made' => [
+                'total' => (clone $madeBookings)->whereIn('status', ['pending', 'confirmed', 'cancelled'])->count(),
+                'pending' => (clone $madeBookings)->where('status', 'pending')->count(),
+                'confirmed' => (clone $madeBookings)->where('status', 'confirmed')->count(),
+            ],
+            'received' => [
+                'total' => (clone $receivedBookings)->whereIn('status', ['pending', 'confirmed', 'cancelled'])->count(),
+                'pending' => (clone $receivedBookings)->where('status', 'pending')->count(),
+                'confirmed' => (clone $receivedBookings)->where('status', 'confirmed')->count(),
+            ],
         ];
 
         $storageUrl = rtrim(asset('storage'), '/');

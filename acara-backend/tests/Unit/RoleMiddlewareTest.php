@@ -40,6 +40,21 @@ class RoleMiddlewareTest extends TestCase
         );
     }
 
+    public function test_it_allows_a_vendor_to_use_routes_shared_with_customers(): void
+    {
+        $request = Request::create('/api/bookings');
+        $request->setUserResolver(fn () => (object) ['role' => 'vendor']);
+
+        $response = (new RoleMiddleware())->handle(
+            $request,
+            fn () => response()->json(['ok' => true]),
+            'user',
+            'vendor'
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+    }
+
     public function test_it_rejects_an_unauthenticated_request(): void
     {
         $request = Request::create('/api/vendor/bookings');

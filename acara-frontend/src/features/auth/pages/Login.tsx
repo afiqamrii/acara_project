@@ -100,7 +100,7 @@ const Login: React.FC = () => {
 
       switch (res.data.role) {
         case "vendor":
-          navigate("/marketplace");
+          navigate("/vendor/dashboard");
           break;
         case "crew":
           navigate("/crew/jobs");

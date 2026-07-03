@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import type { AxiosError } from "axios";
 import { fetchVendorProfileStatus, registerService, type VendorProfileStatus } from "../../vendorApi";
 
 // import { UserSidebar } from "../../../header/pages/UserSidebar";
@@ -12,8 +13,13 @@ const MAX_PORTFOLIO_SIZE_BYTES = 10 * 1024 * 1024;
 const PORTFOLIO_ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
 const PORTFOLIO_ALLOWED_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png"];
 
-const getApiErrorMessage = (err: any) => {
-    const data = err.response?.data;
+type ApiErrorData = { message?: string; errors?: Record<string, string | string[]> };
+
+const getApiErrorData = (error: unknown) =>
+    (error as AxiosError<ApiErrorData>).response?.data;
+
+const getApiErrorMessage = (error: unknown) => {
+    const data = getApiErrorData(error);
 
     if (data?.errors && typeof data.errors === "object") {
         const firstMessage = Object.values(data.errors)
@@ -67,10 +73,10 @@ const ServiceRegister: React.FC = () => {
                 if (active) {
                     setVendorStatus(status);
                 }
-            } catch (err: any) {
+            } catch (error: unknown) {
                 if (active) {
                     setVendorStatus(null);
-                    setSubmitError(err.response?.data?.message || "Only approved vendors can register services.");
+                    setSubmitError(getApiErrorData(error)?.message || "Only approved vendors can register services.");
                 }
             } finally {
                 if (active) {
@@ -187,7 +193,7 @@ const ServiceRegister: React.FC = () => {
 
     const handleSubmit = async () => {
         if (!vendorStatus?.can_register_services) {
-            setSubmitError("Your vendor profile must be approved before you can register services.");
+            setSubmitError("Your company profile must be approved before you can register services.");
             return;
         }
 
@@ -232,9 +238,9 @@ const ServiceRegister: React.FC = () => {
 
             await registerService(data);
             setSuccess(true);
-        } catch (err: any) {
-            console.error("Service registration failed:", err);
-            const apiErrors = err.response?.data?.errors;
+        } catch (error: unknown) {
+            console.error("Service registration failed:", error);
+            const apiErrors = getApiErrorData(error)?.errors;
             if (apiErrors && typeof apiErrors === "object") {
                 const nextErrors = Object.keys(apiErrors).reduce<{ [key: string]: boolean }>((acc, key) => {
                     acc[key] = true;
@@ -244,7 +250,7 @@ const ServiceRegister: React.FC = () => {
                 setErrors(prev => ({ ...prev, ...nextErrors }));
                 setAttemptedNext(true);
             }
-            setSubmitError(getApiErrorMessage(err));
+            setSubmitError(getApiErrorMessage(error));
             setIsLoading(false);
         }
     };
@@ -312,7 +318,7 @@ const ServiceRegister: React.FC = () => {
         const title = !isVendor
             ? "Vendor account required"
             : !vendorStatus?.profile_exists
-                ? "Complete vendor profile first"
+                ? "Complete company profile first"
                 : status === "pending_verification"
                     ? "Vendor profile under review"
                     : status === "rejected"
@@ -321,12 +327,12 @@ const ServiceRegister: React.FC = () => {
         const description = !isVendor
             ? "Please register or log in as a vendor before adding services."
             : !vendorStatus?.profile_exists
-                ? "Submit your business details and SSM document so admin can review your vendor profile."
+                ? "Submit your company details and SSM document so admin can review your company profile."
                 : status === "pending_verification"
-                    ? "Admin must approve your vendor business profile before service registration opens."
+                    ? "Admin must approve your company profile before service registration opens."
                     : status === "rejected"
-                        ? "Your vendor profile was rejected. Update and resubmit your business details for review."
-                        : "Your vendor profile must be approved by admin before you can register services.";
+                        ? "Your company profile was rejected. Update and resubmit your business details for review."
+                        : "Your company profile must be approved by admin before you can register services.";
 
         return (
             <div className="flex h-screen w-full items-center justify-center bg-gray-50 px-4">
@@ -349,11 +355,11 @@ const ServiceRegister: React.FC = () => {
                             onClick={() => navigate("/vendor/register")}
                             className="rounded-xl bg-[#7E57C2] px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#6C4AB8]"
                         >
-                            {status === "rejected" || !vendorStatus?.profile_exists ? "Go to Vendor Profile" : "View Vendor Profile"}
+                            {status === "rejected" || !vendorStatus?.profile_exists ? "Go to Company Profile" : "View Company Profile"}
                         </button>
                         <button
                             type="button"
-                            onClick={() => navigate("/dashboard")}
+                            onClick={() => navigate("/vendor/dashboard")}
                             className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-600 transition-colors hover:bg-white"
                         >
                             Back to Dashboard

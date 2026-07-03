@@ -11,7 +11,7 @@ const homeForRole = (role: string) => {
         case "super_admin":
             return "/admin/dashboard";
         case "vendor":
-            return "/vendor/bookings";
+            return "/vendor/dashboard";
         case "crew":
             return "/crew/jobs";
         default:

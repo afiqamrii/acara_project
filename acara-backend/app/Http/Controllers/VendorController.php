@@ -6,9 +6,41 @@ use App\Models\VendorProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class VendorController extends Controller
 {
+    public function show(Request $request)
+    {
+        $vendorProfile = VendorProfile::where('user_id', $request->user()->id)
+            ->latest('id')
+            ->first();
+
+        if (! $vendorProfile) {
+            return response()->json(['profile' => null]);
+        }
+
+        return response()->json([
+            'profile' => [
+                'id' => $vendorProfile->id,
+                'business_name' => $vendorProfile->business_name,
+                'ssm_number' => $vendorProfile->ssm_number,
+                'business_link' => $vendorProfile->business_link,
+                'business_started_at' => $vendorProfile->business_started_at,
+                'service_area_state' => $vendorProfile->service_area_state,
+                'service_area_town' => $vendorProfile->service_area_town,
+                'bank_name' => $vendorProfile->bank_name,
+                'bank_account_number' => $vendorProfile->bank_account_number,
+                'bank_holder_name' => $vendorProfile->bank_holder_name,
+                'status' => $vendorProfile->status,
+                'ssm_document_url' => $vendorProfile->ssm_document_path
+                    ? asset('storage/' . ltrim($vendorProfile->ssm_document_path, '/'))
+                    : null,
+                'updated_at' => $vendorProfile->updated_at?->toDateTimeString(),
+            ],
+        ]);
+    }
+
     public function status(Request $request)
     {
         $vendorProfile = VendorProfile::where('user_id', $request->user()->id)
@@ -25,9 +57,11 @@ class VendorController extends Controller
 
     public function store(Request $request)
     {
+        $existingProfile = VendorProfile::where('user_id', $request->user()->id)->first();
+
         $validator = Validator::make($request->all(), [
             'ssm_number' => 'nullable|string|max:255',
-            'ssm_document' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'ssm_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'business_name' => 'required|string|max:255',
             'business_link' => 'required|string|max:500',
             'business_started_at' => 'required|date|before_or_equal:today',
@@ -42,15 +76,24 @@ class VendorController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        if (! $existingProfile && ! $request->hasFile('ssm_document')) {
+            return response()->json([
+                'message' => 'An SSM document is required for a new company profile.',
+                'errors' => ['ssm_document' => ['The SSM document field is required.']],
+            ], 422);
+        }
+
         try {
             $timestamp = now()->format('Ymd_His');
             $slugName = Str::slug($request->business_name);
 
-            $ssmDocumentPath = null;
+            $oldSsmDocumentPath = $existingProfile?->ssm_document_path;
+            $ssmDocumentPath = $oldSsmDocumentPath;
             if ($request->hasFile('ssm_document')) {
                 $extension = $request->file('ssm_document')->getClientOriginalExtension();
                 $filename = "{$slugName}_ssm_{$timestamp}.{$extension}";
                 $ssmDocumentPath = $request->file('ssm_document')->storeAs('vendor_ssm_documents', $filename, 'public');
+
             }
 
             $vendorProfile = VendorProfile::updateOrCreate(
@@ -70,10 +113,16 @@ class VendorController extends Controller
                 ]
             );
 
+            if ($oldSsmDocumentPath && $oldSsmDocumentPath !== $ssmDocumentPath) {
+                Storage::disk('public')->delete($oldSsmDocumentPath);
+            }
+
             return response()->json([
-                'message' => 'Vendor business details submitted successfully',
+                'message' => $existingProfile
+                    ? 'Company profile updated and submitted for verification.'
+                    : 'Company profile submitted successfully.',
                 'data' => $vendorProfile,
-            ], 201);
+            ], $existingProfile ? 200 : 201);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to create vendor profile',

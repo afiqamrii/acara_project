@@ -25,6 +25,7 @@ const VendorAvailability = lazy(() => import('./features/vendor/pages/VendorAvai
 const VendorBookings = lazy(() => import('./features/vendor/pages/VendorBookings'));
 const ServiceVerificationQueue = lazy(() => import('./features/dashboard/pages/ServiceVerificationQueue'));
 const UserProfile = lazy(() => import('./features/profile/pages/UserProfile'));
+const VendorDashboard = lazy(() => import('./features/dashboard/pages/VendorDashboard'));
 const CustomerBookings = lazy(() => import('./features/bookings/pages/CustomerBookings'));
 const AdminBookings = lazy(() => import('./features/bookings/pages/AdminBookings'));
 
@@ -45,15 +46,16 @@ function App() {
             <Route path="/contact" element={<ComingSoon isPublic={true} title="Contact Us" description="Have questions or need support? Reach out to our team - we'd love to hear from you." />} />
 
             <Route element={<ProtectedRoute><UserLayout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<ProtectedRoute requiredRole={["user"]}><UserDashboard /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute requiredRole={["user", "vendor"]}><UserDashboard /></ProtectedRoute>} />
+              <Route path="/vendor/dashboard" element={<ProtectedRoute requiredRole={["vendor"]}><VendorDashboard /></ProtectedRoute>} />
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/marketplace/:serviceId" element={<ServiceDetail />} />
               <Route path="/vendor/register" element={<ProtectedRoute requiredRole={["vendor"]}><VendorRegister /></ProtectedRoute>} />
               <Route path="/vendor/availability" element={<ProtectedRoute requiredRole={["vendor"]}><VendorAvailability /></ProtectedRoute>} />
               <Route path="/vendor/bookings" element={<ProtectedRoute requiredRole={["vendor"]}><VendorBookings /></ProtectedRoute>} />
               <Route path="/service/register" element={<ProtectedRoute requiredRole={["vendor"]}><ServiceRegister /></ProtectedRoute>} />
-              <Route path="/events" element={<ProtectedRoute requiredRole={["user"]}><ComingSoon title="My Events" description="Manage all your upcoming and past events in one place. Create, edit, and track event status seamlessly." /></ProtectedRoute>} />
-              <Route path="/bookings" element={<ProtectedRoute requiredRole={["user"]}><CustomerBookings /></ProtectedRoute>} />
+              <Route path="/events" element={<ProtectedRoute requiredRole={["user", "vendor"]}><ComingSoon title="My Events" description="Manage all your upcoming and past events in one place. Create, edit, and track event status seamlessly." /></ProtectedRoute>} />
+              <Route path="/bookings" element={<ProtectedRoute requiredRole={["user", "vendor"]}><CustomerBookings /></ProtectedRoute>} />
               <Route path="/reviews" element={<ComingSoon title="Reviews" description="Write and read reviews for vendors. Help the community by sharing your experience." />} />
               <Route path="/notifications" element={<ComingSoon title="Notifications" description="Stay on top of updates - booking confirmations, vendor replies, and platform announcements." />} />
               <Route path="/profile" element={<UserProfile />} />

@@ -25,19 +25,30 @@ import IconClipboardCheck from "@tabler/icons-react/dist/esm/icons/IconClipboard
 import { fetchCart } from "./cartdrawer";
 import { useCurrentUser } from "../../../hooks/useCurrentUser";
 
-const navItems: { label: string; href: string; icon: React.ElementType; roles?: string[] }[] = [
-  { label: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard, roles: ["user"] },
-  { label: "My Events", href: "/events", icon: IconCalendarEvent, roles: ["user"] },
-  { label: "Marketplace", href: "/marketplace", icon: IconShoppingBag },
-  { label: "Bookings", href: "/bookings", icon: IconReceipt, roles: ["user"] },
-  { label: "Reviews", href: "/reviews", icon: IconStar },
-  { label: "Service Availability", href: "/vendor/availability", icon: IconCalendarStats, roles: ["vendor"] },
-  { label: "Booking Requests", href: "/vendor/bookings", icon: IconClipboardCheck, roles: ["vendor"] },
-  { label: "Add Service", href: "/service/register", icon: IconCirclePlus, roles: ["vendor"] },
-  { label: "Vendor Profile", href: "/vendor/register", icon: IconBriefcase, roles: ["vendor"] },
-  { label: "Notifications", href: "/notifications", icon: IconBell },
-  { label: "Profile", href: "/profile", icon: IconUser },
-  { label: "Settings", href: "/settings", icon: IconSettings },
+type Workspace = "planning" | "vendor";
+
+type NavItem = {
+  label: string;
+  href: string;
+  icon: React.ElementType;
+  roles?: string[];
+  workspace: Workspace | "shared";
+};
+
+const navItems: NavItem[] = [
+  { label: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard, roles: ["user", "vendor"], workspace: "planning" },
+  { label: "My Events", href: "/events", icon: IconCalendarEvent, roles: ["user", "vendor"], workspace: "planning" },
+  { label: "Marketplace", href: "/marketplace", icon: IconShoppingBag, workspace: "planning" },
+  { label: "Bookings", href: "/bookings", icon: IconReceipt, roles: ["user", "vendor"], workspace: "planning" },
+  { label: "Reviews", href: "/reviews", icon: IconStar, workspace: "planning" },
+  { label: "Vendor Dashboard", href: "/vendor/dashboard", icon: IconLayoutDashboard, roles: ["vendor"], workspace: "vendor" },
+  { label: "Service Availability", href: "/vendor/availability", icon: IconCalendarStats, roles: ["vendor"], workspace: "vendor" },
+  { label: "Booking Requests", href: "/vendor/bookings", icon: IconClipboardCheck, roles: ["vendor"], workspace: "vendor" },
+  { label: "Add Service", href: "/service/register", icon: IconCirclePlus, roles: ["vendor"], workspace: "vendor" },
+  { label: "Company Profile", href: "/vendor/register", icon: IconBriefcase, roles: ["vendor"], workspace: "vendor" },
+  { label: "Notifications", href: "/notifications", icon: IconBell, workspace: "shared" },
+  { label: "My Profile", href: "/profile", icon: IconUser, workspace: "planning" },
+  { label: "Settings", href: "/settings", icon: IconSettings, workspace: "shared" },
 ];
 
 type UserSidebarProps = {
@@ -50,12 +61,21 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const storedRole = localStorage.getItem("role") ?? "user";
+  const pathIsVendorWorkspace = location.pathname.startsWith("/vendor/") || location.pathname === "/service/register";
+  const storedWorkspace = localStorage.getItem("workspace_mode") as Workspace | null;
+  const [workspace, setWorkspace] = useState<Workspace>(
+    storedRole === "vendor" && pathIsVendorWorkspace
+      ? "vendor"
+      : storedRole === "vendor"
+        ? storedWorkspace ?? "planning"
+        : "planning",
+  );
 
   const { data: cartData } = useQuery({
     queryKey: ['cart'],
     queryFn: fetchCart,
     staleTime: 1000 * 30,
-    enabled: storedRole === "user",
+    enabled: ["user", "vendor"].includes(storedRole) && workspace === "planning",
   });
   const cartCount = cartData?.items?.length ?? 0;
 
@@ -66,7 +86,11 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
   const userRole  = currentUser?.role  ?? storedRole;
   const avatarUrl = currentUser?.avatar_url ?? null;
 
-  const visibleNavItems = navItems.filter(item => !item.roles || item.roles.includes(userRole));
+  const visibleNavItems = navItems.filter(item => {
+    const roleMatches = !item.roles || item.roles.includes(userRole);
+    const workspaceMatches = item.workspace === "shared" || item.workspace === workspace;
+    return roleMatches && workspaceMatches;
+  });
 
   const initials = userName
     .split(" ")
@@ -75,8 +99,19 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
     .toUpperCase()
     .slice(0, 2);
 
-  const handleNavigate = (href: string) => {
+  const handleNavigate = (href: string, itemWorkspace: NavItem["workspace"] = "shared") => {
+    if (itemWorkspace !== "shared") {
+      setWorkspace(itemWorkspace);
+      localStorage.setItem("workspace_mode", itemWorkspace);
+    }
     navigate(href);
+    setMobileOpen(false);
+  };
+
+  const switchWorkspace = (nextWorkspace: Workspace) => {
+    setWorkspace(nextWorkspace);
+    localStorage.setItem("workspace_mode", nextWorkspace);
+    navigate(nextWorkspace === "vendor" ? "/vendor/dashboard" : "/dashboard");
     setMobileOpen(false);
   };
 
@@ -127,9 +162,33 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
         )}
       </div>
 
+      {userRole === "vendor" && (
+        <div className="border-b border-gray-100 p-2">
+          <div className={`grid grid-cols-2 rounded-xl bg-gray-100 p-1 ${!isMobile && collapsed ? "gap-0" : "gap-1"}`}>
+            {([
+              { key: "planning" as const, label: "Planning", icon: IconShoppingBag },
+              { key: "vendor" as const, label: "Business", icon: IconBriefcase },
+            ]).map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => switchWorkspace(key)}
+                title={`${label} workspace`}
+                className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[10px] font-bold transition ${
+                  workspace === key ? "bg-white text-purple-700 shadow-sm" : "text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                <Icon size={15} />
+                {(isMobile || !collapsed) && <span>{label}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
         {/* Cart button */}
-        {userRole === "user" && <button
+        {["user", "vendor"].includes(userRole) && workspace === "planning" && <button
           onClick={() => { onCartOpen(); if (isMobile) setMobileOpen(false); }}
           className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
         >
@@ -166,13 +225,13 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
 
         <div className="my-1 border-t border-gray-50" />
 
-        {visibleNavItems.map(({ label, href, icon: Icon }) => {
+        {visibleNavItems.map(({ label, href, icon: Icon, workspace: itemWorkspace }) => {
           const isActive = location.pathname === href;
 
           return (
             <button
               key={href}
-              onClick={() => handleNavigate(href)}
+              onClick={() => handleNavigate(href, itemWorkspace)}
               className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                 isActive
                   ? "bg-indigo-50 text-indigo-700"

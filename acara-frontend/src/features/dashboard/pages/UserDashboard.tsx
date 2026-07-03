@@ -77,36 +77,6 @@ const statusConfig: Record<
   },
 };
 
-const placeholderEvents = [
-  {
-    id: 1,
-    event_name: "Annual Gala Dinner",
-    event_date: "2026-04-15",
-    location: "Kuala Lumpur Convention Centre",
-    status: "confirmed",
-    total_amount: 4500,
-    vendor_name: "Grand Catering Sdn Bhd",
-  },
-  {
-    id: 2,
-    event_name: "Corporate Team Building",
-    event_date: "2026-05-02",
-    location: "Putrajaya International Convention Centre",
-    status: "pending",
-    total_amount: 2200,
-    vendor_name: "Active Pro Events",
-  },
-  {
-    id: 3,
-    event_name: "Product Launch",
-    event_date: "2026-05-20",
-    location: "Sunway Pyramid Convention Centre",
-    status: "confirmed",
-    total_amount: 8100,
-    vendor_name: "TechStage Productions",
-  },
-];
-
 const quickActions = [
   {
     label: "Browse Vendors",
@@ -205,10 +175,10 @@ const UserDashboard = () => {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const res = await api.get("/user/bookings");
-        setBookings(res.data?.data || res.data || []);
+        const res = await api.get("/bookings");
+        setBookings(res.data?.bookings ?? []);
       } catch {
-        setBookings(placeholderEvents as Booking[]);
+        setBookings([]);
       } finally {
         setLoading(false);
       }
@@ -230,10 +200,6 @@ const UserDashboard = () => {
     (b) => b.status === "confirmed",
   ).length;
   const pendingCount = bookings.filter((b) => b.status === "pending").length;
-  const completedCount = bookings.filter(
-    (b) => b.status === "completed",
-  ).length;
-
   const upcomingBookings = bookings
     .filter((b) => b.status === "confirmed" || b.status === "pending")
     .slice(0, 3);
@@ -269,10 +235,10 @@ const UserDashboard = () => {
       gradient: "from-amber-500 to-orange-500",
     },
     {
-      label: "Completed Events",
-      value: completedCount.toString(),
-      subtext: "Successfully done",
-      change: "Rate your vendors",
+      label: "Confirmed Bookings",
+      value: confirmedCount.toString(),
+      subtext: "Ready for your event",
+      change: confirmedCount > 0 ? "On your calendar" : "Nothing confirmed yet",
       positive: true,
       icon: <IconStar size={22} />,
       gradient: "from-pink-500 to-rose-500",

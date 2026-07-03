@@ -17,7 +17,7 @@ const Navbar = () => {
       case "super_admin":
         return "/admin/dashboard";
       case "vendor":
-        return "/marketplace";
+        return "/vendor/dashboard";
       case "crew":
         return "/crew/jobs";
       default:

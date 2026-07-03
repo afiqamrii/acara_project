@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { AxiosError } from 'axios';
 import api from '../../../lib/Api';
 import { ME_QUERY_KEY } from '../../../hooks/useCurrentUser';
 
@@ -16,7 +17,15 @@ type VendorProfile = {
     service_area_state: string | null; service_area_town: string | null;
 };
 type BookingStats = { total: number; pending: number; confirmed: number; };
-type ProfileData = { user: ProfileUser; vendor_profile: VendorProfile | null; booking_stats: BookingStats; };
+type ProfileData = {
+    user: ProfileUser;
+    vendor_profile: VendorProfile | null;
+    booking_stats: { made: BookingStats; received: BookingStats };
+};
+type ApiErrorData = { message?: string; errors?: Record<string, string[]> };
+
+const getApiErrorData = (error: unknown) =>
+    (error as AxiosError<ApiErrorData>).response?.data;
 
 const fetchProfile = async (): Promise<ProfileData> => {
     const res = await api.get('/profile');
@@ -57,7 +66,7 @@ function passwordStrength(pw: string): { score: number; label: string; color: st
 }
 
 const ROLE_LABELS: Record<string, string> = {
-    customer: 'Customer', vendor: 'Vendor', admin: 'Admin', super_admin: 'Super Admin',
+    user: 'Organizer', customer: 'Customer', vendor: 'Vendor', admin: 'Admin', super_admin: 'Super Admin',
 };
 const VENDOR_STATUS_STYLES: Record<string, string> = {
     pending_verification: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
@@ -152,7 +161,7 @@ const UserProfile = () => {
     const [infoSuccess, setInfoSuccess] = useState<string | null>(null);
     const [infoError, setInfoError]     = useState<string | null>(null);
     const [pwSuccess, setPwSuccess]     = useState<string | null>(null);
-    const [pwError, setPwError]         = useState<Record<string, string>>({});
+    const [pwError, setPwError]         = useState<Record<string, string[]>>({});
     const [avatarError, setAvatarError] = useState<string | null>(null);
 
     if (data && !infoInit) {
@@ -171,7 +180,7 @@ const UserProfile = () => {
             setInfoError(null);
             setTimeout(() => setInfoSuccess(null), 3000);
         },
-        onError: (err: any) => setInfoError(err?.response?.data?.message ?? 'Failed to save.'),
+        onError: (error) => setInfoError(getApiErrorData(error)?.message ?? 'Failed to save.'),
     });
 
     const avatarMutation = useMutation({
@@ -185,7 +194,7 @@ const UserProfile = () => {
             queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY });
             setAvatarError(null);
         },
-        onError: (err: any) => { setAvatarError(err?.response?.data?.message ?? 'Upload failed.'); setAvatarPreview(null); },
+        onError: (error) => { setAvatarError(getApiErrorData(error)?.message ?? 'Upload failed.'); setAvatarPreview(null); },
     });
 
     const pwMutation = useMutation({
@@ -197,9 +206,10 @@ const UserProfile = () => {
             setPwSuccess('Password changed successfully.');
             setTimeout(() => setPwSuccess(null), 3000);
         },
-        onError: (err: any) => {
-            const errs = err?.response?.data?.errors ?? {};
-            setPwError(Object.keys(errs).length ? errs : { _general: err?.response?.data?.message ?? 'Failed.' });
+        onError: (error) => {
+            const data = getApiErrorData(error);
+            const errors = data?.errors ?? {};
+            setPwError(Object.keys(errors).length ? errors : { _general: [data?.message ?? 'Failed.'] });
         },
     });
 
@@ -233,7 +243,8 @@ const UserProfile = () => {
 
     if (!data) return null;
 
-    const { user, vendor_profile, booking_stats } = data;
+    const { user, vendor_profile, booking_stats: allBookingStats } = data;
+    const booking_stats = allBookingStats.made;
     const initials      = getInitials(user.name);
     const displayAvatar = avatarPreview ?? user.avatar_url;
     const completion    = profileCompletion(user);
@@ -682,7 +693,7 @@ const UserProfile = () => {
                                         initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                                         className="mt-4 text-[11px] text-red-600 bg-red-50 border border-red-100 rounded-xl px-3.5 py-2.5"
                                     >
-                                        {pwError._general}
+                                        {pwError._general[0]}
                                     </motion.div>
                                 )}
                             </AnimatePresence>
