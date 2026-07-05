@@ -9,6 +9,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $tableCreated = false;
+
         if (!Schema::hasTable('vendor_profiles')) {
             Schema::create('vendor_profiles', function (Blueprint $table) {
                 $table->id();
@@ -25,11 +27,22 @@ return new class extends Migration
                 $table->string('bank_holder_name');
                 $table->string('status')->default('pending_completion');
                 $table->timestamps();
+
+                $table->foreign('user_id', 'vendor_profiles_vendor_user_id_foreign')
+                    ->references('id')
+                    ->on('users')
+                    ->onDelete('cascade');
             });
+
+            $tableCreated = true;
         } elseif (!Schema::hasColumn('vendor_profiles', 'ssm_document_path')) {
             Schema::table('vendor_profiles', function (Blueprint $table) {
                 $table->string('ssm_document_path')->nullable()->after('ssm_number');
             });
+        }
+
+        if ($tableCreated || DB::connection()->getDriverName() !== 'mysql') {
+            return;
         }
 
         $foreignKeyExists = DB::table('information_schema.TABLE_CONSTRAINTS')
@@ -51,7 +64,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (Schema::hasTable('vendor_profiles')) {
+        if (Schema::hasTable('vendor_profiles') && DB::connection()->getDriverName() === 'mysql') {
             $foreignKeyExists = DB::table('information_schema.TABLE_CONSTRAINTS')
                 ->where('CONSTRAINT_SCHEMA', DB::getDatabaseName())
                 ->where('TABLE_NAME', 'vendor_profiles')
@@ -65,11 +78,6 @@ return new class extends Migration
                 });
             }
 
-            if (Schema::hasColumn('vendor_profiles', 'ssm_document_path')) {
-                Schema::table('vendor_profiles', function (Blueprint $table) {
-                    $table->dropColumn('ssm_document_path');
-                });
-            }
         }
 
         Schema::dropIfExists('vendor_profiles');
