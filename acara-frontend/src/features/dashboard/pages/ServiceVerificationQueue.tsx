@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
-import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { FiArrowLeft, FiCheckCircle, FiClock, FiXCircle } from "react-icons/fi";
 import { logoutClient } from "../../../lib/auth";
+import api from "../../../lib/Api";
 
 type Service = {
     id: number;
@@ -19,8 +19,6 @@ type Service = {
 
 type ActionType = "approve" | "reject";
 
-const API_URL = "http://127.0.0.1:8000/api/admin/services";
-
 const ServiceVerificationQueue = () => {
     const [services, setServices] = useState<Service[]>([]);
     const [loading, setLoading] = useState(true);
@@ -28,14 +26,10 @@ const ServiceVerificationQueue = () => {
     const [actionType, setActionType] = useState<ActionType | null>(null);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
 
-    const token = localStorage.getItem("token");
-
     const fetchServices = async () => {
         try {
             setError(null);
-            const res = await axios.get(API_URL, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await api.get("/admin/services");
             setServices(res.data);
         } catch (err: any) {
             console.error("Failed to fetch services:", err);
@@ -86,9 +80,10 @@ const ServiceVerificationQueue = () => {
         if (!selectedService || !actionType) return;
 
         try {
-            await axios.patch(`${API_URL}/${selectedService.id}/${actionType}`, null, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await api.patch(
+                `/admin/services/${selectedService.id}/${actionType}`,
+                null
+            );
             await fetchServices();
         } catch (err) {
             console.error("Service action failed:", err);

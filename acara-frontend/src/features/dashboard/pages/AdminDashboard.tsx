@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { usePageTitle } from "../../../utils/usePageTitle";
+import api from "../../../lib/Api";
 
 import {
     FiUsers,
@@ -38,16 +38,7 @@ const AdminDashboard = () => {
     useEffect(() => {
         const fetchPendingServices = async () => {
             try {
-                const token = localStorage.getItem("token");
-
-                const res = await axios.get(
-                    "http://127.0.0.1:8000/api/admin/services",
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                    }
-                );
+                const res = await api.get("/admin/services");
 
                 const allPending = res.data.filter(
                     (v: ServiceMini) => v.status === "pending_verification"
@@ -62,16 +53,7 @@ const AdminDashboard = () => {
 
         const fetchPendingVendors = async () => {
             try {
-                const token = localStorage.getItem("token");
-
-                const res = await axios.get(
-                    "http://127.0.0.1:8000/api/admin/vendors",
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                    }
-                );
+                const res = await api.get("/admin/vendors");
 
                 const allPending = res.data.filter(
                     (v: VendorMini) => v.status === "pending_verification" || v.status === "pending_completion"

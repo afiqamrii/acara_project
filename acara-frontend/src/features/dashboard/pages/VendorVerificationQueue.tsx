@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 
-import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { usePageTitle } from "../../../utils/usePageTitle";
+import api from "../../../lib/Api";
 
 import {
     FiCheckCircle,
@@ -25,8 +25,6 @@ type Vendor = {
 
 type ActionType = "approve" | "reject";
 
-const API_URL = "http://127.0.0.1:8000/api/admin/vendors";
-
 const VendorVerificationQueue = () => {
     usePageTitle("Vendor Verification");
     const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -43,13 +41,9 @@ const VendorVerificationQueue = () => {
     const [adminNote, setAdminNote] = useState("");
     const [error, setError] = useState<string | null>(null);
 
-    const token = localStorage.getItem("token");
-
     const fetchVendors = async () => {
         try {
-            const res = await axios.get(API_URL, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await api.get("/admin/vendors");
             setVendors(res.data);
         } catch (err: any) {
             console.error("Failed to fetch vendors:", err);
@@ -73,19 +67,15 @@ const VendorVerificationQueue = () => {
     };
 
     const handleApprove = async (id: number) => {
-        await axios.patch(
-            `${API_URL}/${id}/approve`,
-            { admin_note: adminNote },
-            { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await api.patch(`/admin/vendors/${id}/approve`, {
+            admin_note: adminNote,
+        });
     };
 
     const handleReject = async (id: number) => {
-        await axios.patch(
-            `${API_URL}/${id}/reject`,
-            { admin_note: adminNote },
-            { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await api.patch(`/admin/vendors/${id}/reject`, {
+            admin_note: adminNote,
+        });
     };
 
     const openConfirm = (type: ActionType, vendor: Vendor) => {
