@@ -65,6 +65,7 @@ Route::middleware(['auth:sanctum', 'profile.completed', 'role:vendor'])->group(f
 
     Route::get('/vendor/bookings', [VendorBookingController::class, 'index']);
     Route::patch('/vendor/bookings/{id}/approve', [VendorBookingController::class, 'approve']);
+    Route::patch('/vendor/bookings/{id}/complete', [VendorBookingController::class, 'complete']);
     Route::patch('/vendor/bookings/{id}/cancel', [VendorBookingController::class, 'cancel']);
 });
 

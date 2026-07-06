@@ -66,7 +66,7 @@ class AvailabilityController extends Controller
             ->values();
 
         $bookedDates = Booking::where('bookings.service_profile_id', $service->id)
-            ->whereIn('bookings.status', ['pending', 'confirmed'])
+            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed'])
             ->where('bookings.selected_date', '>=', today())
             ->join('users', 'users.id', '=', 'bookings.user_id')
             ->orderBy('bookings.selected_date')
@@ -147,7 +147,7 @@ class AvailabilityController extends Controller
 
         $hasBooking = Booking::where('service_profile_id', $service->id)
             ->where('selected_date', $validated['date'])
-            ->whereIn('status', ['pending', 'confirmed'])
+            ->whereIn('status', ['pending', 'confirmed', 'completed'])
             ->exists();
 
         if (! $hasBooking) {
