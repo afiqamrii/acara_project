@@ -112,7 +112,7 @@ const ServiceDetailCard: React.FC<{ service: VendorService; selectedDatesCount: 
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22 }}
-            className="bg-white rounded-[28px] shadow-sm border border-gray-100 overflow-hidden max-w-2xl mx-auto"
+            className="bg-white rounded-[28px] shadow-sm border border-gray-100 overflow-hidden h-full"
         >
             {/* service image header */}
             <div className="relative h-56 md:h-64 overflow-hidden">
@@ -194,6 +194,95 @@ const ServiceDetailCard: React.FC<{ service: VendorService; selectedDatesCount: 
                             {' '}available date{selectedDatesCount !== 1 ? 's' : ''} set
                         </span>
                     </div>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+// ── Availability summary panel ────────────────────────────────────────────────
+const LEGEND_ITEMS = [
+    { color: 'bg-emerald-500', label: 'Available (Saved)' },
+    { color: 'bg-purple-600', label: 'Newly Selected' },
+    { color: 'bg-amber-50 border-2 border-dashed border-amber-300', label: 'Removed (Unsaved)' },
+    { color: 'bg-amber-200 ring-1 ring-amber-400', label: 'Booked' },
+    { color: 'bg-purple-600 ring-2 ring-amber-400 ring-offset-1', label: 'Booked + Open' },
+    { color: 'bg-gray-200', label: 'Unavailable' },
+];
+
+const AvailabilitySummaryPanel: React.FC<{
+    selectedCount: number;
+    bookedCount: number;
+    newlyAddedCount: number;
+    removedCount: number;
+    selectedDatesPreview: string[];
+    selectedDatesExtraCount: number;
+}> = ({ selectedCount, bookedCount, newlyAddedCount, removedCount, selectedDatesPreview, selectedDatesExtraCount }) => {
+    const hasPendingChanges = newlyAddedCount + removedCount > 0;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: 0.05 }}
+            className="bg-white rounded-[28px] shadow-sm border border-gray-100 p-6 h-full flex flex-col"
+        >
+            {/* Availability summary */}
+            <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Availability Summary</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                    <div className="bg-purple-50/70 rounded-2xl px-3 py-2.5">
+                        <p className="text-2xl font-extrabold text-purple-700 leading-none">{selectedCount}</p>
+                        <p className="text-[11px] font-semibold text-purple-500 mt-1">Selected</p>
+                    </div>
+                    <div className="bg-amber-50/70 rounded-2xl px-3 py-2.5">
+                        <p className="text-2xl font-extrabold text-amber-600 leading-none">{bookedCount}</p>
+                        <p className="text-[11px] font-semibold text-amber-500 mt-1">Booked</p>
+                    </div>
+                </div>
+                {hasPendingChanges && (
+                    <div className="mt-2.5 flex items-center gap-2 text-xs bg-gray-50 rounded-xl px-3 py-2">
+                        <span className="font-semibold text-gray-500">Unsaved changes:</span>
+                        {newlyAddedCount > 0 && <span className="text-emerald-600 font-bold">+{newlyAddedCount}</span>}
+                        {removedCount > 0 && <span className="text-red-500 font-bold">-{removedCount}</span>}
+                    </div>
+                )}
+            </div>
+
+            {/* Selected dates */}
+            <div className="mt-5 pt-5 border-t border-gray-100">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2.5">Selected Dates</p>
+                {selectedDatesPreview.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                        {selectedDatesPreview.map(iso => (
+                            <span
+                                key={iso}
+                                className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-50 text-purple-700"
+                            >
+                                {formatIsoShort(iso)}
+                            </span>
+                        ))}
+                        {selectedDatesExtraCount > 0 && (
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
+                                +{selectedDatesExtraCount} more
+                            </span>
+                        )}
+                    </div>
+                ) : (
+                    <p className="text-xs text-gray-400">No dates selected yet.</p>
+                )}
+            </div>
+
+            {/* Legend */}
+            <div className="mt-5 pt-5 border-t border-gray-100">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2.5">Legend</p>
+                <div className="grid grid-cols-1 gap-1.5">
+                    {LEGEND_ITEMS.map(item => (
+                        <span key={item.label} className="flex items-center gap-2 text-xs text-gray-500">
+                            <span className={`w-3 h-3 rounded-full inline-block shrink-0 ${item.color}`} />
+                            {item.label}
+                        </span>
+                    ))}
                 </div>
             </div>
         </motion.div>
@@ -312,6 +401,9 @@ const CalendarPanel: React.FC<{ service: VendorService }> = ({ service }) => {
     const selectedDatesPreview = sortedSelectedDates.slice(0, SELECTED_DATES_PREVIEW_COUNT);
     const selectedDatesExtraCount = sortedSelectedDates.length - selectedDatesPreview.length;
 
+    const newlyAddedCount = sortedSelectedDates.filter(d => !originalDates.has(d)).length;
+    const removedCount = [...originalDates].filter(d => !selectedDates.has(d)).length;
+
     const cells = buildCalendar(viewYear, viewMonth);
 
     return (
@@ -321,9 +413,17 @@ const CalendarPanel: React.FC<{ service: VendorService }> = ({ service }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
         >
-            {/* Selected service — centered, prominent */}
-            <div className="mb-6">
+            {/* Selected service + availability summary */}
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 mb-6 items-start">
                 <ServiceDetailCard service={service} selectedDatesCount={originalDates.size} />
+                <AvailabilitySummaryPanel
+                    selectedCount={selectedDates.size}
+                    bookedCount={bookedDates.size}
+                    newlyAddedCount={newlyAddedCount}
+                    removedCount={removedCount}
+                    selectedDatesPreview={selectedDatesPreview}
+                    selectedDatesExtraCount={selectedDatesExtraCount}
+                />
             </div>
 
             {/* Calendar — full width, primary focus */}
@@ -510,51 +610,6 @@ const CalendarPanel: React.FC<{ service: VendorService }> = ({ service }) => {
                             )}
                         </AnimatePresence>
 
-                        {/* Selected dates summary */}
-                        {sortedSelectedDates.length > 0 && (
-                            <div className="mt-5 pt-5 border-t border-gray-100">
-                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                                    Selected Dates
-                                </p>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {selectedDatesPreview.map(iso => (
-                                        <span
-                                            key={iso}
-                                            className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-50 text-purple-700"
-                                        >
-                                            {formatIsoShort(iso)}
-                                        </span>
-                                    ))}
-                                    {selectedDatesExtraCount > 0 && (
-                                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
-                                            +{selectedDatesExtraCount} more
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Legend */}
-                        <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-gray-400">
-                            <span className="flex items-center gap-1.5">
-                                <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" /> Available (Saved)
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <span className="w-3 h-3 rounded-full bg-purple-600 inline-block" /> Newly Selected (Unsaved)
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <span className="w-3 h-3 rounded-full bg-amber-50 border-2 border-dashed border-amber-300 inline-block" /> Removed (Unsaved)
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <span className="w-3 h-3 rounded-full bg-amber-200 ring-1 ring-amber-400 inline-block" /> Booked
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <span className="w-3 h-3 rounded-full bg-purple-600 ring-2 ring-amber-400 ring-offset-1 inline-block" /> Booked + Open
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <span className="w-3 h-3 rounded-full bg-gray-200 inline-block" /> Unavailable
-                            </span>
-                        </div>
                     </div>
 
                     {/* Sticky action bar */}
@@ -588,7 +643,7 @@ const CalendarPanel: React.FC<{ service: VendorService }> = ({ service }) => {
                                             exit={{ opacity: 0 }}
                                             className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600"
                                         >
-                                            <IconCheck /> Availability updated — {originalDates.size} date{originalDates.size !== 1 ? 's' : ''} now available
+                                            <IconCheck /> Availability updated {originalDates.size} date{originalDates.size !== 1 ? 's' : ''} now available
                                         </motion.span>
                                     )}
                                 </AnimatePresence>
