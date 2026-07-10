@@ -80,7 +80,7 @@ class BookingController extends Controller
             'selected_date'     => $selectedDate,
             'event_date'        => $selectedDate,
             'status'            => $item->status,
-            'payment_status'    => $item->status === 'confirmed' ? 'pending' : 'unpaid',
+            'payment_status'    => in_array($item->status, ['confirmed', 'completed'], true) ? 'pending' : 'unpaid',
             'booked_at'         => $this->formatDateTime($item->created_at),
         ];
     }
@@ -91,6 +91,7 @@ class BookingController extends Controller
             'total'      => $items->count(),
             'pending'    => $items->where('status', 'pending')->count(),
             'confirmed'  => $items->where('status', 'confirmed')->count(),
+            'completed'  => $items->where('status', 'completed')->count(),
             'cancelled'  => $items->where('status', 'cancelled')->count(),
             'estimate'   => round((float) $items->sum('price_value'), 2),
         ];
@@ -239,7 +240,7 @@ class BookingController extends Controller
 
                 $alreadyBooked = Booking::where('service_profile_id', $item->service_profile_id)
                     ->where('selected_date', $dateStr)
-                    ->whereIn('status', ['pending', 'confirmed'])
+                    ->whereIn('status', ['pending', 'confirmed', 'completed'])
                     ->lockForUpdate()
                     ->exists();
 
@@ -283,7 +284,7 @@ class BookingController extends Controller
 
         $bookings = Booking::query()
             ->where('bookings.user_id', $userId)
-            ->whereIn('bookings.status', ['pending', 'confirmed', 'cancelled'])
+            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'cancelled'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->join(
                 DB::raw('(SELECT user_id, MAX(id) as id FROM vendor_profiles GROUP BY user_id) as vp_latest'),
@@ -338,7 +339,7 @@ class BookingController extends Controller
     public function adminBookings()
     {
         $bookings = Booking::query()
-            ->whereIn('bookings.status', ['pending', 'confirmed', 'cancelled'])
+            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'cancelled'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->join('users as customers', 'bookings.user_id', '=', 'customers.id')
             ->join('users as vendors', 'service_profiles.user_id', '=', 'vendors.id')
@@ -363,7 +364,7 @@ class BookingController extends Controller
                 'vendor_profiles.service_area_state',
                 'vendor_profiles.service_area_town',
             ])
-            ->orderByRaw("CASE bookings.status WHEN 'pending' THEN 0 WHEN 'confirmed' THEN 1 ELSE 2 END")
+            ->orderByRaw("CASE bookings.status WHEN 'pending' THEN 0 WHEN 'confirmed' THEN 1 WHEN 'completed' THEN 2 ELSE 3 END")
             ->orderBy('bookings.created_at', 'desc')
             ->get()
             ->map(function ($item) {

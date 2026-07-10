@@ -16,18 +16,19 @@ class VendorDashboardController extends Controller
 
         $bookings = Booking::query()
             ->whereIn('service_profile_id', $serviceIds)
-            ->whereIn('status', ['pending', 'confirmed', 'cancelled']);
+            ->whereIn('status', ['pending', 'confirmed', 'completed', 'cancelled']);
 
         $confirmedValue = Booking::query()
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->where('service_profiles.user_id', $user->id)
-            ->where('bookings.status', 'confirmed')
+            ->whereIn('bookings.status', ['confirmed', 'completed'])
             ->sum('service_profiles.pricing_starting_from');
 
         $stats = [
             'total_bookings' => (clone $bookings)->count(),
             'pending_bookings' => (clone $bookings)->where('status', 'pending')->count(),
             'confirmed_bookings' => (clone $bookings)->where('status', 'confirmed')->count(),
+            'completed_bookings' => (clone $bookings)->where('status', 'completed')->count(),
             'cancelled_bookings' => (clone $bookings)->where('status', 'cancelled')->count(),
             'confirmed_value' => round((float) $confirmedValue, 2),
             'total_services' => $serviceIds->count(),
@@ -50,7 +51,7 @@ class VendorDashboardController extends Controller
 
         $recent = Booking::with(['serviceProfile', 'user'])
             ->whereIn('service_profile_id', $serviceIds)
-            ->whereIn('status', ['pending', 'confirmed', 'cancelled'])
+            ->whereIn('status', ['pending', 'confirmed', 'completed', 'cancelled'])
             ->latest()
             ->limit(5)
             ->get()

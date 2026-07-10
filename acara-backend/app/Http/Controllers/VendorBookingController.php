@@ -21,14 +21,14 @@ class VendorBookingController extends Controller
         $serviceIds = $this->vendorServiceIds($request);
 
         if ($serviceIds->isEmpty()) {
-            return response()->json(['bookings' => [], 'counts' => ['pending' => 0, 'confirmed' => 0, 'cancelled' => 0]]);
+            return response()->json(['bookings' => [], 'counts' => ['pending' => 0, 'confirmed' => 0, 'completed' => 0, 'cancelled' => 0]]);
         }
 
         $status = $request->query('status');
 
         $query = Booking::query()
             ->whereIn('bookings.service_profile_id', $serviceIds)
-            ->whereIn('bookings.status', ['pending', 'confirmed', 'cancelled'])
+            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'cancelled'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->join('users', 'bookings.user_id', '=', 'users.id')
             ->select([
@@ -36,25 +36,29 @@ class VendorBookingController extends Controller
                 'bookings.selected_date',
                 'bookings.status',
                 'bookings.created_at',
+                'bookings.updated_at',
                 'bookings.notes',
                 'service_profiles.id as service_id',
                 'service_profiles.service_name',
                 'service_profiles.service_category',
                 'service_profiles.pricing_starting_from',
                 'service_profiles.pricing_unit',
+                'service_profiles.portfolio_path',
                 'users.id as customer_id',
                 'users.name as customer_name',
                 'users.email as customer_email',
                 'users.phone_number as customer_phone',
             ])
-            ->orderByRaw("FIELD(bookings.status, 'pending', 'confirmed', 'cancelled')")
+            ->orderByRaw("FIELD(bookings.status, 'pending', 'confirmed', 'completed', 'cancelled')")
             ->orderBy('bookings.selected_date', 'asc');
 
-        if ($status && in_array($status, ['pending', 'confirmed', 'cancelled'])) {
+        if ($status && in_array($status, ['pending', 'confirmed', 'completed', 'cancelled'])) {
             $query->where('bookings.status', $status);
         }
 
-        $bookings = $query->get()->map(function ($item) {
+        $storageUrl = rtrim(asset('storage'), '/');
+
+        $bookings = $query->get()->map(function ($item) use ($storageUrl) {
             return [
                 'id'            => $item->id,
                 'service_id'    => $item->service_id,
@@ -66,7 +70,11 @@ class VendorBookingController extends Controller
                 'selected_date' => $item->selected_date->format('Y-m-d'),
                 'status'        => $item->status,
                 'booked_at'     => $item->created_at->toDateTimeString(),
+                'updated_at'    => $item->updated_at->toDateTimeString(),
                 'notes'         => $item->notes,
+                'portfolio_url' => $item->portfolio_path
+                    ? $storageUrl . '/' . ltrim($item->portfolio_path, '/')
+                    : null,
                 'customer'      => [
                     'id'    => $item->customer_id,
                     'name'  => $item->customer_name,
@@ -76,10 +84,11 @@ class VendorBookingController extends Controller
             ];
         });
 
-        $base   = Booking::whereIn('service_profile_id', $serviceIds)->whereIn('status', ['pending', 'confirmed', 'cancelled']);
+        $base   = Booking::whereIn('service_profile_id', $serviceIds)->whereIn('status', ['pending', 'confirmed', 'completed', 'cancelled']);
         $counts = [
             'pending'   => (clone $base)->where('status', 'pending')->count(),
             'confirmed' => (clone $base)->where('status', 'confirmed')->count(),
+            'completed' => (clone $base)->where('status', 'completed')->count(),
             'cancelled' => (clone $base)->where('status', 'cancelled')->count(),
         ];
 
@@ -101,6 +110,23 @@ class VendorBookingController extends Controller
         $booking->update(['status' => 'confirmed']);
 
         return response()->json(['message' => 'Booking approved.', 'status' => 'confirmed']);
+    }
+
+    /** PATCH /vendor/bookings/{id}/complete */
+    public function complete(Request $request, int $id)
+    {
+        $booking = Booking::whereIn('service_profile_id', $this->vendorServiceIds($request))
+            ->where('id', $id)
+            ->where('status', 'confirmed')
+            ->first();
+
+        if (! $booking) {
+            return response()->json(['message' => 'Booking not found or not confirmed.'], 404);
+        }
+
+        $booking->update(['status' => 'completed']);
+
+        return response()->json(['message' => 'Booking marked as completed.', 'status' => 'completed']);
     }
 
     /** PATCH /vendor/bookings/{id}/cancel */
