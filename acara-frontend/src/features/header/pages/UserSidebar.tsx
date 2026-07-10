@@ -24,6 +24,8 @@ import IconCalendarStats from "@tabler/icons-react/dist/esm/icons/IconCalendarSt
 import IconClipboardCheck from "@tabler/icons-react/dist/esm/icons/IconClipboardCheck.mjs";
 import { fetchCart } from "./cartdrawer";
 import { useCurrentUser } from "../../../hooks/useCurrentUser";
+import { performLogout } from "../../../lib/auth";
+import { LogoutConfirmationModal } from "../../../components/common/LogoutConfirmationModal";
 
 type Workspace = "planning" | "vendor";
 
@@ -58,6 +60,7 @@ type UserSidebarProps = {
 export function UserSidebar({ onCartOpen }: UserSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutConfirmationOpen, setLogoutConfirmationOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const storedRole = localStorage.getItem("role") ?? "user";
@@ -115,10 +118,13 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
     setMobileOpen(false);
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/login");
+  const requestLogout = () => {
     setMobileOpen(false);
+    setLogoutConfirmationOpen(true);
+  };
+
+  const handleLogout = async () => {
+    await performLogout();
   };
 
   const sidebarContent = (isMobile = false) => (
@@ -308,7 +314,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
         </div>
 
         <button
-          onClick={handleLogout}
+          onClick={requestLogout}
           className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 ${
             !isMobile && collapsed ? "justify-center" : ""
           }`}
@@ -383,6 +389,12 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
           </>
         )}
       </AnimatePresence>
+
+      <LogoutConfirmationModal
+        isOpen={logoutConfirmationOpen}
+        onCancel={() => setLogoutConfirmationOpen(false)}
+        onConfirm={handleLogout}
+      />
     </>
   );
 }

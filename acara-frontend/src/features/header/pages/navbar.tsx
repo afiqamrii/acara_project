@@ -1,11 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { performLogout } from "../../../lib/auth";
+import { LogoutConfirmationModal } from "../../../components/common/LogoutConfirmationModal";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutConfirmationOpen, setLogoutConfirmationOpen] = useState(false);
 
   const token = localStorage.getItem("token");
   const userName = localStorage.getItem("user_name");
@@ -23,6 +25,11 @@ const Navbar = () => {
       default:
         return "/dashboard";
     }
+  };
+
+  const requestLogout = () => {
+    setMobileOpen(false);
+    setLogoutConfirmationOpen(true);
   };
 
   const handleLogout = async () => {
@@ -111,7 +118,7 @@ const Navbar = () => {
                 </button>
 
                 <button
-                  onClick={handleLogout}
+                  onClick={requestLogout}
                   className="px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer text-gray-500 hover:text-red-600 hover:bg-red-50"
                 >
                   Logout
@@ -231,7 +238,7 @@ const Navbar = () => {
                   Go to Dashboard
                 </button>
                 <button
-                  onClick={() => { handleLogout(); setMobileOpen(false); }}
+                  onClick={requestLogout}
                   className="w-full py-3 text-red-500 font-medium rounded-xl text-sm hover:bg-red-50 transition-colors cursor-pointer"
                 >
                   Logout
@@ -256,6 +263,12 @@ const Navbar = () => {
           </div>
         </div>
       </div>
+
+      <LogoutConfirmationModal
+        isOpen={logoutConfirmationOpen}
+        onCancel={() => setLogoutConfirmationOpen(false)}
+        onConfirm={handleLogout}
+      />
     </>
   );
 };

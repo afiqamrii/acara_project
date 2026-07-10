@@ -16,6 +16,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { performLogout } from "../../../lib/auth";
+import { LogoutConfirmationModal } from "../../../components/common/LogoutConfirmationModal";
 
 const navItems = [
   { label: "Dashboard", href: "/admin/dashboard", icon: IconLayoutDashboard },
@@ -29,6 +30,7 @@ const navItems = [
 export function AdminSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutConfirmationOpen, setLogoutConfirmationOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -47,9 +49,13 @@ export function AdminSidebar() {
     setMobileOpen(false);
   };
 
+  const requestLogout = () => {
+    setMobileOpen(false);
+    setLogoutConfirmationOpen(true);
+  };
+
   const handleLogout = async () => {
     await performLogout();
-    setMobileOpen(false);
   };
 
   const sidebarContent = (isMobile = false) => (
@@ -180,7 +186,7 @@ export function AdminSidebar() {
         </div>
 
         <button
-          onClick={handleLogout}
+          onClick={requestLogout}
           className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-red-50 ${!isMobile && collapsed ? "justify-center" : ""
             }`}
         >
@@ -255,6 +261,12 @@ export function AdminSidebar() {
           </>
         )}
       </AnimatePresence>
+
+      <LogoutConfirmationModal
+        isOpen={logoutConfirmationOpen}
+        onCancel={() => setLogoutConfirmationOpen(false)}
+        onConfirm={handleLogout}
+      />
     </>
   );
 }
