@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../../lib/Api";
 import { usePageTitle } from "../../../utils/usePageTitle";
+import acaraLogo from "../../../img/acara-logo.png";
 
 const Register_admin: React.FC = () => {
     usePageTitle("Invite Admin");
@@ -62,7 +63,7 @@ const Register_admin: React.FC = () => {
                 <div className="relative z-20 h-full flex flex-col justify-between p-12">
                     {/* Logo */}
                     <div className="inline-flex items-center bg-white/95 px-4 py-2 rounded-full w-fit shadow-lg">
-                        <img src="/src/img/acara-logo.png" alt="ACARA" className="w-7 h-auto" />
+                        <img src={acaraLogo} alt="ACARA" className="w-7 h-auto" />
                         <span className="ml-2 font-bold text-base text-gray-900">ACARA</span>
                     </div>
 

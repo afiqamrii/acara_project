@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../../lib/Api";
 import { usePageTitle } from "../../../utils/usePageTitle";
 import { updateStoredUser } from "../../../lib/auth";
+import acaraLogo from "../../../img/acara-logo.png";
 
 const CompleteProfile: React.FC = () => {
   usePageTitle("Complete Profile");
@@ -134,7 +135,7 @@ const CompleteProfile: React.FC = () => {
           <aside className="md:col-span-2 bg-gradient-to-br from-[#6C4AB8] to-[#7E57C2] text-white p-8 md:p-10">
             <div className="inline-flex items-center bg-white/15 backdrop-blur px-4 py-2 rounded-full mb-6">
               <img
-                src="/src/img/acara-logo.png"
+                src={acaraLogo}
                 alt="ACARA"
                 className="w-6 h-auto"
               />

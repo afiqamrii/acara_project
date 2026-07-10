@@ -6,6 +6,8 @@ import { usePageTitle } from "../../../utils/usePageTitle";
 
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { setAuthSession } from "../../../lib/auth";
+import acaraLogo from "../../../img/acara-logo.png";
+import loginBackground from "../../../img/bg1_login.jpg";
 
 type LoginResponse = {
   message: string;
@@ -159,7 +161,7 @@ const Login: React.FC = () => {
         <div className="flex items-center justify-center px-6">
           <div className="w-full max-w-md rounded-2xl bg-white/30 backdrop-blur-xl border border-white/40 shadow-xl p-10">
             <div className="text-center mb-6">
-              <img src="/src/img/acara-logo.png" className="mx-auto w-40" />
+              <img src={acaraLogo} className="mx-auto w-40" />
               <h3 className="text-2xl text-black font-bold mt-6">
                 Welcome back 👋
               </h3>
@@ -300,7 +302,7 @@ const Login: React.FC = () => {
         {/* RIGHT SIDE */}
         <div className="hidden md:flex relative items-center justify-center overflow-hidden">
           <img
-            src="/src/img/bg1_login.jpg"
+            src={loginBackground}
             className="absolute inset-0 w-full h-full object-cover"
             alt="Background"
           />

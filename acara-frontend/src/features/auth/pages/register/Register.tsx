@@ -4,6 +4,7 @@ import { useRegister } from "../../hooks";
 import { usePageTitle } from "../../../../utils/usePageTitle";
 
 import SuccessModal from "../../components/SuccessModal";
+import acaraLogo from "../../../../img/acara-logo.png";
 
 const Register: React.FC = () => {
     usePageTitle("Register");
@@ -200,7 +201,7 @@ const Register: React.FC = () => {
                 <div className="relative z-20 h-full min-h-screen flex flex-col justify-between p-8">
                     {/* Logo */}
                     <div className="inline-flex items-center bg-white/95 px-4 py-2 rounded-full w-fit shadow-lg">
-                        <img src="src/img/acara-logo.png" alt="ACARA" className="w-7 h-auto" />
+                        <img src={acaraLogo} alt="ACARA" className="w-7 h-auto" />
                         <span className="ml-2 font-bold text-base text-gray-900">ACARA</span>
                     </div>
 
