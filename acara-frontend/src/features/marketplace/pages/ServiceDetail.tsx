@@ -403,6 +403,30 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
     );
 };
 
+const DESCRIPTION_PREVIEW_LENGTH = 260;
+const PRICING_PREVIEW_LENGTH = 140;
+
+const ExpandableText: React.FC<{ text: string; previewLength: number; className?: string }> = ({ text, previewLength, className }) => {
+    const [expanded, setExpanded] = useState(false);
+    const isLong = text.length > previewLength;
+    const shown = expanded || !isLong ? text : `${text.slice(0, previewLength).trimEnd()}...`;
+
+    return (
+        <>
+            <p className={className}>{shown}</p>
+            {isLong && (
+                <button
+                    type="button"
+                    onClick={() => setExpanded((prev) => !prev)}
+                    className="mt-1.5 text-xs font-bold text-purple-600 hover:text-purple-800 transition-colors"
+                >
+                    {expanded ? 'Show less' : 'Read more'}
+                </button>
+            )}
+        </>
+    );
+};
+
 const ServiceDetail: React.FC = () => {
     const { serviceId } = useParams<{ serviceId: string }>();
     const navigate = useNavigate();
@@ -509,9 +533,11 @@ const ServiceDetail: React.FC = () => {
                         className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100"
                     >
                         <h2 className="text-base font-bold text-gray-900 mb-3">About this Service</h2>
-                        <p className="text-gray-500 text-sm leading-relaxed">
-                            {service.description || 'No description has been provided for this service.'}
-                        </p>
+                        <ExpandableText
+                            text={service.description || 'No description has been provided for this service.'}
+                            previewLength={DESCRIPTION_PREVIEW_LENGTH}
+                            className="text-gray-500 text-sm leading-relaxed whitespace-pre-line"
+                        />
                     </motion.div>
 
                     {/* Vendor */}
@@ -562,11 +588,13 @@ const ServiceDetail: React.FC = () => {
                 >
                     <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100">
                         <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Starting from</p>
-                        <p className="text-3xl font-black text-purple-700 mt-1">{service.price}</p>
+                        <p className="text-3xl font-black text-gray-700 mt-1">{service.price}</p>
                         {service.pricing_description && (
-                            <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                                {service.pricing_description}
-                            </p>
+                            <ExpandableText
+                                text={service.pricing_description}
+                                previewLength={PRICING_PREVIEW_LENGTH}
+                                className="text-xs text-gray-400 mt-2 leading-relaxed whitespace-pre-line"
+                            />
                         )}
 
                         <div className="mt-6 space-y-3">

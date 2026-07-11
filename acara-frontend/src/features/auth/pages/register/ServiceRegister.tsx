@@ -491,12 +491,14 @@ const ServiceRegister: React.FC = () => {
                                     <textarea
                                         name="service_details"
                                         rows={4}
+                                        maxLength={1000}
                                         className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all resize-none ${attemptedNext && errors.service_details ? 'border-red-500 ring-red-200' : 'border-gray-200 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2]'
                                             }`}
                                         placeholder="Describe your service or product in detail..."
                                         value={formData.service_details}
                                         onChange={handleInputChange}
                                     />
+                                    <p className="text-xs text-gray-400 mt-1 text-right">{formData.service_details.length}/1000</p>
                                 </div>
 
                                 <div>
@@ -538,11 +540,13 @@ const ServiceRegister: React.FC = () => {
                                     <textarea
                                         name="pricing_description"
                                         rows={3}
+                                        maxLength={500}
                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7E57C2]/20 focus:border-[#7E57C2] transition-all resize-none"
                                         placeholder="Additional pricing details (optional)..."
                                         value={formData.pricing_description}
                                         onChange={handleInputChange}
                                     />
+                                    <p className="text-xs text-gray-400 mt-1 text-right">{formData.pricing_description.length}/500</p>
                                 </div>
                             </div>
                         </div>
