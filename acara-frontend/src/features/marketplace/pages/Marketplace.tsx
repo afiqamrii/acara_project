@@ -133,7 +133,7 @@ const VendorCard: React.FC<{ item: MarketplaceService; index: number }> = ({ ite
         <motion.div
             variants={itemVariants}
             whileHover={{ y: -10 }}
-            className="group bg-white rounded-[32px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden"
+            className="group flex h-full flex-col bg-white rounded-[32px] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden"
         >
             <div className="relative h-60 overflow-hidden">
                 <img
@@ -170,21 +170,21 @@ const VendorCard: React.FC<{ item: MarketplaceService; index: number }> = ({ ite
                     </span>
                 </div>
             </div>
-            <div className="p-8">
-                <h3 className="text-xl font-bold text-gray-900 group-hover:text-purple-600 transition-colors">
+            <div className="p-8 flex flex-1 flex-col">
+                <h3 className="text-xl font-bold text-gray-900 group-hover:text-purple-600 transition-colors line-clamp-2">
                     {item.title}
                 </h3>
                 <p className="text-gray-500 text-sm mt-2 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-red-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-red-400 shrink-0">
                         <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z" />
                         <circle cx="12" cy="10" r="3" />
                     </svg>
-                    <span>By {item.vendor} · {item.location}</span>
+                    <span className="line-clamp-1">By {item.vendor} · {item.location}</span>
                 </p>
-                <div className="mt-6 flex items-center justify-between">
+                <div className="mt-auto pt-6 flex items-center justify-between">
                     <div>
                         <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Package Price</p>
-                        <p className="text-lg font-black text-purple-700">{item.price}</p>
+                        <p className="text-lg font-black text-grey-700">{item.price}</p>
                     </div>
                     <motion.button
                         whileTap={{ scale: 0.9 }}
@@ -261,7 +261,7 @@ const Marketplace: React.FC = () => {
         <div className="flex-1 overflow-y-auto bg-[#fcfaff]">
 
             {/* --- HERO SECTION --- */}
-            <div className="relative h-[50vh] md:h-[60vh] overflow-hidden bg-[#640D5F] flex items-center justify-center rounded-b-[40px] shadow-2xl">
+            <div className="relative h-[20vh] md:h-[40vh] overflow-hidden bg-[#640D5F] flex items-center justify-center rounded-b-[40px] shadow-2xl">
                 <div className="absolute inset-0 opacity-70 grid grid-cols-4 md:grid-cols-6 gap-4 rotate-12 scale-125">
                     {[...Array(12)].map((_, i) => (
                         <motion.div
@@ -275,7 +275,7 @@ const Marketplace: React.FC = () => {
                     ))}
                 </div>
 
-                <div className="relative h-[50vh] w-full md:h-[60vh] rounded-b-[40px] bg-transparent">
+                <div className="relative h-[20vh] md:h-[40vh] w-full md:w-full rounded-b-[40px] bg-transparent">
                     <div className="relative z-10 h-full flex items-center justify-center text-center px-4">
                         <motion.div
                             initial={{ opacity: 0, y: 30 }}

@@ -25,10 +25,10 @@ class ServiceController extends Controller
         $validator = Validator::make($request->all(), [
             'service_name' => 'required|string|max:255',
             'service_category' => 'required|string|max:255',
-            'service_details' => 'required|string',
+            'service_details' => 'required|string|max:1000',
             'pricing_starting_from' => 'required|numeric',
             'pricing_unit' => 'required|string|max:255',
-            'pricing_description' => 'nullable|string',
+            'pricing_description' => 'nullable|string|max:500',
             'portfolio' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
 

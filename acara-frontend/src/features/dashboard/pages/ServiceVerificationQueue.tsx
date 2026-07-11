@@ -25,6 +25,7 @@ const ServiceVerificationQueue = () => {
     const [error, setError] = useState<string | null>(null);
     const [actionType, setActionType] = useState<ActionType | null>(null);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
+    const [viewedService, setViewedService] = useState<Service | null>(null);
 
     const fetchServices = async () => {
         try {
@@ -171,23 +172,35 @@ const ServiceVerificationQueue = () => {
                                 <tr><td colSpan={6} className="px-6 py-8 text-center">No services found.</td></tr>
                             ) : (
                                 services.map((service) => (
-                                    <tr key={service.id} className="border-b align-top">
+                                    <tr
+                                        key={service.id}
+                                        onClick={() => setViewedService(service)}
+                                        className="cursor-pointer border-b align-top hover:bg-neutral-50"
+                                    >
                                         <td className="px-6 py-4">
                                             <div className="font-semibold text-gray-900">{service.service_name}</div>
-                                            <div className="mt-1 max-w-xs text-xs text-gray-500">{service.service_details || "-"}</div>
+                                            <div className="mt-1 line-clamp-2 max-w-xs text-xs text-gray-500">{service.service_details || "-"}</div>
                                         </td>
                                         <td className="px-6 py-4">{service.service_category}</td>
                                         <td className="px-6 py-4">
                                             <div>{formatPrice(service)}</div>
-                                            <div className="mt-1 max-w-xs text-xs text-gray-500">{service.pricing_description || "-"}</div>
+                                            <div className="mt-1 line-clamp-2 max-w-xs text-xs text-gray-500">{service.pricing_description || "-"}</div>
                                         </td>
                                         <td className="px-6 py-4">{badge(service.status)}</td>
                                         <td className="px-6 py-4">
                                             {service.portfolio_url ? (
-                                                <a href={service.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-indigo-600 hover:underline">View Portfolio</a>
+                                                <a
+                                                    href={service.portfolio_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-xs font-semibold text-indigo-600 hover:underline"
+                                                >
+                                                    View Portfolio
+                                                </a>
                                             ) : "-"}
                                         </td>
-                                        <td className="px-6 py-4">{actionButtons(service)}</td>
+                                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>{actionButtons(service)}</td>
                                     </tr>
                                 ))
                             )}
@@ -202,7 +215,11 @@ const ServiceVerificationQueue = () => {
                         <div className="rounded-2xl border bg-white px-4 py-8 text-center text-sm text-gray-500 shadow-sm">No services found.</div>
                     ) : (
                         services.map((service) => (
-                            <div key={service.id} className="rounded-2xl border bg-white p-4 shadow-sm">
+                            <div
+                                key={service.id}
+                                onClick={() => setViewedService(service)}
+                                className="cursor-pointer rounded-2xl border bg-white p-4 shadow-sm active:bg-neutral-50"
+                            >
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                         <h2 className="break-words text-base font-semibold text-gray-900">{service.service_name}</h2>
@@ -211,23 +228,76 @@ const ServiceVerificationQueue = () => {
                                     <div className="shrink-0">{badge(service.status)}</div>
                                 </div>
                                 <div className="mt-4 space-y-3 text-sm">
-                                    <p className="break-words text-gray-700">{service.service_details || "-"}</p>
+                                    <p className="line-clamp-2 break-words text-gray-700">{service.service_details || "-"}</p>
                                     <div>
                                         <p className="font-medium text-gray-900">{formatPrice(service)}</p>
-                                        <p className="mt-1 break-words text-xs text-gray-500">{service.pricing_description || "-"}</p>
+                                        <p className="mt-1 line-clamp-2 break-words text-xs text-gray-500">{service.pricing_description || "-"}</p>
                                     </div>
                                     <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
                                         {service.portfolio_url ? (
-                                            <a href={service.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-indigo-600 hover:underline">View Portfolio</a>
+                                            <a
+                                                href={service.portfolio_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="text-xs font-semibold text-indigo-600 hover:underline"
+                                            >
+                                                View Portfolio
+                                            </a>
                                         ) : <span className="text-xs text-gray-500">No portfolio</span>}
                                         <span className="text-xs text-gray-400">{service.submitted_at}</span>
                                     </div>
                                 </div>
-                                <div className="mt-4">{actionButtons(service, true)}</div>
+                                <div className="mt-4" onClick={(e) => e.stopPropagation()}>{actionButtons(service, true)}</div>
                             </div>
                         ))
                     )}
                 </div>
+
+                {viewedService && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setViewedService(null)}>
+                        <div
+                            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-6"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <h2 className="break-words text-lg font-semibold text-gray-900">{viewedService.service_name}</h2>
+                                    <p className="mt-1 text-xs font-medium text-gray-500">{viewedService.service_category}</p>
+                                </div>
+                                <div className="shrink-0">{badge(viewedService.status)}</div>
+                            </div>
+
+                            <div className="mt-5 space-y-4 text-sm">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Service Details</p>
+                                    <p className="mt-1 whitespace-pre-line break-words text-gray-700">{viewedService.service_details || "-"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Pricing</p>
+                                    <p className="mt-1 font-medium text-gray-900">{formatPrice(viewedService)}</p>
+                                    <p className="mt-1 whitespace-pre-line break-words text-xs text-gray-500">{viewedService.pricing_description || "-"}</p>
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+                                    {viewedService.portfolio_url ? (
+                                        <a href={viewedService.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-indigo-600 hover:underline">View Portfolio</a>
+                                    ) : <span className="text-xs text-gray-500">No portfolio</span>}
+                                    <span className="text-xs text-gray-400">{viewedService.submitted_at}</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                {actionButtons(viewedService)}
+                                <button
+                                    onClick={() => setViewedService(null)}
+                                    className="rounded-lg border px-4 py-2 text-sm"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {selectedService && actionType && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
