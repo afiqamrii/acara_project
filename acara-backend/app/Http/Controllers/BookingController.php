@@ -168,7 +168,7 @@ class BookingController extends Controller
         $userId = $request->user()->id;
 
         $service = ServiceProfile::find($serviceId);
-        if (! $service || $service->status !== 'approved') {
+        if (! $service || $service->status !== 'approved' || ! $service->is_active) {
             return response()->json(['message' => 'Service is not available.'], 422);
         }
 

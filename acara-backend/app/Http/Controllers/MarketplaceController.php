@@ -75,6 +75,7 @@ class MarketplaceController extends Controller
                     'review_stats.review_count',
                 ])
                 ->where('service_profiles.status', 'approved')
+                ->where('service_profiles.is_active', true)
                 ->when($search !== '', function ($query) use ($search) {
                     $query->where(function ($q) use ($search) {
                         $likeSearch = '%'.$this->escapeLike($search).'%';
@@ -181,6 +182,7 @@ class MarketplaceController extends Controller
                 ])
                 ->where('service_profiles.id', $id)
                 ->where('service_profiles.status', 'approved')
+                ->where('service_profiles.is_active', true)
                 ->first();
 
             if (! $row) {

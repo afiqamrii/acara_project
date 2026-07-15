@@ -11,6 +11,8 @@ export type UserNotification = {
     | "booking_cancelled"
     | "booking_completed"
     | "review_received"
+    | "service_approved"
+    | "service_rejected"
     | string;
   title: string;
   message: string;
@@ -22,6 +24,9 @@ export type UserNotification = {
     selected_date?: string;
     review_id?: number;
     rating?: number;
+    service_id?: number;
+    service_status?: string;
+    rejection_reason?: string | null;
   } | null;
   read_at: string | null;
   created_at: string;

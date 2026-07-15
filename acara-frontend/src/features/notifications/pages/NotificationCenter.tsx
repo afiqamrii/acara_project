@@ -41,9 +41,19 @@ const notificationStyle = (type: string) => {
       return { icon: IconCalendarCheck, className: "bg-blue-100 text-blue-700" };
     case "review_received":
       return { icon: IconStar, className: "bg-amber-100 text-amber-700" };
+    case "service_approved":
+      return { icon: IconCircleCheck, className: "bg-emerald-100 text-emerald-700" };
+    case "service_rejected":
+      return { icon: IconAlertTriangle, className: "bg-orange-100 text-orange-700" };
     default:
       return { icon: IconBell, className: "bg-gray-100 text-gray-600" };
   }
+};
+
+const notificationActionLabel = (type: string) => {
+  if (type === "review_received") return "View review";
+  if (type === "service_approved" || type === "service_rejected") return "Manage service";
+  return "View booking";
 };
 
 const relativeTime = (value: string) => {
@@ -118,7 +128,7 @@ const NotificationCard = ({
           <span className="text-xs font-medium text-gray-400">{relativeTime(notification.created_at)}</span>
           {notification.action_url && (
             <span className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 group-hover:text-purple-800">
-              View booking <IconChevronRight size={14} />
+              {notificationActionLabel(notification.type)} <IconChevronRight size={14} />
             </span>
           )}
         </span>

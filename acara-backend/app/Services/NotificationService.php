@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\Review;
+use App\Models\ServiceProfile;
 use App\Models\UserNotification;
 use App\Notifications\BookingActivityEmail;
 
@@ -111,6 +112,26 @@ class NotificationService
         );
     }
 
+    public function serviceApproved(ServiceProfile $service): UserNotification
+    {
+        return $this->createServiceActivity(
+            service: $service,
+            type: 'service_approved',
+            title: 'Service approved',
+            message: "Your {$service->service_name} service was approved and is ready for the marketplace.",
+        );
+    }
+
+    public function serviceRejected(ServiceProfile $service): UserNotification
+    {
+        return $this->createServiceActivity(
+            service: $service,
+            type: 'service_rejected',
+            title: 'Service changes required',
+            message: "Your {$service->service_name} service needs changes. Reason: {$service->rejection_reason}",
+        );
+    }
+
     private function create(
         int $userId,
         Booking $booking,
@@ -135,12 +156,44 @@ class NotificationService
             ], $extraData),
         ]);
 
-        if (config('acara.booking_email.enabled')) {
-            $notification->loadMissing('user');
-            $notification->user->notify(new BookingActivityEmail($notification));
-        }
+        $this->sendEmailIfEnabled($notification);
 
         return $notification;
+    }
+
+    private function createServiceActivity(
+        ServiceProfile $service,
+        string $type,
+        string $title,
+        string $message,
+    ): UserNotification {
+        $notification = UserNotification::create([
+            'user_id' => $service->user_id,
+            'type' => $type,
+            'title' => $title,
+            'message' => $message,
+            'action_url' => '/vendor/services',
+            'data' => [
+                'service_id' => $service->id,
+                'service_name' => $service->service_name,
+                'service_status' => $service->status,
+                'rejection_reason' => $service->rejection_reason,
+            ],
+        ]);
+
+        $this->sendEmailIfEnabled($notification);
+
+        return $notification;
+    }
+
+    private function sendEmailIfEnabled(UserNotification $notification): void
+    {
+        if (! config('acara.booking_email.enabled')) {
+            return;
+        }
+
+        $notification->loadMissing('user');
+        $notification->user->notify(new BookingActivityEmail($notification));
     }
 
     private function date(Booking $booking): string

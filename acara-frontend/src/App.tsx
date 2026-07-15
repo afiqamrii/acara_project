@@ -23,6 +23,7 @@ import AdminLayout from './components/layouts/AdminLayout';
 const ServiceDetail = lazy(() => import('./features/marketplace/pages/ServiceDetail'));
 const VendorAvailability = lazy(() => import('./features/vendor/pages/VendorAvailability'));
 const VendorBookings = lazy(() => import('./features/vendor/pages/VendorBookings'));
+const VendorServices = lazy(() => import('./features/vendor/pages/VendorServices'));
 const ServiceVerificationQueue = lazy(() => import('./features/dashboard/pages/ServiceVerificationQueue'));
 const UserProfile = lazy(() => import('./features/profile/pages/UserProfile'));
 const VendorDashboard = lazy(() => import('./features/dashboard/pages/VendorDashboard'));
@@ -55,6 +56,7 @@ function App() {
               <Route path="/vendor/register" element={<ProtectedRoute requiredRole={["vendor"]}><VendorRegister /></ProtectedRoute>} />
               <Route path="/vendor/availability" element={<ProtectedRoute requiredRole={["vendor"]}><VendorAvailability /></ProtectedRoute>} />
               <Route path="/vendor/bookings" element={<ProtectedRoute requiredRole={["vendor"]}><VendorBookings /></ProtectedRoute>} />
+              <Route path="/vendor/services" element={<ProtectedRoute requiredRole={["vendor"]}><VendorServices /></ProtectedRoute>} />
               <Route path="/service/register" element={<ProtectedRoute requiredRole={["vendor"]}><ServiceRegister /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute requiredRole={["user", "vendor"]}><ComingSoon title="My Events" description="Manage all your upcoming and past events in one place. Create, edit, and track event status seamlessly." /></ProtectedRoute>} />
               <Route path="/bookings" element={<ProtectedRoute requiredRole={["user", "vendor"]}><CustomerBookings /></ProtectedRoute>} />

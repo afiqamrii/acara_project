@@ -22,6 +22,17 @@ class ServiceProfile extends Model
         'pricing_description',
         'portfolio_path',
         'status',
+        'is_active',
+        'rejection_reason',
+        'rejected_at',
+        'resubmitted_at',
+    ];
+
+    protected $casts = [
+        'pricing_starting_from' => 'decimal:2',
+        'is_active' => 'boolean',
+        'rejected_at' => 'datetime',
+        'resubmitted_at' => 'datetime',
     ];
 
     public function user()
@@ -32,5 +43,15 @@ class ServiceProfile extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
+    }
+
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    public function availabilities(): HasMany
+    {
+        return $this->hasMany(ServiceAvailability::class);
     }
 }

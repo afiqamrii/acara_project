@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { FiArrowLeft, FiCheckCircle, FiClock, FiXCircle } from "react-icons/fi";
+import type { AxiosError } from "axios";
 import { logoutClient } from "../../../lib/auth";
 import api from "../../../lib/Api";
 
@@ -13,6 +14,8 @@ type Service = {
     pricing_unit: string;
     pricing_description?: string | null;
     status: "pending_verification" | "approved" | "rejected";
+    rejection_reason?: string | null;
+    vendor_name?: string | null;
     submitted_at: string;
     portfolio_url?: string | null;
 };
@@ -26,15 +29,18 @@ const ServiceVerificationQueue = () => {
     const [actionType, setActionType] = useState<ActionType | null>(null);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [viewedService, setViewedService] = useState<Service | null>(null);
+    const [actionReason, setActionReason] = useState("");
+    const [actionError, setActionError] = useState<string | null>(null);
+    const [actionLoading, setActionLoading] = useState(false);
 
     const fetchServices = async () => {
         try {
             setError(null);
             const res = await api.get("/admin/services");
             setServices(res.data);
-        } catch (err: any) {
-            console.error("Failed to fetch services:", err);
-            setError(err.response?.status === 401
+        } catch (error) {
+            const apiError = error as AxiosError;
+            setError(apiError.response?.status === 401
                 ? "Session expired. Please login again."
                 : "Something went wrong while fetching services.");
         } finally {
@@ -75,22 +81,37 @@ const ServiceVerificationQueue = () => {
     const openConfirm = (type: ActionType, service: Service) => {
         setActionType(type);
         setSelectedService(service);
+        setActionReason("");
+        setActionError(null);
     };
 
     const confirmAction = async () => {
         if (!selectedService || !actionType) return;
+        if (actionType === "reject" && actionReason.trim().length < 10) {
+            setActionError("Please provide a rejection reason of at least 10 characters.");
+            return;
+        }
 
         try {
+            setActionLoading(true);
+            setActionError(null);
             await api.patch(
                 `/admin/services/${selectedService.id}/${actionType}`,
-                null
+                actionType === "reject" ? { reason: actionReason.trim() } : undefined,
             );
             await fetchServices();
-        } catch (err) {
-            console.error("Service action failed:", err);
-        } finally {
             setActionType(null);
             setSelectedService(null);
+            setActionReason("");
+        } catch (error) {
+            const apiError = error as AxiosError<{ message?: string; errors?: { reason?: string[] } }>;
+            setActionError(
+                apiError.response?.data?.errors?.reason?.[0]
+                ?? apiError.response?.data?.message
+                ?? "The service decision could not be saved.",
+            );
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -278,6 +299,12 @@ const ServiceVerificationQueue = () => {
                                     <p className="mt-1 font-medium text-gray-900">{formatPrice(viewedService)}</p>
                                     <p className="mt-1 whitespace-pre-line break-words text-xs text-gray-500">{viewedService.pricing_description || "-"}</p>
                                 </div>
+                                {viewedService.rejection_reason && (
+                                    <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-red-600">Rejection reason</p>
+                                        <p className="mt-1 whitespace-pre-line break-words text-sm text-red-800">{viewedService.rejection_reason}</p>
+                                    </div>
+                                )}
                                 <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
                                     {viewedService.portfolio_url ? (
                                         <a href={viewedService.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-indigo-600 hover:underline">View Portfolio</a>
@@ -308,18 +335,50 @@ const ServiceVerificationQueue = () => {
                             <p className="mt-2 break-words text-sm text-neutral-600">
                                 Are you sure you want to <strong>{actionType}</strong> {selectedService.service_name}?
                             </p>
+                            {actionType === "reject" && (
+                                <div className="mt-5">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <label htmlFor="service-rejection-reason" className="text-xs font-semibold text-gray-700">
+                                            Rejection reason
+                                        </label>
+                                        <span className="text-[11px] text-gray-400">{actionReason.length}/1000</span>
+                                    </div>
+                                    <textarea
+                                        id="service-rejection-reason"
+                                        value={actionReason}
+                                        onChange={(event) => setActionReason(event.target.value)}
+                                        rows={4}
+                                        maxLength={1000}
+                                        placeholder="Explain what the vendor must change before resubmitting..."
+                                        className="mt-2 w-full resize-y rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                                    />
+                                    <p className="mt-1 text-[11px] text-gray-500">Minimum 10 characters. This feedback is shown to the vendor.</p>
+                                </div>
+                            )}
+                            {actionError && (
+                                <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                                    {actionError}
+                                </p>
+                            )}
                             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                                 <button
-                                    onClick={() => setSelectedService(null)}
+                                    onClick={() => {
+                                        setSelectedService(null);
+                                        setActionType(null);
+                                        setActionReason("");
+                                        setActionError(null);
+                                    }}
+                                    disabled={actionLoading}
                                     className="rounded-lg border px-4 py-2 text-sm"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={confirmAction}
-                                    className={`rounded-lg px-4 py-2 text-sm text-white ${actionType === "approve" ? "bg-emerald-500" : "bg-rose-500"}`}
+                                    disabled={actionLoading || (actionType === "reject" && actionReason.trim().length < 10)}
+                                    className={`rounded-lg px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50 ${actionType === "approve" ? "bg-emerald-500" : "bg-rose-500"}`}
                                 >
-                                    Confirm
+                                    {actionLoading ? "Saving..." : "Confirm"}
                                 </button>
                             </div>
                         </div>

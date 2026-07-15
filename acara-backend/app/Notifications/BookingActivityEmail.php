@@ -43,7 +43,7 @@ class BookingActivityEmail extends Notification implements ShouldQueue
 
         if ($this->activity->action_url) {
             $message->action(
-                'View booking',
+                $this->actionLabel(),
                 rtrim(config('app.frontend_url'), '/').$this->activity->action_url,
             );
         }
@@ -69,5 +69,14 @@ class BookingActivityEmail extends Notification implements ShouldQueue
     public function backoff(): array
     {
         return [60, 300, 900];
+    }
+
+    private function actionLabel(): string
+    {
+        return match ($this->activity->type) {
+            'review_received' => 'View review',
+            'service_approved', 'service_rejected' => 'Manage service',
+            default => 'View booking',
+        };
     }
 }

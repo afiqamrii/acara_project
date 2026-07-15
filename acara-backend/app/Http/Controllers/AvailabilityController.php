@@ -12,6 +12,15 @@ class AvailabilityController extends Controller
     /** Public: available dates for a specific service (today onwards). */
     public function publicAvailability(int $serviceId)
     {
+        $serviceIsPublic = ServiceProfile::where('id', $serviceId)
+            ->where('status', 'approved')
+            ->where('is_active', true)
+            ->exists();
+
+        if (! $serviceIsPublic) {
+            return response()->json(['message' => 'Service not found.'], 404);
+        }
+
         $dates = ServiceAvailability::where('service_profile_id', $serviceId)
             ->where('available_date', '>=', today())
             ->orderBy('available_date')
@@ -36,7 +45,7 @@ class AvailabilityController extends Controller
             ])
             ->map(fn ($s) => array_merge($s->toArray(), [
                 'portfolio_url' => $s->portfolio_path
-                    ? $storageUrl . '/' . ltrim($s->portfolio_path, '/')
+                    ? $storageUrl.'/'.ltrim($s->portfolio_path, '/')
                     : null,
             ]));
 
@@ -74,7 +83,7 @@ class AvailabilityController extends Controller
             ->get()
             ->groupBy(fn ($b) => $b->selected_date->toDateString())
             ->map(fn ($group, $date) => [
-                'date'      => $date,
+                'date' => $date,
                 'customers' => $group
                     ->map(fn ($b) => explode(' ', trim($b->customer_name))[0])
                     ->unique()
@@ -83,9 +92,9 @@ class AvailabilityController extends Controller
             ->values();
 
         return response()->json([
-            'service_id'   => $service->id,
+            'service_id' => $service->id,
             'service_name' => $service->service_name,
-            'dates'        => $dates,
+            'dates' => $dates,
             'booked_dates' => $bookedDates,
         ]);
     }
@@ -94,7 +103,7 @@ class AvailabilityController extends Controller
     public function sync(Request $request, int $serviceId)
     {
         $validated = $request->validate([
-            'dates'   => ['required', 'array'],
+            'dates' => ['required', 'array'],
             'dates.*' => ['date_format:Y-m-d', 'after_or_equal:today'],
         ]);
 
@@ -113,12 +122,12 @@ class AvailabilityController extends Controller
             ->delete();
 
         if ($dates->isNotEmpty()) {
-            $now     = now();
+            $now = now();
             $inserts = $dates->map(fn ($d) => [
                 'service_profile_id' => $service->id,
-                'available_date'     => $d,
-                'created_at'         => $now,
-                'updated_at'         => $now,
+                'available_date' => $d,
+                'created_at' => $now,
+                'updated_at' => $now,
             ])->all();
 
             ServiceAvailability::insert($inserts);
@@ -126,7 +135,7 @@ class AvailabilityController extends Controller
 
         return response()->json([
             'message' => 'Availability updated.',
-            'dates'   => $dates->values(),
+            'dates' => $dates->values(),
         ]);
     }
 

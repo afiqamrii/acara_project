@@ -144,6 +144,7 @@ const VendorDashboard = () => {
   const quickActions = data.vendor_status === "approved"
     ? [
         { label: "Review Requests", path: "/vendor/bookings", icon: IconClipboardCheck },
+        { label: "My Services", path: "/vendor/services", icon: IconShoppingBag },
         { label: "Manage Availability", path: "/vendor/availability", icon: IconCalendarStats },
         { label: "Add Service", path: "/service/register", icon: IconCirclePlus },
       ]

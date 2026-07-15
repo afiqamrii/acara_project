@@ -67,7 +67,11 @@ Route::middleware(['auth:sanctum', 'profile.completed', 'role:vendor'])->group(f
     Route::post('/vendor/register', [VendorController::class, 'store']);
     Route::get('/vendor/profile', [VendorController::class, 'show']);
     Route::get('/vendor/profile/status', [VendorController::class, 'status']);
-    Route::get('/vendor/services', [AvailabilityController::class, 'vendorServices']);
+    Route::get('/vendor/services', [ServiceController::class, 'index']);
+    Route::get('/vendor/services/{id}', [ServiceController::class, 'show']);
+    Route::patch('/vendor/services/{id}', [ServiceController::class, 'update']);
+    Route::patch('/vendor/services/{id}/visibility', [ServiceController::class, 'updateVisibility']);
+    Route::post('/vendor/services/{id}/resubmit', [ServiceController::class, 'resubmit']);
     Route::get('/vendor/availability/{serviceId}', [AvailabilityController::class, 'vendorAvailability']);
     Route::put('/vendor/availability/{serviceId}', [AvailabilityController::class, 'sync']);
     Route::post('/vendor/availability/{serviceId}/reopen', [AvailabilityController::class, 'reopenDate']);

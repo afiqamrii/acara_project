@@ -35,6 +35,7 @@ class VendorDashboardController extends Controller
             'total_services' => $serviceIds->count(),
             'active_services' => ServiceProfile::where('user_id', $user->id)
                 ->where('status', 'approved')
+                ->where('is_active', true)
                 ->count(),
             'available_dates' => ServiceAvailability::whereIn('service_profile_id', $serviceIds)
                 ->whereDate('available_date', '>=', today())
