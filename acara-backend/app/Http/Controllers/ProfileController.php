@@ -21,13 +21,13 @@ class ProfileController extends Controller
 
         $bookingStats = [
             'made' => [
-                'total' => (clone $madeBookings)->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled'])->count(),
+                'total' => (clone $madeBookings)->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])->count(),
                 'pending' => (clone $madeBookings)->where('status', 'pending')->count(),
                 'confirmed' => (clone $madeBookings)->where('status', 'confirmed')->count(),
                 'completed' => (clone $madeBookings)->where('status', 'completed')->count(),
             ],
             'received' => [
-                'total' => (clone $receivedBookings)->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled'])->count(),
+                'total' => (clone $receivedBookings)->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])->count(),
                 'pending' => (clone $receivedBookings)->where('status', 'pending')->count(),
                 'confirmed' => (clone $receivedBookings)->where('status', 'confirmed')->count(),
                 'completed' => (clone $receivedBookings)->where('status', 'completed')->count(),

@@ -1,0 +1,121 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Booking;
+use Illuminate\Support\Facades\DB;
+
+class BookingLifecycleService
+{
+    public function __construct(private readonly NotificationService $notifications) {}
+
+    /**
+     * @return array{expired: int, reminded: int}
+     */
+    public function process(): array
+    {
+        return [
+            'expired' => $this->expireDueRequests(),
+            'reminded' => $this->sendDueReminders(),
+        ];
+    }
+
+    public function expireDueRequests(): int
+    {
+        $expired = 0;
+
+        Booking::query()
+            ->where('status', 'pending')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now())
+            ->orderBy('id')
+            ->pluck('id')
+            ->each(function (int $bookingId) use (&$expired): void {
+                $didExpire = DB::transaction(function () use ($bookingId): bool {
+                    $booking = Booking::query()->lockForUpdate()->find($bookingId);
+
+                    return $booking ? $this->expireIfOverdue($booking) : false;
+                });
+
+                if ($didExpire) {
+                    $expired++;
+                }
+            });
+
+        return $expired;
+    }
+
+    public function sendDueReminders(): int
+    {
+        $reminded = 0;
+        $reminderHours = max(1, (int) config('acara.booking_lifecycle.reminder_hours_before_expiry', 12));
+        $reminderThreshold = now()->addHours($reminderHours);
+
+        Booking::query()
+            ->where('status', 'pending')
+            ->whereNull('reminder_sent_at')
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '>', now())
+            ->where('expires_at', '<=', $reminderThreshold)
+            ->orderBy('id')
+            ->pluck('id')
+            ->each(function (int $bookingId) use (&$reminded): void {
+                $didRemind = DB::transaction(function () use ($bookingId): bool {
+                    $booking = Booking::query()->lockForUpdate()->find($bookingId);
+
+                    if (! $booking
+                        || $booking->status !== 'pending'
+                        || $booking->reminder_sent_at
+                        || ! $booking->expires_at
+                        || $booking->expires_at->isPast()) {
+                        return false;
+                    }
+
+                    $booking->update(['reminder_sent_at' => now()]);
+                    $this->notifications->bookingExpiryReminder($booking);
+
+                    return true;
+                });
+
+                if ($didRemind) {
+                    $reminded++;
+                }
+            });
+
+        return $reminded;
+    }
+
+    public function expireIfOverdue(Booking $booking): bool
+    {
+        if ($booking->status !== 'pending'
+            || ! $booking->expires_at
+            || $booking->expires_at->isFuture()) {
+            return false;
+        }
+
+        $booking->update([
+            'status' => 'expired',
+            'expired_at' => now(),
+        ]);
+
+        $this->releaseDateIfFuture($booking);
+        $this->notifications->bookingExpiredForOrganizer($booking);
+        $this->notifications->bookingExpiredForVendor($booking);
+
+        return true;
+    }
+
+    private function releaseDateIfFuture(Booking $booking): void
+    {
+        if ($booking->selected_date->lt(today())) {
+            return;
+        }
+
+        DB::table('service_availabilities')->insertOrIgnore([
+            'service_profile_id' => $booking->service_profile_id,
+            'available_date' => $booking->selected_date->format('Y-m-d'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+}

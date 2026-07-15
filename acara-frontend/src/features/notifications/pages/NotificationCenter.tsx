@@ -10,6 +10,7 @@ import {
   IconCircleCheck,
   IconCircleX,
   IconClipboardCheck,
+  IconClock,
   IconRefresh,
   IconStar,
 } from "@tabler/icons-react";
@@ -39,6 +40,10 @@ const notificationStyle = (type: string) => {
       return { icon: IconAlertTriangle, className: "bg-red-100 text-red-700" };
     case "booking_completed":
       return { icon: IconCalendarCheck, className: "bg-blue-100 text-blue-700" };
+    case "booking_expiry_reminder":
+      return { icon: IconClock, className: "bg-amber-100 text-amber-700" };
+    case "booking_expired":
+      return { icon: IconClock, className: "bg-slate-200 text-slate-700" };
     case "review_received":
       return { icon: IconStar, className: "bg-amber-100 text-amber-700" };
     case "service_approved":

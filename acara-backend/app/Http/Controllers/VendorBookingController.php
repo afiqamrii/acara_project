@@ -3,15 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
-use App\Models\ServiceAvailability;
 use App\Models\ServiceProfile;
+use App\Services\BookingLifecycleService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class VendorBookingController extends Controller
 {
-    public function __construct(private readonly NotificationService $notifications) {}
+    public function __construct(
+        private readonly NotificationService $notifications,
+        private readonly BookingLifecycleService $lifecycle,
+    ) {}
 
     private function vendorServiceIds(Request $request)
     {
@@ -24,9 +27,11 @@ class VendorBookingController extends Controller
             return;
         }
 
-        ServiceAvailability::firstOrCreate([
+        DB::table('service_availabilities')->insertOrIgnore([
             'service_profile_id' => $booking->service_profile_id,
             'available_date' => $booking->selected_date->format('Y-m-d'),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 
@@ -36,14 +41,14 @@ class VendorBookingController extends Controller
         $serviceIds = $this->vendorServiceIds($request);
 
         if ($serviceIds->isEmpty()) {
-            return response()->json(['bookings' => [], 'counts' => ['pending' => 0, 'confirmed' => 0, 'completed' => 0, 'rejected' => 0, 'cancelled' => 0]]);
+            return response()->json(['bookings' => [], 'counts' => ['pending' => 0, 'confirmed' => 0, 'completed' => 0, 'rejected' => 0, 'cancelled' => 0, 'expired' => 0]]);
         }
 
         $status = $request->query('status');
 
         $query = Booking::query()
             ->whereIn('bookings.service_profile_id', $serviceIds)
-            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled'])
+            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->join('users', 'bookings.user_id', '=', 'users.id')
             ->select([
@@ -58,6 +63,9 @@ class VendorBookingController extends Controller
                 'bookings.cancelled_by',
                 'bookings.rejected_at',
                 'bookings.cancelled_at',
+                'bookings.expires_at',
+                'bookings.reminder_sent_at',
+                'bookings.expired_at',
                 'service_profiles.id as service_id',
                 'service_profiles.service_name',
                 'service_profiles.service_category',
@@ -69,10 +77,10 @@ class VendorBookingController extends Controller
                 'users.email as customer_email',
                 'users.phone_number as customer_phone',
             ])
-            ->orderByRaw("CASE bookings.status WHEN 'pending' THEN 0 WHEN 'confirmed' THEN 1 WHEN 'completed' THEN 2 WHEN 'rejected' THEN 3 ELSE 4 END")
+            ->orderByRaw("CASE bookings.status WHEN 'pending' THEN 0 WHEN 'confirmed' THEN 1 WHEN 'completed' THEN 2 WHEN 'expired' THEN 3 WHEN 'rejected' THEN 4 ELSE 5 END")
             ->orderBy('bookings.selected_date', 'asc');
 
-        if ($status && in_array($status, ['pending', 'confirmed', 'completed', 'rejected', 'cancelled'], true)) {
+        if ($status && in_array($status, ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'], true)) {
             $query->where('bookings.status', $status);
         }
 
@@ -97,6 +105,9 @@ class VendorBookingController extends Controller
                 'cancelled_by' => $item->cancelled_by,
                 'rejected_at' => $item->rejected_at?->toDateTimeString(),
                 'cancelled_at' => $item->cancelled_at?->toDateTimeString(),
+                'expires_at' => $item->expires_at?->toDateTimeString(),
+                'reminder_sent_at' => $item->reminder_sent_at?->toDateTimeString(),
+                'expired_at' => $item->expired_at?->toDateTimeString(),
                 'portfolio_url' => $item->portfolio_path
                     ? $storageUrl.'/'.ltrim($item->portfolio_path, '/')
                     : null,
@@ -109,13 +120,14 @@ class VendorBookingController extends Controller
             ];
         });
 
-        $base = Booking::whereIn('service_profile_id', $serviceIds)->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled']);
+        $base = Booking::whereIn('service_profile_id', $serviceIds)->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired']);
         $counts = [
             'pending' => (clone $base)->where('status', 'pending')->count(),
             'confirmed' => (clone $base)->where('status', 'confirmed')->count(),
             'completed' => (clone $base)->where('status', 'completed')->count(),
             'rejected' => (clone $base)->where('status', 'rejected')->count(),
             'cancelled' => (clone $base)->where('status', 'cancelled')->count(),
+            'expired' => (clone $base)->where('status', 'expired')->count(),
         ];
 
         return response()->json(['bookings' => $bookings, 'counts' => $counts]);
@@ -135,11 +147,21 @@ class VendorBookingController extends Controller
                 return null;
             }
 
+            if ($this->lifecycle->expireIfOverdue($booking)) {
+                return 'expired';
+            }
+
             $booking->update(['status' => 'confirmed']);
             $this->notifications->bookingApproved($booking);
 
             return $booking;
         });
+
+        if ($booking === 'expired') {
+            return response()->json([
+                'message' => 'This booking request expired before it could be approved.',
+            ], 409);
+        }
 
         if (! $booking) {
             return response()->json(['message' => 'Booking not found or already processed.'], 404);
@@ -193,6 +215,10 @@ class VendorBookingController extends Controller
                 return null;
             }
 
+            if ($this->lifecycle->expireIfOverdue($booking)) {
+                return 'expired';
+            }
+
             $booking->update([
                 'status' => 'rejected',
                 'rejection_reason' => trim($validated['reason']),
@@ -203,6 +229,12 @@ class VendorBookingController extends Controller
 
             return $booking;
         });
+
+        if ($booking === 'expired') {
+            return response()->json([
+                'message' => 'This booking request expired before it could be rejected.',
+            ], 409);
+        }
 
         if (! $booking) {
             return response()->json(['message' => 'Booking request not found or already processed.'], 404);

@@ -1,6 +1,6 @@
 import api from "../../lib/Api";
 
-export type BookingStatus = "pending" | "confirmed" | "completed" | "rejected" | "cancelled" | string;
+export type BookingStatus = "pending" | "confirmed" | "completed" | "rejected" | "cancelled" | "expired" | string;
 
 export type BookingItem = {
   id: number;
@@ -28,6 +28,9 @@ export type BookingItem = {
   cancelled_by?: "vendor" | "customer" | null;
   rejected_at?: string | null;
   cancelled_at?: string | null;
+  expires_at?: string | null;
+  reminder_sent_at?: string | null;
+  expired_at?: string | null;
   booked_at?: string | null;
 };
 
@@ -38,6 +41,7 @@ export type BookingStats = {
   completed: number;
   rejected: number;
   cancelled: number;
+  expired: number;
   estimate: number;
 };
 

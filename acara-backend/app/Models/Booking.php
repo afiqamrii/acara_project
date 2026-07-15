@@ -19,12 +19,18 @@ class Booking extends Model
         'cancelled_by',
         'rejected_at',
         'cancelled_at',
+        'expires_at',
+        'reminder_sent_at',
+        'expired_at',
     ];
 
     protected $casts = [
         'selected_date' => 'date',
         'rejected_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'expires_at' => 'datetime',
+        'reminder_sent_at' => 'datetime',
+        'expired_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

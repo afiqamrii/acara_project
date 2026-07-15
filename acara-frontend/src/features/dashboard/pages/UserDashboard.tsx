@@ -80,6 +80,11 @@ const statusConfig: Record<
     color: "border border-red-200 bg-red-50 text-red-700",
     icon: <IconX size={12} />,
   },
+  expired: {
+    label: "Expired",
+    color: "border border-slate-200 bg-slate-100 text-slate-700",
+    icon: <IconClock size={12} />,
+  },
 };
 
 const quickActions = [
@@ -198,7 +203,7 @@ const UserDashboard = () => {
         ? parseFloat(booking.total_amount)
         : booking.total_amount || 0;
 
-    return sum + (!["rejected", "cancelled"].includes(booking.status) ? amount : 0);
+    return sum + (!["rejected", "cancelled", "expired"].includes(booking.status) ? amount : 0);
   }, 0);
 
   const confirmedCount = bookings.filter(

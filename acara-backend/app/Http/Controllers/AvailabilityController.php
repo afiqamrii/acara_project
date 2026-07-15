@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\ServiceAvailability;
 use App\Models\ServiceProfile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AvailabilityController extends Controller
 {
@@ -155,7 +156,7 @@ class AvailabilityController extends Controller
         }
 
         $hasBooking = Booking::where('service_profile_id', $service->id)
-            ->where('selected_date', $validated['date'])
+            ->whereDate('selected_date', $validated['date'])
             ->whereIn('status', ['pending', 'confirmed', 'completed'])
             ->exists();
 
@@ -163,9 +164,12 @@ class AvailabilityController extends Controller
             return response()->json(['message' => 'No active booking found for this date.'], 422);
         }
 
-        ServiceAvailability::firstOrCreate(
-            ['service_profile_id' => $service->id, 'available_date' => $validated['date']]
-        );
+        DB::table('service_availabilities')->insertOrIgnore([
+            'service_profile_id' => $service->id,
+            'available_date' => $validated['date'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         return response()->json(['message' => 'Date re-opened for additional bookings.']);
     }

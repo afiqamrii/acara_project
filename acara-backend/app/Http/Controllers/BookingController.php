@@ -5,13 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\ServiceAvailability;
 use App\Models\ServiceProfile;
+use App\Services\BookingLifecycleService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
 {
-    public function __construct(private readonly NotificationService $notifications) {}
+    public function __construct(
+        private readonly NotificationService $notifications,
+        private readonly BookingLifecycleService $lifecycle,
+    ) {}
 
     private function referenceFor(int $id): string
     {
@@ -55,9 +59,11 @@ class BookingController extends Controller
             return;
         }
 
-        ServiceAvailability::firstOrCreate([
+        DB::table('service_availabilities')->insertOrIgnore([
             'service_profile_id' => $booking->service_profile_id,
             'available_date' => $booking->selected_date->format('Y-m-d'),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 
@@ -91,6 +97,9 @@ class BookingController extends Controller
             'cancelled_by' => $item->cancelled_by ?? null,
             'rejected_at' => $this->formatDateTime($item->rejected_at ?? null),
             'cancelled_at' => $this->formatDateTime($item->cancelled_at ?? null),
+            'expires_at' => $this->formatDateTime($item->expires_at ?? null),
+            'reminder_sent_at' => $this->formatDateTime($item->reminder_sent_at ?? null),
+            'expired_at' => $this->formatDateTime($item->expired_at ?? null),
         ];
     }
 
@@ -103,6 +112,7 @@ class BookingController extends Controller
             'completed' => $items->where('status', 'completed')->count(),
             'rejected' => $items->where('status', 'rejected')->count(),
             'cancelled' => $items->where('status', 'cancelled')->count(),
+            'expired' => $items->where('status', 'expired')->count(),
             'estimate' => round((float) $items->sum('price_value'), 2),
         ];
     }
@@ -173,7 +183,7 @@ class BookingController extends Controller
         }
 
         $dateAvailable = ServiceAvailability::where('service_profile_id', $serviceId)
-            ->where('available_date', $date)
+            ->whereDate('available_date', $date)
             ->exists();
 
         if (! $dateAvailable) {
@@ -182,7 +192,8 @@ class BookingController extends Controller
 
         $existing = Booking::where('user_id', $userId)
             ->where('service_profile_id', $serviceId)
-            ->where('selected_date', $date)
+            ->whereDate('selected_date', $date)
+            ->whereIn('status', ['cart', 'pending', 'confirmed', 'completed'])
             ->first();
 
         if ($existing) {
@@ -244,12 +255,12 @@ class BookingController extends Controller
                 $dateStr = $item->selected_date->format('Y-m-d');
 
                 $availability = ServiceAvailability::where('service_profile_id', $item->service_profile_id)
-                    ->where('available_date', $dateStr)
+                    ->whereDate('available_date', $dateStr)
                     ->lockForUpdate()
                     ->first();
 
                 $alreadyBooked = Booking::where('service_profile_id', $item->service_profile_id)
-                    ->where('selected_date', $dateStr)
+                    ->whereDate('selected_date', $dateStr)
                     ->whereIn('status', ['pending', 'confirmed', 'completed'])
                     ->lockForUpdate()
                     ->exists();
@@ -269,7 +280,12 @@ class BookingController extends Controller
 
             foreach ($lockedItems as [$item, $availability]) {
                 $availability->delete();
-                $item->update(['status' => 'pending']);
+                $item->update([
+                    'status' => 'pending',
+                    'expires_at' => now()->addHours(max(1, (int) config('acara.booking_lifecycle.response_hours', 48))),
+                    'reminder_sent_at' => null,
+                    'expired_at' => null,
+                ]);
                 $this->notifications->bookingSubmitted($item);
             }
 
@@ -296,7 +312,7 @@ class BookingController extends Controller
 
         $bookings = Booking::query()
             ->where('bookings.user_id', $userId)
-            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled'])
+            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->join(
                 DB::raw('(SELECT user_id, MAX(id) as id FROM vendor_profiles GROUP BY user_id) as vp_latest'),
@@ -314,6 +330,9 @@ class BookingController extends Controller
                 'bookings.cancelled_by',
                 'bookings.rejected_at',
                 'bookings.cancelled_at',
+                'bookings.expires_at',
+                'bookings.reminder_sent_at',
+                'bookings.expired_at',
                 'service_profiles.id as service_id',
                 'service_profiles.service_name',
                 'service_profiles.service_category',
@@ -347,6 +366,10 @@ class BookingController extends Controller
                 return null;
             }
 
+            if ($this->lifecycle->expireIfOverdue($booking)) {
+                return 'expired';
+            }
+
             $booking->update([
                 'status' => 'cancelled',
                 'cancelled_by' => 'customer',
@@ -357,6 +380,12 @@ class BookingController extends Controller
 
             return $booking;
         });
+
+        if ($booking === 'expired') {
+            return response()->json([
+                'message' => 'This booking request has expired and the date was released automatically.',
+            ], 409);
+        }
 
         if (! $booking) {
             return response()->json(['message' => 'Booking not found or cannot be cancelled.'], 404);
@@ -369,7 +398,7 @@ class BookingController extends Controller
     public function adminBookings()
     {
         $bookings = Booking::query()
-            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled'])
+            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->join('users as customers', 'bookings.user_id', '=', 'customers.id')
             ->join('users as vendors', 'service_profiles.user_id', '=', 'vendors.id')
@@ -389,6 +418,9 @@ class BookingController extends Controller
                 'bookings.cancelled_by',
                 'bookings.rejected_at',
                 'bookings.cancelled_at',
+                'bookings.expires_at',
+                'bookings.reminder_sent_at',
+                'bookings.expired_at',
                 'service_profiles.id as service_id',
                 'service_profiles.service_name',
                 'service_profiles.service_category',
@@ -400,7 +432,7 @@ class BookingController extends Controller
                 'vendor_profiles.service_area_state',
                 'vendor_profiles.service_area_town',
             ])
-            ->orderByRaw("CASE bookings.status WHEN 'pending' THEN 0 WHEN 'confirmed' THEN 1 WHEN 'completed' THEN 2 WHEN 'rejected' THEN 3 ELSE 4 END")
+            ->orderByRaw("CASE bookings.status WHEN 'pending' THEN 0 WHEN 'confirmed' THEN 1 WHEN 'completed' THEN 2 WHEN 'expired' THEN 3 WHEN 'rejected' THEN 4 ELSE 5 END")
             ->orderBy('bookings.created_at', 'desc')
             ->get()
             ->map(function ($item) {

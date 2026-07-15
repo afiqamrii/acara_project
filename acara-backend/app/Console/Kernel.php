@@ -14,6 +14,9 @@ class Kernel extends ConsoleKernel
     {
         // Run the pruning command daily to remove old unverified users
         $schedule->command('model:prune')->daily();
+        $schedule->command('bookings:process-lifecycle')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
     }
 
     /**

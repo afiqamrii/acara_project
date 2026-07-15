@@ -10,6 +10,8 @@ export type UserNotification = {
     | "booking_rejected"
     | "booking_cancelled"
     | "booking_completed"
+    | "booking_expiry_reminder"
+    | "booking_expired"
     | "review_received"
     | "service_approved"
     | "service_rejected"
@@ -27,6 +29,8 @@ export type UserNotification = {
     service_id?: number;
     service_status?: string;
     rejection_reason?: string | null;
+    expires_at?: string | null;
+    expired_at?: string | null;
   } | null;
   read_at: string | null;
   created_at: string;

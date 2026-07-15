@@ -21,6 +21,7 @@ const tabs = [
   { key: "pending", label: "Pending" },
   { key: "confirmed", label: "Confirmed" },
   { key: "completed", label: "Completed" },
+  { key: "expired", label: "Expired" },
   { key: "rejected", label: "Rejected" },
   { key: "cancelled", label: "Cancelled" },
 ];
@@ -40,6 +41,11 @@ const statusMeta: Record<string, { label: string; className: string; icon: React
     label: "Completed",
     className: "border-indigo-200 bg-indigo-50 text-indigo-700",
     icon: <IconCheck size={13} />,
+  },
+  expired: {
+    label: "Expired",
+    className: "border-slate-200 bg-slate-100 text-slate-700",
+    icon: <IconClock size={13} />,
   },
   rejected: {
     label: "Rejected",
@@ -72,6 +78,7 @@ const buildStats = (bookings: BookingItem[]): BookingStats => ({
   completed: bookings.filter((booking) => booking.status === "completed").length,
   rejected: bookings.filter((booking) => booking.status === "rejected").length,
   cancelled: bookings.filter((booking) => booking.status === "cancelled").length,
+  expired: bookings.filter((booking) => booking.status === "expired").length,
   estimate: bookings.reduce((sum, booking) => sum + Number(booking.price_value || 0), 0),
 });
 
@@ -149,7 +156,7 @@ const AdminBookings = () => {
               <p className="text-xs font-bold uppercase tracking-widest text-indigo-100">Admin Monitor</p>
               <h1 className="mt-2 text-2xl font-black md:text-3xl">Booking Orders</h1>
               <p className="mt-2 max-w-2xl text-sm text-indigo-100">
-                See every customer request, vendor confirmation, cancellation, and estimated marketplace value.
+                See every customer request, response deadline, vendor decision, and automatic expiry in one audit view.
               </p>
             </div>
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/20">
@@ -244,6 +251,11 @@ const AdminBookings = () => {
                     {booking.status === "cancelled" && booking.cancelled_by === "vendor" && booking.cancellation_reason && (
                       <p className="mt-2 whitespace-pre-wrap text-xs text-red-700">
                         <span className="font-bold">Vendor cancellation:</span> {booking.cancellation_reason}
+                      </p>
+                    )}
+                    {booking.status === "expired" && (
+                      <p className="mt-2 text-xs leading-5 text-slate-600">
+                        <span className="font-bold">Automatic closure:</span> Vendor response deadline passed; the date was released.
                       </p>
                     )}
                   </div>

@@ -16,7 +16,7 @@ class VendorDashboardController extends Controller
 
         $bookings = Booking::query()
             ->whereIn('service_profile_id', $serviceIds)
-            ->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled']);
+            ->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired']);
 
         $confirmedValue = Booking::query()
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -31,6 +31,7 @@ class VendorDashboardController extends Controller
             'completed_bookings' => (clone $bookings)->where('status', 'completed')->count(),
             'rejected_bookings' => (clone $bookings)->where('status', 'rejected')->count(),
             'cancelled_bookings' => (clone $bookings)->where('status', 'cancelled')->count(),
+            'expired_bookings' => (clone $bookings)->where('status', 'expired')->count(),
             'confirmed_value' => round((float) $confirmedValue, 2),
             'total_services' => $serviceIds->count(),
             'active_services' => ServiceProfile::where('user_id', $user->id)
@@ -53,7 +54,7 @@ class VendorDashboardController extends Controller
 
         $recent = Booking::with(['serviceProfile', 'user'])
             ->whereIn('service_profile_id', $serviceIds)
-            ->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled'])
+            ->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->latest()
             ->limit(5)
             ->get()
@@ -79,6 +80,8 @@ class VendorDashboardController extends Controller
             'status' => $booking->status,
             'amount' => (float) ($booking->serviceProfile?->pricing_starting_from ?? 0),
             'created_at' => $booking->created_at?->toDateTimeString(),
+            'expires_at' => $booking->expires_at?->toDateTimeString(),
+            'expired_at' => $booking->expired_at?->toDateTimeString(),
         ];
     }
 }

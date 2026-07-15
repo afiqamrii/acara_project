@@ -29,6 +29,7 @@ const tabs = [
   { key: "pending", label: "Pending" },
   { key: "confirmed", label: "Confirmed" },
   { key: "completed", label: "Completed" },
+  { key: "expired", label: "Expired" },
   { key: "rejected", label: "Rejected" },
   { key: "cancelled", label: "Cancelled" },
 ];
@@ -48,6 +49,11 @@ const statusMeta: Record<string, { label: string; className: string; icon: React
     label: "Completed",
     className: "border-blue-200 bg-blue-50 text-blue-700",
     icon: <IconCheck size={13} />,
+  },
+  expired: {
+    label: "Expired",
+    className: "border-slate-200 bg-slate-100 text-slate-700",
+    icon: <IconClock size={13} />,
   },
   rejected: {
     label: "Rejected",
@@ -76,6 +82,17 @@ const formatDate = (value?: string) => {
   });
 };
 
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "-";
+  return new Date(value.replace(" ", "T")).toLocaleString("en-MY", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
 const formatRM = (value = 0) =>
   `RM ${value.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -86,6 +103,7 @@ const buildStats = (bookings: BookingItem[]): BookingStats => ({
   completed: bookings.filter((booking) => booking.status === "completed").length,
   rejected: bookings.filter((booking) => booking.status === "rejected").length,
   cancelled: bookings.filter((booking) => booking.status === "cancelled").length,
+  expired: bookings.filter((booking) => booking.status === "expired").length,
   estimate: bookings.reduce((sum, booking) => sum + Number(booking.price_value || 0), 0),
 });
 
@@ -168,6 +186,25 @@ const BookingCard = ({
               <span className="truncate">{booking.location || "Malaysia"}</span>
             </div>
           </div>
+
+          {booking.status === "pending" && booking.expires_at && (
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5">
+              <IconClock size={18} className="mt-0.5 shrink-0 text-amber-600" />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Vendor response deadline</p>
+                <p className="mt-1 text-sm text-amber-900">{formatDateTime(booking.expires_at)}</p>
+              </div>
+            </div>
+          )}
+
+          {booking.status === "expired" && (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Closed automatically</p>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                The vendor did not respond before the deadline. No cancellation reason is required, and this date is available to request again.
+              </p>
+            </div>
+          )}
 
           {booking.status === "rejected" && booking.rejection_reason && (
             <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2.5">
@@ -278,7 +315,7 @@ const CustomerBookings = () => {
               <p className="text-xs font-bold uppercase tracking-widest text-indigo-100">Booking Center</p>
               <h1 className="mt-2 text-2xl font-black md:text-3xl">My Bookings</h1>
               <p className="mt-2 max-w-2xl text-sm text-indigo-100">
-                Track every vendor request, confirmation, and cancellation from one organized workspace.
+                Track every vendor request, response deadline, confirmation, and closure from one organized workspace.
               </p>
             </div>
             <button

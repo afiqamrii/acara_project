@@ -7,8 +7,8 @@ import { fetchUnreadNotificationCount } from '../../notifications/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Customer = { id: number; name: string; email: string; phone: string | null };
-type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled';
-type DisplayStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled';
+type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled' | 'expired';
+type DisplayStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled' | 'expired';
 type DialogType = 'approve' | 'reject' | 'cancel' | 'complete';
 
 type VendorBooking = {
@@ -29,6 +29,9 @@ type VendorBooking = {
     cancelled_by: 'vendor' | 'customer' | null;
     rejected_at: string | null;
     cancelled_at: string | null;
+    expires_at: string | null;
+    reminder_sent_at: string | null;
+    expired_at: string | null;
     portfolio_url: string | null;
     customer: Customer;
 };
@@ -37,7 +40,7 @@ type EnrichedBooking = VendorBooking & { displayStatus: DisplayStatus; daysDiff:
 
 type BookingsResponse = {
     bookings: VendorBooking[];
-    counts: { pending: number; confirmed: number; completed: number; rejected: number; cancelled: number };
+    counts: { pending: number; confirmed: number; completed: number; rejected: number; cancelled: number; expired: number };
 };
 
 type SortKey = 'newest' | 'oldest' | 'nearest' | 'price' | 'pending_first' | 'completed_first';
@@ -63,7 +66,7 @@ function formatDate(iso: string) {
 }
 
 function formatBookedAt(iso: string) {
-    return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return new Date(iso.replace(' ', 'T')).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function daysDiffFromToday(iso: string): number {
@@ -77,17 +80,22 @@ function daysDiffFromToday(iso: string): number {
 // Derives a display status from the raw backend status + event date. A booking
 // becomes "completed" either because the vendor explicitly marked it so (backend
 // status), or automatically once its event date has passed while still confirmed.
-function getDisplayStatus(status: BookingStatus, daysDiff: number): DisplayStatus {
+function getDisplayStatus(status: BookingStatus, daysDiff: number, expiresAt: string | null): DisplayStatus {
+    if (status === 'expired') return 'expired';
     if (status === 'rejected') return 'rejected';
     if (status === 'cancelled') return 'cancelled';
     if (status === 'completed') return 'completed';
-    if (status === 'pending') return 'pending';
+    if (status === 'pending') {
+        if (expiresAt && new Date(expiresAt.replace(' ', 'T')).getTime() <= Date.now()) return 'expired';
+        return 'pending';
+    }
     // status === 'confirmed'
     if (daysDiff < 0) return 'completed';
     return 'confirmed';
 }
 
 function getCountdownLabel(displayStatus: DisplayStatus, daysDiff: number): string {
+    if (displayStatus === 'expired') return 'Expired';
     if (displayStatus === 'rejected') return 'Rejected';
     if (displayStatus === 'cancelled') return 'Cancelled';
     if (displayStatus === 'completed') {
@@ -103,7 +111,7 @@ function getCountdownLabel(displayStatus: DisplayStatus, daysDiff: number): stri
 type Priority = 'today' | 'tomorrow' | 'soon' | 'future' | 'neutral';
 
 function getPriority(displayStatus: DisplayStatus, daysDiff: number): Priority {
-    if (displayStatus === 'completed' || displayStatus === 'rejected' || displayStatus === 'cancelled') return 'neutral';
+    if (displayStatus === 'completed' || displayStatus === 'rejected' || displayStatus === 'cancelled' || displayStatus === 'expired') return 'neutral';
     if (daysDiff <= 0) return 'today';
     if (daysDiff === 1) return 'tomorrow';
     if (daysDiff <= 7) return 'soon';
@@ -124,6 +132,7 @@ const STATUS_CONFIG: Record<DisplayStatus, { label: string; pill: string; dot: s
     completed: { label: 'Completed', pill: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200', dot: 'bg-emerald-400', accent: 'from-emerald-400 to-teal-400' },
     rejected:  { label: 'Rejected',  pill: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',   dot: 'bg-orange-400',  accent: 'from-orange-300 to-amber-400' },
     cancelled: { label: 'Cancelled', pill: 'bg-red-50 text-red-600 ring-1 ring-red-200',            dot: 'bg-red-400',     accent: 'from-red-300 to-rose-300' },
+    expired:   { label: 'Expired',   pill: 'bg-slate-100 text-slate-700 ring-1 ring-slate-200',     dot: 'bg-slate-400',   accent: 'from-slate-300 to-slate-500' },
 };
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -488,6 +497,20 @@ const BookingCard = ({
                     </div>
                 )}
 
+                {booking.displayStatus === 'pending' && booking.expires_at && (
+                    <div className="mb-4 px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-xl">
+                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-0.5">Response Deadline</p>
+                        <p className="text-xs font-semibold text-amber-900">Respond by {formatBookedAt(booking.expires_at)}</p>
+                    </div>
+                )}
+
+                {booking.displayStatus === 'expired' && (
+                    <div className="mb-4 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">Closed Automatically</p>
+                        <p className="text-xs leading-5 text-slate-700">The response deadline passed. The organizer was notified and the date was released.</p>
+                    </div>
+                )}
+
                 {booking.displayStatus === 'rejected' && booking.rejection_reason && (
                     <div className="mb-4 px-3 py-2.5 bg-orange-50 border border-orange-100 rounded-xl">
                         <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider mb-0.5">Rejection Reason</p>
@@ -547,17 +570,21 @@ const BookingCard = ({
                     <div className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium ${
                         booking.displayStatus === 'cancelled'
                             ? 'bg-red-50 text-red-500'
+                            : booking.displayStatus === 'expired'
+                                ? 'bg-slate-100 text-slate-600'
                             : booking.displayStatus === 'rejected'
                                 ? 'bg-orange-50 text-orange-600'
                                 : 'bg-emerald-50 text-emerald-500'
                     }`}>
-                        {(booking.displayStatus === 'cancelled' || booking.displayStatus === 'rejected') ? (
+                        {(booking.displayStatus === 'cancelled' || booking.displayStatus === 'rejected' || booking.displayStatus === 'expired') ? (
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
                                 <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
                             </svg>
                         ) : <CheckIcon />}
                         {booking.displayStatus === 'cancelled'
                             ? 'Booking cancelled'
+                            : booking.displayStatus === 'expired'
+                                ? 'Request expired automatically'
                             : booking.displayStatus === 'rejected'
                                 ? 'Request rejected'
                                 : 'Service completed'}
@@ -665,6 +692,21 @@ const BookingDrawer = ({
                         </div>
                     )}
 
+                    {booking.displayStatus === 'pending' && booking.expires_at && (
+                        <div className="px-4 py-3 bg-amber-50 border border-amber-100 rounded-2xl">
+                            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Response Deadline</p>
+                            <p className="text-sm font-semibold text-amber-900">{formatBookedAt(booking.expires_at)}</p>
+                            <p className="mt-1 text-xs leading-5 text-amber-700">Approve or decline before this time. A reminder is sent as the deadline approaches.</p>
+                        </div>
+                    )}
+
+                    {booking.displayStatus === 'expired' && (
+                        <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl">
+                            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Closed Automatically</p>
+                            <p className="text-sm leading-6 text-slate-700">No response was recorded before the deadline. The organizer was notified and the selected date is available again.</p>
+                        </div>
+                    )}
+
                     {booking.displayStatus === 'rejected' && booking.rejection_reason && (
                         <div className="px-4 py-3 bg-orange-50 border border-orange-100 rounded-2xl">
                             <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider mb-1">Rejection Reason</p>
@@ -751,6 +793,7 @@ const EMPTY_MESSAGES: Record<string, string> = {
     pending: "You don't have any pending booking requests right now.",
     confirmed: "No confirmed bookings yet.",
     completed: "No completed bookings yet.",
+    expired: "No booking requests have expired.",
     rejected: "No rejected booking requests.",
     cancelled: "No cancelled bookings.",
 };
@@ -849,7 +892,7 @@ const VendorBookings = () => {
     const enriched: EnrichedBooking[] = useMemo(() => {
         return (data?.bookings ?? []).map(b => {
             const daysDiff = daysDiffFromToday(b.selected_date);
-            return { ...b, daysDiff, displayStatus: getDisplayStatus(b.status, daysDiff) };
+            return { ...b, daysDiff, displayStatus: getDisplayStatus(b.status, daysDiff, b.expires_at) };
         });
     }, [data]);
 
@@ -860,6 +903,7 @@ const VendorBookings = () => {
         completed: enriched.filter(b => b.displayStatus === 'completed').length,
         rejected: enriched.filter(b => b.displayStatus === 'rejected').length,
         cancelled: enriched.filter(b => b.displayStatus === 'cancelled').length,
+        expired: enriched.filter(b => b.displayStatus === 'expired').length,
         // Informational sub-counts of "confirmed" by how soon the event is — not statuses of their own.
         today: enriched.filter(b => b.displayStatus === 'confirmed' && b.daysDiff === 0).length,
         upcoming7: enriched.filter(b => b.displayStatus === 'confirmed' && b.daysDiff >= 1 && b.daysDiff <= 7).length,
@@ -873,7 +917,7 @@ const VendorBookings = () => {
             return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
         });
         return {
-            bookings: monthBookings.filter(b => b.status !== 'cancelled' && b.status !== 'rejected').length,
+            bookings: monthBookings.filter(b => !['cancelled', 'rejected', 'expired'].includes(b.status)).length,
             revenue: monthBookings.filter(b => b.status === 'confirmed' || b.status === 'completed').reduce((sum, b) => sum + b.price_value, 0),
             completed: monthBookings.filter(b => b.displayStatus === 'completed').length,
             pending: monthBookings.filter(b => b.status === 'pending').length,
@@ -900,7 +944,7 @@ const VendorBookings = () => {
             const d = new Date(base);
             d.setDate(base.getDate() + i);
             const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            const dayBookings = enriched.filter(b => b.selected_date === iso && b.status !== 'cancelled' && b.status !== 'rejected');
+            const dayBookings = enriched.filter(b => b.selected_date === iso && !['cancelled', 'rejected', 'expired'].includes(b.status));
             // `i` is itself the day offset from today, so it doubles as daysDiff here.
             const priority: Priority = dayBookings.length === 0 ? 'neutral' : getPriority('confirmed', i);
             days.push({
@@ -961,6 +1005,7 @@ const VendorBookings = () => {
         { key: 'pending',   label: 'Pending',   count: statCounts.pending },
         { key: 'confirmed', label: 'Confirmed', count: statCounts.confirmed },
         { key: 'completed', label: 'Completed', count: statCounts.completed },
+        { key: 'expired',   label: 'Expired',   count: statCounts.expired },
         { key: 'rejected',  label: 'Rejected',  count: statCounts.rejected },
         { key: 'cancelled', label: 'Cancelled', count: statCounts.cancelled },
     ];
@@ -1026,12 +1071,13 @@ const VendorBookings = () => {
                         </div>
 
                         {/* Expanded quick stats strip */}
-                        <div className="relative z-10 mt-5 grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        <div className="relative z-10 mt-5 grid grid-cols-3 sm:grid-cols-7 gap-2">
                             {[
                                 { label: 'Total',     value: statCounts.total,     color: 'text-white' },
                                 { label: 'Pending',   value: statCounts.pending,   color: 'text-amber-300' },
                                 { label: 'Confirmed', value: statCounts.confirmed, color: 'text-blue-300' },
                                 { label: 'Completed', value: statCounts.completed, color: 'text-emerald-300' },
+                                { label: 'Expired',   value: statCounts.expired,   color: 'text-slate-300' },
                                 { label: 'Rejected',  value: statCounts.rejected,  color: 'text-orange-300' },
                                 { label: 'Cancelled',  value: statCounts.cancelled, color: 'text-rose-300' },
                             ].map((s, i) => (
