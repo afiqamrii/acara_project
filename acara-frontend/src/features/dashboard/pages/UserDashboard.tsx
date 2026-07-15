@@ -28,7 +28,7 @@ type Booking = {
   event_date?: string;
   location?: string;
   total_amount?: number | string;
-  status: "pending" | "confirmed" | "completed" | "cancelled" | string;
+  status: "pending" | "confirmed" | "completed" | "rejected" | "cancelled" | string;
   vendor_name?: string;
   service_name?: string;
 };
@@ -69,6 +69,11 @@ const statusConfig: Record<
     label: "Completed",
     color: "border border-indigo-200 bg-indigo-50 text-indigo-700",
     icon: <IconCheck size={12} />,
+  },
+  rejected: {
+    label: "Rejected",
+    color: "border border-orange-200 bg-orange-50 text-orange-700",
+    icon: <IconX size={12} />,
   },
   cancelled: {
     label: "Cancelled",
@@ -193,7 +198,7 @@ const UserDashboard = () => {
         ? parseFloat(booking.total_amount)
         : booking.total_amount || 0;
 
-    return sum + (booking.status !== "cancelled" ? amount : 0);
+    return sum + (!["rejected", "cancelled"].includes(booking.status) ? amount : 0);
   }, 0);
 
   const confirmedCount = bookings.filter(

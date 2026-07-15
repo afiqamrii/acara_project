@@ -13,10 +13,17 @@ class Booking extends Model
         'selected_date',
         'status',
         'notes',
+        'rejection_reason',
+        'cancellation_reason',
+        'cancelled_by',
+        'rejected_at',
+        'cancelled_at',
     ];
 
     protected $casts = [
         'selected_date' => 'date',
+        'rejected_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

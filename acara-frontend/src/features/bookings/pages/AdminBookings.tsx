@@ -20,6 +20,8 @@ const tabs = [
   { key: "all", label: "All" },
   { key: "pending", label: "Pending" },
   { key: "confirmed", label: "Confirmed" },
+  { key: "completed", label: "Completed" },
+  { key: "rejected", label: "Rejected" },
   { key: "cancelled", label: "Cancelled" },
 ];
 
@@ -33,6 +35,16 @@ const statusMeta: Record<string, { label: string; className: string; icon: React
     label: "Confirmed",
     className: "border-emerald-200 bg-emerald-50 text-emerald-700",
     icon: <IconCheck size={13} />,
+  },
+  completed: {
+    label: "Completed",
+    className: "border-indigo-200 bg-indigo-50 text-indigo-700",
+    icon: <IconCheck size={13} />,
+  },
+  rejected: {
+    label: "Rejected",
+    className: "border-orange-200 bg-orange-50 text-orange-700",
+    icon: <IconX size={13} />,
   },
   cancelled: {
     label: "Cancelled",
@@ -57,6 +69,8 @@ const buildStats = (bookings: BookingItem[]): BookingStats => ({
   total: bookings.length,
   pending: bookings.filter((booking) => booking.status === "pending").length,
   confirmed: bookings.filter((booking) => booking.status === "confirmed").length,
+  completed: bookings.filter((booking) => booking.status === "completed").length,
+  rejected: bookings.filter((booking) => booking.status === "rejected").length,
   cancelled: bookings.filter((booking) => booking.status === "cancelled").length,
   estimate: bookings.reduce((sum, booking) => sum + Number(booking.price_value || 0), 0),
 });
@@ -222,6 +236,16 @@ const AdminBookings = () => {
                     </div>
                     <p className="mt-2 truncate font-bold text-gray-900">{booking.service_name}</p>
                     <p className="mt-0.5 text-sm font-semibold text-purple-700">{booking.price}</p>
+                    {booking.status === "rejected" && booking.rejection_reason && (
+                      <p className="mt-2 whitespace-pre-wrap text-xs text-orange-700">
+                        <span className="font-bold">Rejection:</span> {booking.rejection_reason}
+                      </p>
+                    )}
+                    {booking.status === "cancelled" && booking.cancelled_by === "vendor" && booking.cancellation_reason && (
+                      <p className="mt-2 whitespace-pre-wrap text-xs text-red-700">
+                        <span className="font-bold">Vendor cancellation:</span> {booking.cancellation_reason}
+                      </p>
+                    )}
                   </div>
 
                   <div className="min-w-0 rounded-xl bg-gray-50 px-3 py-2 lg:bg-transparent lg:px-0 lg:py-0">

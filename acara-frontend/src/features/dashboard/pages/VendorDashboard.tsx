@@ -22,7 +22,7 @@ type VendorDashboardBooking = {
   service_name: string;
   customer_name: string;
   selected_date: string;
-  status: "pending" | "confirmed" | "cancelled";
+  status: "pending" | "confirmed" | "completed" | "rejected" | "cancelled";
   amount: number;
   created_at: string | null;
 };
@@ -34,6 +34,8 @@ type VendorDashboardData = {
     total_bookings: number;
     pending_bookings: number;
     confirmed_bookings: number;
+    completed_bookings: number;
+    rejected_bookings: number;
     cancelled_bookings: number;
     confirmed_value: number;
     total_services: number;
@@ -66,6 +68,8 @@ const formatDate = (date: string) =>
 const statusStyles: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700 ring-amber-200",
   confirmed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  completed: "bg-blue-50 text-blue-700 ring-blue-200",
+  rejected: "bg-orange-50 text-orange-700 ring-orange-200",
   cancelled: "bg-red-50 text-red-600 ring-red-200",
 };
 
@@ -117,7 +121,7 @@ const VendorDashboard = () => {
     {
       label: "Confirmed",
       value: data.stats.confirmed_bookings,
-      sub: `${data.stats.cancelled_bookings} cancelled`,
+      sub: `${data.stats.completed_bookings} completed`,
       icon: IconCalendarCheck,
       color: "from-emerald-500 to-teal-600",
     },

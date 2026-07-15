@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('service_profile_id')->constrained()->cascadeOnDelete();
             $table->date('selected_date');
-            $table->enum('status', ['cart', 'pending', 'confirmed', 'cancelled'])->default('cart');
+            $table->enum('status', ['cart', 'pending', 'confirmed', 'completed', 'rejected', 'cancelled'])->default('cart');
             $table->text('notes')->nullable();
             $table->timestamps();
 

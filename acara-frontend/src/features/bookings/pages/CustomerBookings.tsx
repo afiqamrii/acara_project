@@ -27,6 +27,8 @@ const tabs = [
   { key: "all", label: "All" },
   { key: "pending", label: "Pending" },
   { key: "confirmed", label: "Confirmed" },
+  { key: "completed", label: "Completed" },
+  { key: "rejected", label: "Rejected" },
   { key: "cancelled", label: "Cancelled" },
 ];
 
@@ -40,6 +42,16 @@ const statusMeta: Record<string, { label: string; className: string; icon: React
     label: "Confirmed",
     className: "border-emerald-200 bg-emerald-50 text-emerald-700",
     icon: <IconCheck size={13} />,
+  },
+  completed: {
+    label: "Completed",
+    className: "border-blue-200 bg-blue-50 text-blue-700",
+    icon: <IconCheck size={13} />,
+  },
+  rejected: {
+    label: "Rejected",
+    className: "border-orange-200 bg-orange-50 text-orange-700",
+    icon: <IconX size={13} />,
   },
   cancelled: {
     label: "Cancelled",
@@ -70,6 +82,8 @@ const buildStats = (bookings: BookingItem[]): BookingStats => ({
   total: bookings.length,
   pending: bookings.filter((booking) => booking.status === "pending").length,
   confirmed: bookings.filter((booking) => booking.status === "confirmed").length,
+  completed: bookings.filter((booking) => booking.status === "completed").length,
+  rejected: bookings.filter((booking) => booking.status === "rejected").length,
   cancelled: bookings.filter((booking) => booking.status === "cancelled").length,
   estimate: bookings.reduce((sum, booking) => sum + Number(booking.price_value || 0), 0),
 });
@@ -153,6 +167,20 @@ const BookingCard = ({
               <span className="truncate">{booking.location || "Malaysia"}</span>
             </div>
           </div>
+
+          {booking.status === "rejected" && booking.rejection_reason && (
+            <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2.5">
+              <p className="text-xs font-bold uppercase tracking-wide text-orange-600">Vendor rejection reason</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-orange-900">{booking.rejection_reason}</p>
+            </div>
+          )}
+
+          {booking.status === "cancelled" && booking.cancelled_by === "vendor" && booking.cancellation_reason && (
+            <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5">
+              <p className="text-xs font-bold uppercase tracking-wide text-red-600">Vendor cancellation reason</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-red-900">{booking.cancellation_reason}</p>
+            </div>
+          )}
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col lg:items-end">

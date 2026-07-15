@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import api from '../../../lib/Api';
+import { fetchUnreadNotificationCount } from '../../notifications/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Customer = { id: number; name: string; email: string; phone: string | null };
-type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
-type DisplayStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled';
+type DisplayStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled';
+type DialogType = 'approve' | 'reject' | 'cancel' | 'complete';
 
 type VendorBooking = {
     id: number;
@@ -21,6 +24,11 @@ type VendorBooking = {
     booked_at: string;
     updated_at: string;
     notes: string | null;
+    rejection_reason: string | null;
+    cancellation_reason: string | null;
+    cancelled_by: 'vendor' | 'customer' | null;
+    rejected_at: string | null;
+    cancelled_at: string | null;
     portfolio_url: string | null;
     customer: Customer;
 };
@@ -29,25 +37,10 @@ type EnrichedBooking = VendorBooking & { displayStatus: DisplayStatus; daysDiff:
 
 type BookingsResponse = {
     bookings: VendorBooking[];
-    counts: { pending: number; confirmed: number; completed: number; cancelled: number };
+    counts: { pending: number; confirmed: number; completed: number; rejected: number; cancelled: number };
 };
 
 type SortKey = 'newest' | 'oldest' | 'nearest' | 'price' | 'pending_first' | 'completed_first';
-
-type NotificationCategory = 'booking_request' | 'event_reminder' | 'payment' | 'cancellation' | 'message' | 'system';
-
-type AppNotification = {
-    id: string;
-    category: NotificationCategory;
-    title: string;
-    subtitle: string;
-    meta: string;
-    timestamp: string;      // ISO datetime — drives grouping + "time ago"
-    timeLabel?: string;     // overrides the relative-time text (e.g. "Today", "Tomorrow")
-    urgent: boolean;
-    actionLabel: string;
-    booking: EnrichedBooking;
-};
 
 // ── API ───────────────────────────────────────────────────────────────────────
 const fetchVendorBookings = async (): Promise<BookingsResponse> => {
@@ -57,7 +50,8 @@ const fetchVendorBookings = async (): Promise<BookingsResponse> => {
 
 const approveBooking  = (id: number) => api.patch(`/vendor/bookings/${id}/approve`);
 const completeBooking = (id: number) => api.patch(`/vendor/bookings/${id}/complete`);
-const cancelBooking   = (id: number) => api.patch(`/vendor/bookings/${id}/cancel`);
+const rejectBooking   = ({ id, reason }: { id: number; reason: string }) => api.patch(`/vendor/bookings/${id}/reject`, { reason });
+const cancelBooking   = ({ id, reason }: { id: number; reason: string }) => api.patch(`/vendor/bookings/${id}/cancel`, { reason });
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 function getInitials(name: string) {
@@ -80,34 +74,11 @@ function daysDiffFromToday(iso: string): number {
     return Math.round((target.getTime() - now.getTime()) / 86_400_000);
 }
 
-function relativeTime(iso: string): string {
-    const then = new Date(iso).getTime();
-    const diffMin = Math.floor((new Date().getTime() - then) / 60_000);
-    if (diffMin < 1) return 'Just now';
-    if (diffMin < 60) return `${diffMin} min ago`;
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr} hour${diffHr !== 1 ? 's' : ''} ago`;
-    const diffDay = Math.floor(diffHr / 24);
-    if (diffDay === 1) return 'Yesterday';
-    if (diffDay < 7) return `${diffDay} days ago`;
-    return new Date(iso).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
-}
-
-// Groups a notification's timestamp into a dropdown section header.
-function dayGroup(iso: string): 'Today' | 'Yesterday' | 'Earlier' {
-    const then = new Date(iso);
-    const now = new Date();
-    const start = (d: Date) => { const c = new Date(d); c.setHours(0, 0, 0, 0); return c.getTime(); };
-    const diffDays = Math.round((start(now) - start(then)) / 86_400_000);
-    if (diffDays <= 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    return 'Earlier';
-}
-
 // Derives a display status from the raw backend status + event date. A booking
 // becomes "completed" either because the vendor explicitly marked it so (backend
 // status), or automatically once its event date has passed while still confirmed.
 function getDisplayStatus(status: BookingStatus, daysDiff: number): DisplayStatus {
+    if (status === 'rejected') return 'rejected';
     if (status === 'cancelled') return 'cancelled';
     if (status === 'completed') return 'completed';
     if (status === 'pending') return 'pending';
@@ -117,6 +88,7 @@ function getDisplayStatus(status: BookingStatus, daysDiff: number): DisplayStatu
 }
 
 function getCountdownLabel(displayStatus: DisplayStatus, daysDiff: number): string {
+    if (displayStatus === 'rejected') return 'Rejected';
     if (displayStatus === 'cancelled') return 'Cancelled';
     if (displayStatus === 'completed') {
         if (daysDiff === 0) return 'Completed today';
@@ -131,7 +103,7 @@ function getCountdownLabel(displayStatus: DisplayStatus, daysDiff: number): stri
 type Priority = 'today' | 'tomorrow' | 'soon' | 'future' | 'neutral';
 
 function getPriority(displayStatus: DisplayStatus, daysDiff: number): Priority {
-    if (displayStatus === 'completed' || displayStatus === 'cancelled') return 'neutral';
+    if (displayStatus === 'completed' || displayStatus === 'rejected' || displayStatus === 'cancelled') return 'neutral';
     if (daysDiff <= 0) return 'today';
     if (daysDiff === 1) return 'tomorrow';
     if (daysDiff <= 7) return 'soon';
@@ -150,6 +122,7 @@ const STATUS_CONFIG: Record<DisplayStatus, { label: string; pill: string; dot: s
     pending:   { label: 'Pending',   pill: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',      dot: 'bg-amber-400',   accent: 'from-amber-400 to-orange-400' },
     confirmed: { label: 'Confirmed', pill: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',         dot: 'bg-blue-400',    accent: 'from-blue-400 to-indigo-400' },
     completed: { label: 'Completed', pill: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200', dot: 'bg-emerald-400', accent: 'from-emerald-400 to-teal-400' },
+    rejected:  { label: 'Rejected',  pill: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',   dot: 'bg-orange-400',  accent: 'from-orange-300 to-amber-400' },
     cancelled: { label: 'Cancelled', pill: 'bg-red-50 text-red-600 ring-1 ring-red-200',            dot: 'bg-red-400',     accent: 'from-red-300 to-rose-300' },
 };
 
@@ -195,57 +168,6 @@ const CalendarMiniIcon = () => (
         <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
     </svg>
 );
-
-const ChevronRightIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3 h-3">
-        <polyline points="9 18 15 12 9 6" />
-    </svg>
-);
-
-const UserPlusIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-        <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="16" y1="11" x2="22" y2="11" />
-    </svg>
-);
-
-const CalendarAlertIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-        <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="12" y1="14" x2="12" y2="17" /><circle cx="12" cy="19.5" r="0.5" fill="currentColor" />
-    </svg>
-);
-
-const WalletIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-        <path d="M21 12V7H5a2 2 0 010-4h14v4" /><path d="M3 5v14a2 2 0 002 2h16v-5" /><path d="M18 12a2 2 0 000 4h4v-4z" />
-    </svg>
-);
-
-const XCircleIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-        <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
-    </svg>
-);
-
-const ChatIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-    </svg>
-);
-
-const SystemIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
-        <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09A1.65 1.65 0 0015 4.6a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09A1.65 1.65 0 0019.4 15z" />
-    </svg>
-);
-
-const CATEGORY_CONFIG: Record<NotificationCategory, { icon: ReactElement; bg: string; text: string }> = {
-    booking_request: { icon: <UserPlusIcon />,     bg: 'bg-purple-100',  text: 'text-purple-600' },
-    event_reminder:  { icon: <CalendarAlertIcon />, bg: 'bg-orange-100', text: 'text-orange-600' },
-    payment:         { icon: <WalletIcon />,       bg: 'bg-emerald-100', text: 'text-emerald-600' },
-    cancellation:    { icon: <XCircleIcon />,      bg: 'bg-red-100',    text: 'text-red-600' },
-    message:         { icon: <ChatIcon />,         bg: 'bg-blue-100',   text: 'text-blue-600' },
-    system:          { icon: <SystemIcon />,       bg: 'bg-gray-100',   text: 'text-gray-600' },
-};
 
 // ── Success overlay ───────────────────────────────────────────────────────────
 const SuccessOverlay = ({ booking, onDone }: { booking: VendorBooking; onDone: () => void }) => (
@@ -345,10 +267,11 @@ const SuccessOverlay = ({ booking, onDone }: { booking: VendorBooking; onDone: (
 );
 
 // ── Confirm dialog ─────────────────────────────────────────────────────────────
-const DIALOG_COPY: Record<'approve' | 'cancel' | 'complete', {
+const DIALOG_COPY: Record<DialogType, {
     iconBg: string; title: string; confirmLabel: string; loadingLabel: string; buttonClass: string;
 }> = {
     approve:  { iconBg: 'bg-emerald-50', title: 'Approve booking?',            confirmLabel: 'Yes, Approve',  loadingLabel: 'Approving...',      buttonClass: 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-md shadow-emerald-100' },
+    reject:   { iconBg: 'bg-orange-50',  title: 'Reject booking request?',      confirmLabel: 'Reject Request', loadingLabel: 'Rejecting...',       buttonClass: 'bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md shadow-orange-100' },
     cancel:   { iconBg: 'bg-red-50',     title: 'Cancel booking?',             confirmLabel: 'Yes, Cancel',   loadingLabel: 'Cancelling...',      buttonClass: 'bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-md shadow-red-100' },
     complete: { iconBg: 'bg-blue-50',    title: 'Mark booking as completed?',  confirmLabel: 'Yes, Complete', loadingLabel: 'Marking complete...', buttonClass: 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md shadow-blue-100' },
 };
@@ -356,13 +279,17 @@ const DIALOG_COPY: Record<'approve' | 'cancel' | 'complete', {
 const ConfirmDialog = ({
     type, booking, onConfirm, onClose, loading,
 }: {
-    type: 'approve' | 'cancel' | 'complete';
+    type: DialogType;
     booking: VendorBooking;
-    onConfirm: () => void;
+    onConfirm: (reason?: string) => void;
     onClose: () => void;
     loading: boolean;
 }) => {
     const copy = DIALOG_COPY[type];
+    const [reason, setReason] = useState('');
+    const requiresReason = type === 'reject' || type === 'cancel';
+    const trimmedReason = reason.trim();
+    const reasonIsValid = !requiresReason || trimmedReason.length >= 10;
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -381,7 +308,7 @@ const ConfirmDialog = ({
             >
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${copy.iconBg}`}>
                     {type === 'approve' && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={2} className="w-6 h-6"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
-                    {type === 'cancel' && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2} className="w-6 h-6"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>}
+                    {(type === 'reject' || type === 'cancel') && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke={type === 'reject' ? '#f97316' : '#ef4444'} strokeWidth={2} className="w-6 h-6"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>}
                     {type === 'complete' && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-6 h-6"><path d="M20 6L9 17l-5-5"/></svg>}
                 </div>
 
@@ -391,10 +318,40 @@ const ConfirmDialog = ({
                 </p>
                 <p className="text-sm text-gray-400 mb-6">{formatDate(booking.selected_date)}</p>
 
+                {type === 'reject' && (
+                    <p className="text-xs text-orange-700 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 mb-4">
+                        The request will be rejected and the selected date will become available again.
+                    </p>
+                )}
                 {type === 'cancel' && (
                     <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 mb-4">
                         The customer will be notified that their booking was cancelled.
                     </p>
+                )}
+
+                {requiresReason && (
+                    <label className="block mb-4">
+                        <span className="mb-1.5 flex items-center justify-between text-xs font-bold text-gray-700">
+                            {type === 'reject' ? 'Rejection reason' : 'Cancellation reason'}
+                            <span className={`font-medium ${trimmedReason.length > 1000 ? 'text-red-500' : 'text-gray-400'}`}>
+                                {reason.length}/1000
+                            </span>
+                        </span>
+                        <textarea
+                            value={reason}
+                            onChange={event => setReason(event.target.value)}
+                            maxLength={1000}
+                            rows={4}
+                            autoFocus
+                            placeholder={type === 'reject'
+                                ? 'Explain why you cannot accept this request...'
+                                : 'Explain why this confirmed booking must be cancelled...'}
+                            className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-purple-300 focus:bg-white focus:ring-4 focus:ring-purple-50"
+                        />
+                        {trimmedReason.length > 0 && trimmedReason.length < 10 && (
+                            <span className="mt-1 block text-xs text-red-500">Please enter at least 10 characters.</span>
+                        )}
+                    </label>
                 )}
                 {type === 'complete' && (
                     <p className="text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 mb-4">
@@ -410,8 +367,8 @@ const ConfirmDialog = ({
                         Back
                     </button>
                     <button
-                        onClick={onConfirm}
-                        disabled={loading}
+                        onClick={() => onConfirm(requiresReason ? trimmedReason : undefined)}
+                        disabled={loading || !reasonIsValid}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60 ${copy.buttonClass}`}
                     >
                         {loading
@@ -440,11 +397,12 @@ const CountdownChip = ({ booking }: { booking: EnrichedBooking }) => {
 // ── Booking card ──────────────────────────────────────────────────────────────
 const BookingCard = ({
     booking, index,
-    onApprove, onCancel, onComplete, onOpen,
+    onApprove, onReject, onCancel, onComplete, onOpen,
 }: {
     booking: EnrichedBooking;
     index: number;
     onApprove: (b: VendorBooking) => void;
+    onReject: (b: VendorBooking) => void;
     onCancel: (b: VendorBooking) => void;
     onComplete: (b: VendorBooking) => void;
     onOpen: (b: EnrichedBooking) => void;
@@ -453,7 +411,7 @@ const BookingCard = ({
     const priority = getPriority(booking.displayStatus, booking.daysDiff);
     const initials = getInitials(booking.customer.name);
     const canApprove = booking.displayStatus === 'pending';
-    const canCancel = booking.displayStatus === 'pending' || booking.displayStatus === 'confirmed';
+    const canCancel = booking.displayStatus === 'confirmed';
     const canComplete = booking.displayStatus === 'confirmed';
 
     return (
@@ -530,12 +488,26 @@ const BookingCard = ({
                     </div>
                 )}
 
+                {booking.displayStatus === 'rejected' && booking.rejection_reason && (
+                    <div className="mb-4 px-3 py-2.5 bg-orange-50 border border-orange-100 rounded-xl">
+                        <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider mb-0.5">Rejection Reason</p>
+                        <p className="text-xs text-orange-800 line-clamp-3">{booking.rejection_reason}</p>
+                    </div>
+                )}
+
+                {booking.displayStatus === 'cancelled' && booking.cancellation_reason && (
+                    <div className="mb-4 px-3 py-2.5 bg-red-50 border border-red-100 rounded-xl">
+                        <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-0.5">Cancellation Reason</p>
+                        <p className="text-xs text-red-800 line-clamp-3">{booking.cancellation_reason}</p>
+                    </div>
+                )}
+
                 {/* Actions */}
                 {canApprove && (
                     <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                         <motion.button
                             whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
-                            onClick={() => onCancel(booking)}
+                            onClick={() => onReject(booking)}
                             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-red-200 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
                         >
                             <XIcon /> Decline
@@ -573,14 +545,22 @@ const BookingCard = ({
 
                 {!canApprove && !canCancel && (
                     <div className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium ${
-                        booking.displayStatus === 'cancelled' ? 'bg-gray-50 text-gray-400' : 'bg-emerald-50 text-emerald-500'
+                        booking.displayStatus === 'cancelled'
+                            ? 'bg-red-50 text-red-500'
+                            : booking.displayStatus === 'rejected'
+                                ? 'bg-orange-50 text-orange-600'
+                                : 'bg-emerald-50 text-emerald-500'
                     }`}>
-                        {booking.displayStatus === 'cancelled' ? (
+                        {(booking.displayStatus === 'cancelled' || booking.displayStatus === 'rejected') ? (
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
                                 <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
                             </svg>
                         ) : <CheckIcon />}
-                        {booking.displayStatus === 'cancelled' ? 'Booking cancelled' : 'Event completed'}
+                        {booking.displayStatus === 'cancelled'
+                            ? 'Booking cancelled'
+                            : booking.displayStatus === 'rejected'
+                                ? 'Request rejected'
+                                : 'Service completed'}
                     </div>
                 )}
             </div>
@@ -590,17 +570,18 @@ const BookingCard = ({
 
 // ── Booking drawer ────────────────────────────────────────────────────────────
 const BookingDrawer = ({
-    booking, onClose, onApprove, onCancel, onComplete,
+    booking, onClose, onApprove, onReject, onCancel, onComplete,
 }: {
     booking: EnrichedBooking;
     onClose: () => void;
     onApprove: (b: VendorBooking) => void;
+    onReject: (b: VendorBooking) => void;
     onCancel: (b: VendorBooking) => void;
     onComplete: (b: VendorBooking) => void;
 }) => {
     const cfg = STATUS_CONFIG[booking.displayStatus];
     const canApprove = booking.displayStatus === 'pending';
-    const canCancel = booking.displayStatus === 'pending' || booking.displayStatus === 'confirmed';
+    const canCancel = booking.displayStatus === 'confirmed';
     const canComplete = booking.displayStatus === 'confirmed';
 
     return (
@@ -684,11 +665,25 @@ const BookingDrawer = ({
                         </div>
                     )}
 
+                    {booking.displayStatus === 'rejected' && booking.rejection_reason && (
+                        <div className="px-4 py-3 bg-orange-50 border border-orange-100 rounded-2xl">
+                            <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider mb-1">Rejection Reason</p>
+                            <p className="text-sm text-orange-800 whitespace-pre-wrap">{booking.rejection_reason}</p>
+                        </div>
+                    )}
+
+                    {booking.displayStatus === 'cancelled' && booking.cancellation_reason && (
+                        <div className="px-4 py-3 bg-red-50 border border-red-100 rounded-2xl">
+                            <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-1">Cancellation Reason</p>
+                            <p className="text-sm text-red-800 whitespace-pre-wrap">{booking.cancellation_reason}</p>
+                        </div>
+                    )}
+
                     {/* Actions */}
                     {canApprove && (
                         <div className="flex gap-2 pt-2">
                             <button
-                                onClick={() => onCancel(booking)}
+                                onClick={() => onReject(booking)}
                                 className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl border border-red-200 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
                             >
                                 <XIcon /> Decline
@@ -725,45 +720,6 @@ const BookingDrawer = ({
     );
 };
 
-// ── Notification card ─────────────────────────────────────────────────────────
-const NotificationCard = ({
-    notification, isRead, onOpen,
-}: {
-    notification: AppNotification;
-    isRead: boolean;
-    onOpen: (n: AppNotification) => void;
-}) => {
-    const cat = CATEGORY_CONFIG[notification.category];
-    return (
-        <button
-            onClick={() => onOpen(notification)}
-            className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
-                notification.urgent ? 'border-l-2 border-rose-200' : 'border-l-2 border-transparent'
-            } ${isRead ? 'bg-transparent hover:bg-gray-50' : 'bg-purple-50/50 hover:bg-purple-50'}`}
-        >
-            <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${cat.bg} ${cat.text}`}>
-                {cat.icon}
-            </span>
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                    {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-purple-600 shrink-0" />}
-                    <p className={`text-xs truncate ${isRead ? 'font-semibold text-gray-600' : 'font-bold text-gray-900'}`}>
-                        {notification.title}
-                    </p>
-                </div>
-                <p className={`text-[11px] truncate mt-0.5 ${isRead ? 'text-gray-400' : 'text-gray-600'}`}>{notification.subtitle}</p>
-                {notification.meta && <p className="text-[11px] text-gray-400 truncate">{notification.meta}</p>}
-                <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-[10px] text-gray-400">{notification.timeLabel ?? relativeTime(notification.timestamp)}</span>
-                    <span className={`text-[11px] font-bold flex items-center gap-0.5 shrink-0 ml-2 ${notification.urgent ? 'text-rose-500' : 'text-purple-600'}`}>
-                        {notification.actionLabel} <ChevronRightIcon />
-                    </span>
-                </div>
-            </div>
-        </button>
-    );
-};
-
 // ── Skeleton loader ───────────────────────────────────────────────────────────
 const SkeletonCard = () => (
     <div className="bg-white rounded-[20px] border border-gray-100 overflow-hidden">
@@ -795,6 +751,7 @@ const EMPTY_MESSAGES: Record<string, string> = {
     pending: "You don't have any pending booking requests right now.",
     confirmed: "No confirmed bookings yet.",
     completed: "No completed bookings yet.",
+    rejected: "No rejected booking requests.",
     cancelled: "No cancelled bookings.",
 };
 
@@ -824,23 +781,29 @@ const EmptyState = ({ activeTab, hasAnyBookings }: { activeTab: string; hasAnyBo
 // ── Main page ─────────────────────────────────────────────────────────────────
 const VendorBookings = () => {
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'all' | DisplayStatus>('all');
-    const [dialog, setDialog] = useState<{ type: 'approve' | 'cancel' | 'complete'; booking: VendorBooking } | null>(null);
+    const [dialog, setDialog] = useState<{ type: DialogType; booking: VendorBooking } | null>(null);
     const [successBooking, setSuccessBooking] = useState<VendorBooking | null>(null);
     const [drawerBooking, setDrawerBooking] = useState<EnrichedBooking | null>(null);
-    const [showNotifications, setShowNotifications] = useState(false);
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<SortKey>('nearest');
     const [strippedDate, setStrippedDate] = useState<string | null>(null);
     const [filters, setFilters] = useState({ service: '', category: '', dateFrom: '', dateTo: '' });
-    const [readIds, setReadIds] = useState<Set<string>>(new Set());
-
     const { data, isPending } = useQuery({
         queryKey: ['vendor-bookings'],
         queryFn: fetchVendorBookings,
         staleTime: 30_000,
     });
+
+    const { data: notificationCountData } = useQuery({
+        queryKey: ['notification-unread-count'],
+        queryFn: fetchUnreadNotificationCount,
+        staleTime: 15_000,
+        refetchInterval: 30_000,
+    });
+    const unreadNotificationCount = notificationCountData?.unread_count ?? 0;
 
     const invalidate = () => {
         queryClient.invalidateQueries({ queryKey: ['vendor-bookings'] });
@@ -858,7 +821,12 @@ const VendorBookings = () => {
     });
 
     const cancelMutation = useMutation({
-        mutationFn: (id: number) => cancelBooking(id),
+        mutationFn: cancelBooking,
+        onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
+    });
+
+    const rejectMutation = useMutation({
+        mutationFn: rejectBooking,
         onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
     });
 
@@ -867,14 +835,15 @@ const VendorBookings = () => {
         onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
     });
 
-    const handleDialogConfirm = () => {
+    const handleDialogConfirm = (reason?: string) => {
         if (!dialog) return;
         if (dialog.type === 'approve') approveMutation.mutate(dialog.booking.id);
         else if (dialog.type === 'complete') completeMutation.mutate(dialog.booking.id);
-        else cancelMutation.mutate(dialog.booking.id);
+        else if (dialog.type === 'reject') rejectMutation.mutate({ id: dialog.booking.id, reason: reason ?? '' });
+        else cancelMutation.mutate({ id: dialog.booking.id, reason: reason ?? '' });
     };
 
-    const isActionLoading = approveMutation.isPending || cancelMutation.isPending || completeMutation.isPending;
+    const isActionLoading = approveMutation.isPending || rejectMutation.isPending || cancelMutation.isPending || completeMutation.isPending;
 
     // ── Enrich bookings with computed status / countdown data ────────────────
     const enriched: EnrichedBooking[] = useMemo(() => {
@@ -889,6 +858,7 @@ const VendorBookings = () => {
         pending: enriched.filter(b => b.displayStatus === 'pending').length,
         confirmed: enriched.filter(b => b.displayStatus === 'confirmed').length,
         completed: enriched.filter(b => b.displayStatus === 'completed').length,
+        rejected: enriched.filter(b => b.displayStatus === 'rejected').length,
         cancelled: enriched.filter(b => b.displayStatus === 'cancelled').length,
         // Informational sub-counts of "confirmed" by how soon the event is — not statuses of their own.
         today: enriched.filter(b => b.displayStatus === 'confirmed' && b.daysDiff === 0).length,
@@ -903,7 +873,7 @@ const VendorBookings = () => {
             return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
         });
         return {
-            bookings: monthBookings.filter(b => b.status !== 'cancelled').length,
+            bookings: monthBookings.filter(b => b.status !== 'cancelled' && b.status !== 'rejected').length,
             revenue: monthBookings.filter(b => b.status === 'confirmed' || b.status === 'completed').reduce((sum, b) => sum + b.price_value, 0),
             completed: monthBookings.filter(b => b.displayStatus === 'completed').length,
             pending: monthBookings.filter(b => b.status === 'pending').length,
@@ -916,130 +886,6 @@ const VendorBookings = () => {
             .sort((a, b) => a.daysDiff - b.daysDiff),
         [enriched]
     );
-
-    // Derived notification feed — booking requests, event reminders, and recent
-    // cancellations. Payment/message/system categories are wired into the visual
-    // system (icon + color) but have no data source yet — there's no payment or
-    // messaging backend in this app, so those categories never actually populate.
-    const notifications: AppNotification[] = useMemo(() => {
-        const list: AppNotification[] = [];
-
-        enriched.forEach(b => {
-            if (b.displayStatus === 'pending') {
-                list.push({
-                    id: `booking_request-${b.id}`,
-                    category: 'booking_request',
-                    title: 'New booking request',
-                    subtitle: b.service_name,
-                    meta: `Customer: ${b.customer.name}`,
-                    timestamp: b.booked_at,
-                    urgent: false,
-                    actionLabel: 'View',
-                    booking: b,
-                });
-            } else if (b.displayStatus === 'confirmed' && b.daysDiff === 0) {
-                list.push({
-                    id: `event_reminder-${b.id}`,
-                    category: 'event_reminder',
-                    title: 'Event starts today',
-                    subtitle: b.service_name,
-                    meta: `Customer: ${b.customer.name}`,
-                    timestamp: new Date().toISOString(),
-                    timeLabel: 'Today',
-                    urgent: true,
-                    actionLabel: 'Contact customer',
-                    booking: b,
-                });
-            } else if (b.displayStatus === 'confirmed' && b.daysDiff === 1) {
-                list.push({
-                    id: `event_reminder-${b.id}`,
-                    category: 'event_reminder',
-                    title: 'Event starts tomorrow',
-                    subtitle: b.service_name,
-                    meta: `Customer: ${b.customer.name}`,
-                    timestamp: new Date().toISOString(),
-                    timeLabel: 'Tomorrow',
-                    urgent: false,
-                    actionLabel: 'Prepare',
-                    booking: b,
-                });
-            } else if (b.displayStatus === 'cancelled') {
-                const cancelledDaysAgo = Math.round((new Date().getTime() - new Date(b.updated_at).getTime()) / 86_400_000);
-                if (cancelledDaysAgo <= 3) {
-                    list.push({
-                        id: `cancellation-${b.id}`,
-                        category: 'cancellation',
-                        title: 'Booking cancelled',
-                        subtitle: b.service_name,
-                        meta: `Customer: ${b.customer.name}`,
-                        timestamp: b.updated_at,
-                        urgent: true,
-                        actionLabel: 'View',
-                        booking: b,
-                    });
-                }
-            }
-        });
-
-        return list.sort((a, b) => {
-            if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-            return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-        });
-    }, [enriched]);
-
-    const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
-    const visibleNotifications = notifications.slice(0, 3);
-
-    const notificationGroups = useMemo(() => {
-        const groups: { label: 'Today' | 'Yesterday' | 'Earlier'; items: AppNotification[] }[] = [];
-        (['Today', 'Yesterday', 'Earlier'] as const).forEach(label => {
-            const items = visibleNotifications.filter(n => dayGroup(n.timestamp) === label);
-            if (items.length) groups.push({ label, items });
-        });
-        return groups;
-    }, [visibleNotifications]);
-
-    const handleOpenNotification = (n: AppNotification) => {
-        setReadIds(prev => new Set(prev).add(n.id));
-        setDrawerBooking(n.booking);
-        setShowNotifications(false);
-    };
-
-    const handleMarkAllRead = () => {
-        setReadIds(prev => {
-            const next = new Set(prev);
-            notifications.forEach(n => next.add(n.id));
-            return next;
-        });
-    };
-
-    const handleViewAllNotifications = () => {
-        setActiveTab('all');
-        setSearch('');
-        setFilters({ service: '', category: '', dateFrom: '', dateTo: '' });
-        setStrippedDate(null);
-        setShowNotifications(false);
-    };
-
-    // Close the notification popover on outside click or Esc.
-    const notificationsRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (!showNotifications) return;
-        const handlePointerDown = (e: MouseEvent) => {
-            if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
-                setShowNotifications(false);
-            }
-        };
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setShowNotifications(false);
-        };
-        document.addEventListener('mousedown', handlePointerDown);
-        document.addEventListener('keydown', handleKeyDown);
-        return () => {
-            document.removeEventListener('mousedown', handlePointerDown);
-            document.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [showNotifications]);
 
     // Distinct service/category options for the filter panel
     const serviceOptions = useMemo(() => [...new Set(enriched.map(b => b.service_name))].sort(), [enriched]);
@@ -1054,7 +900,7 @@ const VendorBookings = () => {
             const d = new Date(base);
             d.setDate(base.getDate() + i);
             const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            const dayBookings = enriched.filter(b => b.selected_date === iso && b.status !== 'cancelled');
+            const dayBookings = enriched.filter(b => b.selected_date === iso && b.status !== 'cancelled' && b.status !== 'rejected');
             // `i` is itself the day offset from today, so it doubles as daysDiff here.
             const priority: Priority = dayBookings.length === 0 ? 'neutral' : getPriority('confirmed', i);
             days.push({
@@ -1115,6 +961,7 @@ const VendorBookings = () => {
         { key: 'pending',   label: 'Pending',   count: statCounts.pending },
         { key: 'confirmed', label: 'Confirmed', count: statCounts.confirmed },
         { key: 'completed', label: 'Completed', count: statCounts.completed },
+        { key: 'rejected',  label: 'Rejected',  count: statCounts.rejected },
         { key: 'cancelled', label: 'Cancelled', count: statCounts.cancelled },
     ];
 
@@ -1147,88 +994,19 @@ const VendorBookings = () => {
 
                             <div className="flex items-center gap-2 shrink-0">
                                 {/* Notification bell */}
-                                <div className="relative" ref={notificationsRef}>
-                                    <button
-                                        onClick={() => setShowNotifications(v => !v)}
-                                        className="relative w-11 h-11 rounded-2xl bg-white/8 border border-white/10 hover:bg-white/15 flex items-center justify-center text-white transition-colors"
-                                    >
-                                        <BellIcon />
-                                        {unreadCount > 0 && (
-                                            <span className="absolute -top-1 -right-1 flex items-center justify-center">
-                                                <motion.span
-                                                    animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
-                                                    transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
-                                                    className="absolute inset-0 rounded-full bg-red-500"
-                                                />
-                                                <span className="relative min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-[#2d0e6e]">
-                                                    {unreadCount}
-                                                </span>
-                                            </span>
-                                        )}
-                                    </button>
-
-                                    <AnimatePresence>
-                                        {showNotifications && (
-                                            <motion.div
-                                                initial={{ opacity: 0, y: -4, scale: 0.97 }}
-                                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                exit={{ opacity: 0, y: -4, scale: 0.97 }}
-                                                transition={{ duration: 0.15 }}
-                                                className="absolute right-0 mt-3 w-[340px] z-40 text-left"
-                                            >
-                                                {/* Caret pointing back at the bell */}
-                                                <span className="absolute -top-[5px] right-5 w-2.5 h-2.5 bg-white border-t border-l border-gray-100 rotate-45" />
-
-                                                <div className="relative bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                                                    <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5 border-b border-gray-50">
-                                                        <p className="text-xs font-bold text-gray-700">Notifications</p>
-                                                        {unreadCount > 0 && (
-                                                            <button
-                                                                onClick={handleMarkAllRead}
-                                                                className="flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-purple-600 transition-colors"
-                                                            >
-                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3 h-3">
-                                                                    <path d="M20 6L9 17l-5-5" />
-                                                                </svg>
-                                                                Mark all read
-                                                            </button>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="max-h-64 overflow-y-auto px-2 py-2 space-y-2.5">
-                                                        {notificationGroups.map(group => (
-                                                            <div key={group.label}>
-                                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2.5 pb-1.5">{group.label}</p>
-                                                                <div className="space-y-1.5">
-                                                                    {group.items.map(n => (
-                                                                        <NotificationCard
-                                                                            key={n.id}
-                                                                            notification={n}
-                                                                            isRead={readIds.has(n.id)}
-                                                                            onOpen={handleOpenNotification}
-                                                                        />
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                        {notifications.length === 0 && (
-                                                            <p className="text-xs text-gray-400 px-2.5 py-6 text-center">You're all caught up.</p>
-                                                        )}
-                                                    </div>
-
-                                                    {notifications.length > 0 && (
-                                                        <button
-                                                            onClick={handleViewAllNotifications}
-                                                            className="w-full py-2.5 text-xs font-bold text-purple-600 hover:bg-purple-50 border-t border-gray-50 transition-colors"
-                                                        >
-                                                            View all notifications
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/notifications')}
+                                    className="relative w-11 h-11 rounded-2xl bg-white/8 border border-white/10 hover:bg-white/15 flex items-center justify-center text-white transition-colors"
+                                    aria-label="Open notifications"
+                                >
+                                    <BellIcon />
+                                    {unreadNotificationCount > 0 && (
+                                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-[#2d0e6e]">
+                                            {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                                        </span>
+                                    )}
+                                </button>
 
                                 {statCounts.pending > 0 && (
                                     <motion.button
@@ -1248,12 +1026,13 @@ const VendorBookings = () => {
                         </div>
 
                         {/* Expanded quick stats strip */}
-                        <div className="relative z-10 mt-5 grid grid-cols-3 sm:grid-cols-5 gap-2">
+                        <div className="relative z-10 mt-5 grid grid-cols-3 sm:grid-cols-6 gap-2">
                             {[
                                 { label: 'Total',     value: statCounts.total,     color: 'text-white' },
                                 { label: 'Pending',   value: statCounts.pending,   color: 'text-amber-300' },
                                 { label: 'Confirmed', value: statCounts.confirmed, color: 'text-blue-300' },
                                 { label: 'Completed', value: statCounts.completed, color: 'text-emerald-300' },
+                                { label: 'Rejected',  value: statCounts.rejected,  color: 'text-orange-300' },
                                 { label: 'Cancelled',  value: statCounts.cancelled, color: 'text-rose-300' },
                             ].map((s, i) => (
                                 <div key={i} className="bg-white/8 border border-white/10 rounded-xl px-3 py-2.5 text-center">
@@ -1495,6 +1274,7 @@ const VendorBookings = () => {
                                 booking={booking}
                                 index={i}
                                 onApprove={b => setDialog({ type: 'approve', booking: b })}
+                                onReject={b => setDialog({ type: 'reject', booking: b })}
                                 onCancel={b => setDialog({ type: 'cancel', booking: b })}
                                 onComplete={b => setDialog({ type: 'complete', booking: b })}
                                 onOpen={b => setDrawerBooking(b)}
@@ -1524,6 +1304,7 @@ const VendorBookings = () => {
                         booking={drawerBooking}
                         onClose={() => setDrawerBooking(null)}
                         onApprove={b => setDialog({ type: 'approve', booking: b })}
+                        onReject={b => setDialog({ type: 'reject', booking: b })}
                         onCancel={b => setDialog({ type: 'cancel', booking: b })}
                         onComplete={b => setDialog({ type: 'complete', booking: b })}
                     />

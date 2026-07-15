@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -10,7 +11,10 @@ return new class extends Migration
     {
         Schema::table('vendor_profiles', function (Blueprint $table) {
             $table->date('business_started_at')->nullable()->after('business_link');
-            $table->integer('years_of_experience')->nullable()->change();
+
+            if (DB::connection()->getDriverName() !== 'sqlite') {
+                $table->integer('years_of_experience')->nullable()->change();
+            }
         });
     }
 
@@ -18,7 +22,10 @@ return new class extends Migration
     {
         Schema::table('vendor_profiles', function (Blueprint $table) {
             $table->dropColumn('business_started_at');
-            $table->integer('years_of_experience')->nullable(false)->change();
+
+            if (DB::connection()->getDriverName() !== 'sqlite') {
+                $table->integer('years_of_experience')->nullable(false)->change();
+            }
         });
     }
 };

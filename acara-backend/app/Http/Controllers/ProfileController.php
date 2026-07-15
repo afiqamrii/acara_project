@@ -21,13 +21,13 @@ class ProfileController extends Controller
 
         $bookingStats = [
             'made' => [
-                'total' => (clone $madeBookings)->whereIn('status', ['pending', 'confirmed', 'completed', 'cancelled'])->count(),
+                'total' => (clone $madeBookings)->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled'])->count(),
                 'pending' => (clone $madeBookings)->where('status', 'pending')->count(),
                 'confirmed' => (clone $madeBookings)->where('status', 'confirmed')->count(),
                 'completed' => (clone $madeBookings)->where('status', 'completed')->count(),
             ],
             'received' => [
-                'total' => (clone $receivedBookings)->whereIn('status', ['pending', 'confirmed', 'completed', 'cancelled'])->count(),
+                'total' => (clone $receivedBookings)->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled'])->count(),
                 'pending' => (clone $receivedBookings)->where('status', 'pending')->count(),
                 'confirmed' => (clone $receivedBookings)->where('status', 'confirmed')->count(),
                 'completed' => (clone $receivedBookings)->where('status', 'completed')->count(),
@@ -38,23 +38,23 @@ class ProfileController extends Controller
 
         return response()->json([
             'user' => [
-                'id'                => $user->id,
-                'name'              => $user->name,
-                'email'             => $user->email,
-                'phone_number'      => $user->phone_number,
-                'role'              => $user->role,
-                'avatar_url'        => $user->avatar_path
-                    ? $storageUrl . '/' . ltrim($user->avatar_path, '/')
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
+                'role' => $user->role,
+                'avatar_url' => $user->avatar_path
+                    ? $storageUrl.'/'.ltrim($user->avatar_path, '/')
                     : null,
                 'profile_completed' => $user->profile_completed,
                 'email_verified_at' => $user->email_verified_at,
-                'created_at'        => $user->created_at,
+                'created_at' => $user->created_at,
             ],
             'vendor_profile' => $user->vendorProfile ? [
-                'business_name'      => $user->vendorProfile->business_name,
-                'status'             => $user->vendorProfile->status,
+                'business_name' => $user->vendorProfile->business_name,
+                'status' => $user->vendorProfile->status,
                 'service_area_state' => $user->vendorProfile->service_area_state,
-                'service_area_town'  => $user->vendorProfile->service_area_town,
+                'service_area_town' => $user->vendorProfile->service_area_town,
             ] : null,
             'booking_stats' => $bookingStats,
         ]);
@@ -63,7 +63,7 @@ class ProfileController extends Controller
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'name'         => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'phone_number' => ['nullable', 'string', 'max:20'],
         ]);
 
@@ -73,8 +73,8 @@ class ProfileController extends Controller
         return response()->json([
             'message' => 'Profile updated successfully.',
             'user' => [
-                'name'         => $user->name,
-                'email'        => $user->email,
+                'name' => $user->name,
+                'email' => $user->email,
                 'phone_number' => $user->phone_number,
             ],
         ]);
@@ -92,17 +92,17 @@ class ProfileController extends Controller
             Storage::disk('public')->delete($user->avatar_path);
         }
 
-        $ext      = $request->file('avatar')->getClientOriginalExtension();
-        $filename = 'avatar_' . $user->id . '_' . now()->format('YmdHis') . '.' . $ext;
-        $path     = $request->file('avatar')->storeAs('avatars', $filename, 'public');
+        $ext = $request->file('avatar')->getClientOriginalExtension();
+        $filename = 'avatar_'.$user->id.'_'.now()->format('YmdHis').'.'.$ext;
+        $path = $request->file('avatar')->storeAs('avatars', $filename, 'public');
 
         $user->update(['avatar_path' => $path]);
 
         $storageUrl = rtrim(asset('storage'), '/');
 
         return response()->json([
-            'message'    => 'Photo updated successfully.',
-            'avatar_url' => $storageUrl . '/' . $path,
+            'message' => 'Photo updated successfully.',
+            'avatar_url' => $storageUrl.'/'.$path,
         ]);
     }
 
@@ -110,7 +110,7 @@ class ProfileController extends Controller
     {
         $request->validate([
             'current_password' => ['required', 'string'],
-            'password'         => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'confirmed', Password::min(8)],
         ]);
 
         $user = $request->user();
@@ -118,7 +118,7 @@ class ProfileController extends Controller
         if (! Hash::check($request->current_password, $user->password)) {
             return response()->json([
                 'message' => 'Validation failed.',
-                'errors'  => ['current_password' => ['The current password is incorrect.']],
+                'errors' => ['current_password' => ['The current password is incorrect.']],
             ], 422);
         }
 

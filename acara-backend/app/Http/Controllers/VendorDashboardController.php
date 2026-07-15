@@ -16,7 +16,7 @@ class VendorDashboardController extends Controller
 
         $bookings = Booking::query()
             ->whereIn('service_profile_id', $serviceIds)
-            ->whereIn('status', ['pending', 'confirmed', 'completed', 'cancelled']);
+            ->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled']);
 
         $confirmedValue = Booking::query()
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -29,6 +29,7 @@ class VendorDashboardController extends Controller
             'pending_bookings' => (clone $bookings)->where('status', 'pending')->count(),
             'confirmed_bookings' => (clone $bookings)->where('status', 'confirmed')->count(),
             'completed_bookings' => (clone $bookings)->where('status', 'completed')->count(),
+            'rejected_bookings' => (clone $bookings)->where('status', 'rejected')->count(),
             'cancelled_bookings' => (clone $bookings)->where('status', 'cancelled')->count(),
             'confirmed_value' => round((float) $confirmedValue, 2),
             'total_services' => $serviceIds->count(),
@@ -51,7 +52,7 @@ class VendorDashboardController extends Controller
 
         $recent = Booking::with(['serviceProfile', 'user'])
             ->whereIn('service_profile_id', $serviceIds)
-            ->whereIn('status', ['pending', 'confirmed', 'completed', 'cancelled'])
+            ->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled'])
             ->latest()
             ->limit(5)
             ->get()
@@ -70,7 +71,7 @@ class VendorDashboardController extends Controller
     {
         return [
             'id' => $booking->id,
-            'booking_reference' => 'ACR-' . str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
+            'booking_reference' => 'ACR-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
             'service_name' => $booking->serviceProfile?->service_name ?? 'Service',
             'customer_name' => $booking->user?->name ?? 'Customer',
             'selected_date' => $booking->selected_date->format('Y-m-d'),

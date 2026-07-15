@@ -1,19 +1,19 @@
 <?php
 
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AvailabilityController;
+use App\Http\Controllers\BookingController;
+use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\ServiceVerificationController;
+use App\Http\Controllers\VendorBookingController;
+use App\Http\Controllers\VendorController;
+use App\Http\Controllers\VendorDashboardController;
+use App\Http\Controllers\VendorVerificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ServiceVerificationController;
-use App\Http\Controllers\ServiceController;
-use App\Http\Controllers\VendorController;
-use App\Http\Controllers\VendorVerificationController;
-use App\Http\Controllers\AvailabilityController;
-use App\Http\Controllers\MarketplaceController;
-use App\Http\Controllers\BookingController;
-use App\Http\Controllers\VendorBookingController;
-use App\Http\Controllers\VendorDashboardController;
-use App\Http\Controllers\ProfileController;
 
 // ─── Public Routes ───────────────────────────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login']);
@@ -39,6 +39,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::put('/profile', [ProfileController::class, 'update']);
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar']);
     Route::put('/profile/password', [ProfileController::class, 'updatePassword']);
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 });
 
 // ─── Planning Booking Routes (organizers and vendors) ────────────────────────
@@ -65,6 +70,7 @@ Route::middleware(['auth:sanctum', 'profile.completed', 'role:vendor'])->group(f
 
     Route::get('/vendor/bookings', [VendorBookingController::class, 'index']);
     Route::patch('/vendor/bookings/{id}/approve', [VendorBookingController::class, 'approve']);
+    Route::patch('/vendor/bookings/{id}/reject', [VendorBookingController::class, 'reject']);
     Route::patch('/vendor/bookings/{id}/complete', [VendorBookingController::class, 'complete']);
     Route::patch('/vendor/bookings/{id}/cancel', [VendorBookingController::class, 'cancel']);
 });
