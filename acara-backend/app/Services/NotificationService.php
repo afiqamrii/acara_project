@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\Review;
 use App\Models\UserNotification;
 use App\Notifications\BookingActivityEmail;
 
@@ -92,6 +93,24 @@ class NotificationService
         );
     }
 
+    public function reviewReceived(Review $review): UserNotification
+    {
+        $review->loadMissing(['booking.user', 'serviceProfile']);
+
+        return $this->create(
+            userId: $review->serviceProfile->user_id,
+            booking: $review->booking,
+            type: 'review_received',
+            title: 'New '.$review->rating.'-star review',
+            message: "{$review->booking->user->name} reviewed {$review->serviceProfile->service_name}.",
+            actionUrl: '/marketplace/'.$review->service_profile_id,
+            extraData: [
+                'review_id' => $review->id,
+                'rating' => $review->rating,
+            ],
+        );
+    }
+
     private function create(
         int $userId,
         Booking $booking,
@@ -99,6 +118,7 @@ class NotificationService
         string $title,
         string $message,
         string $actionUrl,
+        array $extraData = [],
     ): UserNotification {
         $notification = UserNotification::create([
             'user_id' => $userId,
@@ -107,12 +127,12 @@ class NotificationService
             'title' => $title,
             'message' => $message,
             'action_url' => $actionUrl,
-            'data' => [
+            'data' => array_merge([
                 'booking_id' => $booking->id,
                 'booking_reference' => 'ACR-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
                 'service_name' => $booking->serviceProfile->service_name,
                 'selected_date' => $booking->selected_date->format('Y-m-d'),
-            ],
+            ], $extraData),
         ]);
 
         if (config('acara.booking_email.enabled')) {

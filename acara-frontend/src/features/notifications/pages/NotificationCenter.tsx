@@ -11,6 +11,7 @@ import {
   IconCircleX,
   IconClipboardCheck,
   IconRefresh,
+  IconStar,
 } from "@tabler/icons-react";
 import { usePageTitle } from "../../../utils/usePageTitle";
 import {
@@ -38,6 +39,8 @@ const notificationStyle = (type: string) => {
       return { icon: IconAlertTriangle, className: "bg-red-100 text-red-700" };
     case "booking_completed":
       return { icon: IconCalendarCheck, className: "bg-blue-100 text-blue-700" };
+    case "review_received":
+      return { icon: IconStar, className: "bg-amber-100 text-amber-700" };
     default:
       return { icon: IconBell, className: "bg-gray-100 text-gray-600" };
   }
@@ -171,25 +174,44 @@ const NotificationCenter = () => {
   };
 
   return (
-    <main className="flex-1 overflow-y-auto bg-[#f6f5fb] px-4 py-5 sm:px-6">
-      <div className="mx-auto max-w-5xl space-y-5 pt-12 md:pt-0">
-        <section className="overflow-hidden rounded-[28px] bg-gradient-to-br from-[#18073d] via-[#31106f] to-[#6d28d9] p-6 text-white shadow-xl shadow-purple-900/20 sm:p-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15">
-                <IconBell size={23} />
-              </span>
-              <h1 className="mt-4 text-2xl font-black sm:text-3xl">Notifications</h1>
-              <p className="mt-2 text-sm text-purple-100/70">
-                Booking requests and status updates from your Acara activity.
+    <main className="flex-1 overflow-y-auto bg-slate-50 px-4 py-7 md:px-8 md:py-9">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <header className="flex flex-col gap-5 border-b border-slate-200 pb-7 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-purple-700">
+              <IconBell size={17} stroke={2} />
+              Account activity
+            </div>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Notifications</h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+              Stay informed about booking requests, service updates, cancellations, and verified reviews.
+            </p>
+          </div>
+
+          <div className="grid w-full grid-cols-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/40 lg:w-auto lg:min-w-72">
+            <div className="px-4 py-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Total activity
+              </p>
+              <p className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+                {data?.meta.total ?? 0}
               </p>
             </div>
-            <div className="rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/15">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-purple-200">Unread</p>
-              <p className="mt-1 text-2xl font-black">{data?.unread_count ?? 0}</p>
+            <div className="border-l border-slate-200 px-4 py-3.5">
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Unread
+                </p>
+                {(data?.unread_count ?? 0) > 0 && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-purple-600" aria-hidden="true" />
+                )}
+              </div>
+              <p className="mt-1 text-2xl font-semibold tracking-tight text-purple-700">
+                {data?.unread_count ?? 0}
+              </p>
             </div>
           </div>
-        </section>
+        </header>
 
         <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -6,6 +6,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceVerificationController;
 use App\Http\Controllers\VendorBookingController;
@@ -54,6 +55,9 @@ Route::middleware(['auth:sanctum', 'role:user,vendor'])->group(function () {
     Route::post('/bookings/confirm', [BookingController::class, 'confirmCart']);
     Route::get('/bookings', [BookingController::class, 'myBookings']);
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
+    Route::get('/reviews', [ReviewController::class, 'index']);
+    Route::post('/bookings/{id}/review', [ReviewController::class, 'store']);
+    Route::patch('/reviews/{id}', [ReviewController::class, 'update']);
 });
 
 // ─── Vendor Routes (authenticated + completed profile) ────────────────────────

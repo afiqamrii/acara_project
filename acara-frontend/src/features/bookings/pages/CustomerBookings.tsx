@@ -12,6 +12,7 @@ import {
   IconMapPin,
   IconSearch,
   IconShoppingBag,
+  IconStar,
   IconX,
 } from "@tabler/icons-react";
 import Loader from "../../../components/common/Loader";
@@ -192,6 +193,16 @@ const BookingCard = ({
             <IconShoppingBag size={17} />
             Service
           </button>
+          {booking.status === "completed" && (
+            <button
+              type="button"
+              onClick={() => navigate("/reviews")}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-100"
+            >
+              <IconStar size={17} />
+              Review
+            </button>
+          )}
           {canCancel && (
             <button
               type="button"

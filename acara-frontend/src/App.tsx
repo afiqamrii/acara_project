@@ -29,6 +29,7 @@ const VendorDashboard = lazy(() => import('./features/dashboard/pages/VendorDash
 const CustomerBookings = lazy(() => import('./features/bookings/pages/CustomerBookings'));
 const AdminBookings = lazy(() => import('./features/bookings/pages/AdminBookings'));
 const NotificationCenter = lazy(() => import('./features/notifications/pages/NotificationCenter'));
+const ReviewsPage = lazy(() => import('./features/reviews/pages/ReviewsPage'));
 
 
 function App() {
@@ -57,7 +58,7 @@ function App() {
               <Route path="/service/register" element={<ProtectedRoute requiredRole={["vendor"]}><ServiceRegister /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute requiredRole={["user", "vendor"]}><ComingSoon title="My Events" description="Manage all your upcoming and past events in one place. Create, edit, and track event status seamlessly." /></ProtectedRoute>} />
               <Route path="/bookings" element={<ProtectedRoute requiredRole={["user", "vendor"]}><CustomerBookings /></ProtectedRoute>} />
-              <Route path="/reviews" element={<ComingSoon title="Reviews" description="Write and read reviews for vendors. Help the community by sharing your experience." />} />
+              <Route path="/reviews" element={<ProtectedRoute requiredRole={["user", "vendor"]}><ReviewsPage /></ProtectedRoute>} />
               <Route path="/notifications" element={<NotificationCenter />} />
               <Route path="/profile" element={<UserProfile />} />
               <Route path="/settings" element={<ComingSoon title="Settings" description="Manage your account settings, notification preferences, and security options." />} />
