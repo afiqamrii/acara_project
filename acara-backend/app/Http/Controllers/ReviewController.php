@@ -20,16 +20,19 @@ class ReviewController extends Controller
             ->with(['serviceProfile.user', 'review'])
             ->where('user_id', $request->user()->id)
             ->where('status', 'completed')
+            ->whereNotNull('completed_at')
             ->latest('updated_at')
             ->get()
             ->map(fn (Booking $booking) => [
                 'booking_id' => $booking->id,
                 'booking_reference' => 'ACR-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
                 'service_id' => $booking->service_profile_id,
-                'service_name' => $booking->serviceProfile->service_name,
-                'vendor_name' => $booking->serviceProfile->user?->name ?? 'Vendor',
+                'service_name' => $booking->service_name_snapshot
+                    ?: $booking->serviceProfile->service_name,
+                'vendor_name' => $booking->vendor_name_snapshot
+                    ?: ($booking->serviceProfile->user?->name ?? 'Vendor'),
                 'selected_date' => $booking->selected_date->format('Y-m-d'),
-                'completed_at' => $booking->updated_at->toDateTimeString(),
+                'completed_at' => ($booking->completed_at ?? $booking->updated_at)->toDateTimeString(),
                 'review' => $booking->review ? $this->mapReview($booking->review) : null,
             ]);
 
@@ -54,7 +57,7 @@ class ReviewController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($booking->status !== 'completed') {
+            if ($booking->status !== 'completed' || ! $booking->completed_at) {
                 throw ValidationException::withMessages([
                     'booking' => ['Only completed bookings can be reviewed.'],
                 ]);

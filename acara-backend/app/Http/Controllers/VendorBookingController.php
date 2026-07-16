@@ -66,6 +66,12 @@ class VendorBookingController extends Controller
                 'bookings.expires_at',
                 'bookings.reminder_sent_at',
                 'bookings.expired_at',
+                'bookings.confirmed_at',
+                'bookings.completed_at',
+                'bookings.service_name_snapshot',
+                'bookings.vendor_name_snapshot',
+                'bookings.price_snapshot',
+                'bookings.pricing_unit_snapshot',
                 'service_profiles.id as service_id',
                 'service_profiles.service_name',
                 'service_profiles.service_category',
@@ -87,14 +93,18 @@ class VendorBookingController extends Controller
         $storageUrl = rtrim(asset('storage'), '/');
 
         $bookings = $query->get()->map(function ($item) use ($storageUrl) {
+            $serviceName = $item->service_name_snapshot ?: $item->service_name;
+            $priceValue = (float) ($item->price_snapshot ?? $item->pricing_starting_from);
+            $pricingUnit = $item->pricing_unit_snapshot ?: $item->pricing_unit;
+
             return [
                 'id' => $item->id,
                 'service_id' => $item->service_id,
-                'service_name' => $item->service_name,
+                'service_name' => $serviceName,
                 'category' => $item->service_category,
-                'price' => 'RM '.number_format($item->pricing_starting_from, 2),
-                'price_value' => (float) $item->pricing_starting_from,
-                'pricing_unit' => $item->pricing_unit,
+                'price' => 'RM '.number_format($priceValue, 2),
+                'price_value' => $priceValue,
+                'pricing_unit' => $pricingUnit,
                 'selected_date' => $item->selected_date->format('Y-m-d'),
                 'status' => $item->status,
                 'booked_at' => $item->created_at->toDateTimeString(),
@@ -108,6 +118,9 @@ class VendorBookingController extends Controller
                 'expires_at' => $item->expires_at?->toDateTimeString(),
                 'reminder_sent_at' => $item->reminder_sent_at?->toDateTimeString(),
                 'expired_at' => $item->expired_at?->toDateTimeString(),
+                'confirmed_at' => $item->confirmed_at?->toDateTimeString(),
+                'completed_at' => $item->completed_at?->toDateTimeString(),
+                'timeline' => $item->activityTimeline(),
                 'portfolio_url' => $item->portfolio_path
                     ? $storageUrl.'/'.ltrim($item->portfolio_path, '/')
                     : null,
@@ -151,7 +164,10 @@ class VendorBookingController extends Controller
                 return 'expired';
             }
 
-            $booking->update(['status' => 'confirmed']);
+            $booking->update([
+                'status' => 'confirmed',
+                'confirmed_at' => now(),
+            ]);
             $this->notifications->bookingApproved($booking);
 
             return $booking;
@@ -184,11 +200,24 @@ class VendorBookingController extends Controller
                 return null;
             }
 
-            $booking->update(['status' => 'completed']);
+            if ($booking->selected_date->gt(today())) {
+                return 'too_early';
+            }
+
+            $booking->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
             $this->notifications->bookingCompleted($booking);
 
             return $booking;
         });
+
+        if ($booking === 'too_early') {
+            return response()->json([
+                'message' => 'This booking can only be completed on or after the event date.',
+            ], 422);
+        }
 
         if (! $booking) {
             return response()->json(['message' => 'Booking not found or not confirmed.'], 404);

@@ -1,4 +1,5 @@
 import api from "../../lib/Api";
+import type { BookingTimelineEvent } from "./components/BookingTimeline";
 
 export type BookingStatus = "pending" | "confirmed" | "completed" | "rejected" | "cancelled" | "expired" | string;
 
@@ -31,7 +32,10 @@ export type BookingItem = {
   expires_at?: string | null;
   reminder_sent_at?: string | null;
   expired_at?: string | null;
+  confirmed_at?: string | null;
+  completed_at?: string | null;
   booked_at?: string | null;
+  timeline?: BookingTimelineEvent[];
 };
 
 export type BookingStats = {

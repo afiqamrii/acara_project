@@ -17,6 +17,7 @@ import {
 } from "@tabler/icons-react";
 import Loader from "../../../components/common/Loader";
 import { usePageTitle } from "../../../utils/usePageTitle";
+import BookingTimeline from "../components/BookingTimeline";
 import {
   cancelCustomerBooking,
   fetchCustomerBookings,
@@ -218,6 +219,15 @@ const BookingCard = ({
               <p className="text-xs font-bold uppercase tracking-wide text-red-600">Vendor cancellation reason</p>
               <p className="mt-1 whitespace-pre-wrap text-sm text-red-900">{booking.cancellation_reason}</p>
             </div>
+          )}
+
+          {(booking.timeline?.length ?? 0) > 0 && (
+            <details className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 open:bg-slate-50/60">
+              <summary className="cursor-pointer text-sm font-bold text-slate-700">Booking activity</summary>
+              <div className="mt-4 border-t border-slate-200 pt-4">
+                <BookingTimeline events={booking.timeline ?? []} />
+              </div>
+            </details>
           )}
         </div>
 

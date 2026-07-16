@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\ServiceAvailability;
 use App\Models\ServiceProfile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class VendorDashboardController extends Controller
 {
@@ -22,7 +23,7 @@ class VendorDashboardController extends Controller
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->where('service_profiles.user_id', $user->id)
             ->whereIn('bookings.status', ['confirmed', 'completed'])
-            ->sum('service_profiles.pricing_starting_from');
+            ->sum(DB::raw('COALESCE(bookings.price_snapshot, service_profiles.pricing_starting_from)'));
 
         $stats = [
             'total_bookings' => (clone $bookings)->count(),
@@ -74,14 +75,20 @@ class VendorDashboardController extends Controller
         return [
             'id' => $booking->id,
             'booking_reference' => 'ACR-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
-            'service_name' => $booking->serviceProfile?->service_name ?? 'Service',
+            'service_name' => $booking->service_name_snapshot
+                ?: ($booking->serviceProfile?->service_name ?? 'Service'),
             'customer_name' => $booking->user?->name ?? 'Customer',
             'selected_date' => $booking->selected_date->format('Y-m-d'),
             'status' => $booking->status,
-            'amount' => (float) ($booking->serviceProfile?->pricing_starting_from ?? 0),
+            'amount' => (float) ($booking->price_snapshot
+                ?? $booking->serviceProfile?->pricing_starting_from
+                ?? 0),
             'created_at' => $booking->created_at?->toDateTimeString(),
             'expires_at' => $booking->expires_at?->toDateTimeString(),
             'expired_at' => $booking->expired_at?->toDateTimeString(),
+            'confirmed_at' => $booking->confirmed_at?->toDateTimeString(),
+            'completed_at' => $booking->completed_at?->toDateTimeString(),
+            'timeline' => $booking->activityTimeline(),
         ];
     }
 }

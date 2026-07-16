@@ -19,7 +19,7 @@ class NotificationService
             booking: $booking,
             type: 'booking_request',
             title: 'New booking request',
-            message: "{$booking->user->name} requested {$booking->serviceProfile->service_name} for {$this->date($booking)}. Please respond by {$this->deadline($booking)}.",
+            message: "{$booking->user->name} requested {$this->serviceName($booking)} for {$this->date($booking)}. Please respond by {$this->deadline($booking)}.",
             actionUrl: '/vendor/bookings',
             extraData: [
                 'expires_at' => $booking->expires_at?->toDateTimeString(),
@@ -36,7 +36,7 @@ class NotificationService
             booking: $booking,
             type: 'booking_approved',
             title: 'Booking approved',
-            message: "Your {$booking->serviceProfile->service_name} booking for {$this->date($booking)} was approved.",
+            message: "Your {$this->serviceName($booking)} booking for {$this->date($booking)} was approved.",
             actionUrl: '/bookings',
         );
     }
@@ -50,7 +50,7 @@ class NotificationService
             booking: $booking,
             type: 'booking_rejected',
             title: 'Booking request rejected',
-            message: "Your {$booking->serviceProfile->service_name} booking was rejected. Reason: {$booking->rejection_reason}",
+            message: "Your {$this->serviceName($booking)} booking was rejected. Reason: {$booking->rejection_reason}",
             actionUrl: '/bookings',
         );
     }
@@ -64,7 +64,7 @@ class NotificationService
             booking: $booking,
             type: 'booking_cancelled',
             title: 'Booking cancelled by vendor',
-            message: "Your {$booking->serviceProfile->service_name} booking was cancelled. Reason: {$booking->cancellation_reason}",
+            message: "Your {$this->serviceName($booking)} booking was cancelled. Reason: {$booking->cancellation_reason}",
             actionUrl: '/bookings',
         );
     }
@@ -78,7 +78,7 @@ class NotificationService
             booking: $booking,
             type: 'booking_cancelled',
             title: 'Booking cancelled by organizer',
-            message: "{$booking->user->name} cancelled the {$booking->serviceProfile->service_name} booking for {$this->date($booking)}.",
+            message: "{$booking->user->name} cancelled the {$this->serviceName($booking)} booking for {$this->date($booking)}.",
             actionUrl: '/vendor/bookings',
         );
     }
@@ -92,7 +92,7 @@ class NotificationService
             booking: $booking,
             type: 'booking_completed',
             title: 'Booking completed',
-            message: "Your {$booking->serviceProfile->service_name} booking was marked as completed.",
+            message: "Your {$this->serviceName($booking)} booking was marked as completed.",
             actionUrl: '/bookings',
         );
     }
@@ -106,7 +106,7 @@ class NotificationService
             booking: $booking,
             type: 'booking_expiry_reminder',
             title: 'Booking request response due soon',
-            message: "{$booking->user->name}'s request for {$booking->serviceProfile->service_name} expires at {$this->deadline($booking)}.",
+            message: "{$booking->user->name}'s request for {$this->serviceName($booking)} expires at {$this->deadline($booking)}.",
             actionUrl: '/vendor/bookings',
             extraData: [
                 'expires_at' => $booking->expires_at?->toDateTimeString(),
@@ -123,7 +123,7 @@ class NotificationService
             booking: $booking,
             type: 'booking_expired',
             title: 'Booking request expired',
-            message: "Your {$booking->serviceProfile->service_name} request expired because the vendor did not respond in time. The date has been released.",
+            message: "Your {$this->serviceName($booking)} request expired because the vendor did not respond in time. The date has been released.",
             actionUrl: '/bookings',
             extraData: [
                 'expired_at' => $booking->expired_at?->toDateTimeString(),
@@ -140,7 +140,7 @@ class NotificationService
             booking: $booking,
             type: 'booking_expired',
             title: 'Booking request expired',
-            message: "{$booking->user->name}'s {$booking->serviceProfile->service_name} request expired without a response. The date is available again.",
+            message: "{$booking->user->name}'s {$this->serviceName($booking)} request expired without a response. The date is available again.",
             actionUrl: '/vendor/bookings',
             extraData: [
                 'expired_at' => $booking->expired_at?->toDateTimeString(),
@@ -157,7 +157,7 @@ class NotificationService
             booking: $review->booking,
             type: 'review_received',
             title: 'New '.$review->rating.'-star review',
-            message: "{$review->booking->user->name} reviewed {$review->serviceProfile->service_name}.",
+            message: "{$review->booking->user->name} reviewed {$this->serviceName($review->booking)}.",
             actionUrl: '/marketplace/'.$review->service_profile_id,
             extraData: [
                 'review_id' => $review->id,
@@ -205,7 +205,7 @@ class NotificationService
             'data' => array_merge([
                 'booking_id' => $booking->id,
                 'booking_reference' => 'ACR-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
-                'service_name' => $booking->serviceProfile->service_name,
+                'service_name' => $this->serviceName($booking),
                 'selected_date' => $booking->selected_date->format('Y-m-d'),
             ], $extraData),
         ]);
@@ -258,5 +258,11 @@ class NotificationService
     private function deadline(Booking $booking): string
     {
         return $booking->expires_at?->format('j M Y, g:i A') ?? 'the response deadline';
+    }
+
+    private function serviceName(Booking $booking): string
+    {
+        return $booking->service_name_snapshot
+            ?: $booking->serviceProfile->service_name;
     }
 }

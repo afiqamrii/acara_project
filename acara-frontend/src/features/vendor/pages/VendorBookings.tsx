@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../lib/Api';
 import { fetchUnreadNotificationCount } from '../../notifications/api';
+import BookingTimeline, { type BookingTimelineEvent } from '../../bookings/components/BookingTimeline';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Customer = { id: number; name: string; email: string; phone: string | null };
@@ -32,6 +33,9 @@ type VendorBooking = {
     expires_at: string | null;
     reminder_sent_at: string | null;
     expired_at: string | null;
+    confirmed_at: string | null;
+    completed_at: string | null;
+    timeline: BookingTimelineEvent[];
     portfolio_url: string | null;
     customer: Customer;
 };
@@ -77,10 +81,9 @@ function daysDiffFromToday(iso: string): number {
     return Math.round((target.getTime() - now.getTime()) / 86_400_000);
 }
 
-// Derives a display status from the raw backend status + event date. A booking
-// becomes "completed" either because the vendor explicitly marked it so (backend
-// status), or automatically once its event date has passed while still confirmed.
-function getDisplayStatus(status: BookingStatus, daysDiff: number, expiresAt: string | null): DisplayStatus {
+// Preserve the backend lifecycle status. A past confirmed booking stays
+// confirmed until the vendor performs the explicit completion action.
+function getDisplayStatus(status: BookingStatus, expiresAt: string | null): DisplayStatus {
     if (status === 'expired') return 'expired';
     if (status === 'rejected') return 'rejected';
     if (status === 'cancelled') return 'cancelled';
@@ -89,8 +92,6 @@ function getDisplayStatus(status: BookingStatus, daysDiff: number, expiresAt: st
         if (expiresAt && new Date(expiresAt.replace(' ', 'T')).getTime() <= Date.now()) return 'expired';
         return 'pending';
     }
-    // status === 'confirmed'
-    if (daysDiff < 0) return 'completed';
     return 'confirmed';
 }
 
@@ -105,6 +106,7 @@ function getCountdownLabel(displayStatus: DisplayStatus, daysDiff: number): stri
     }
     if (daysDiff === 0) return 'Today';
     if (daysDiff === 1) return 'Tomorrow';
+    if (daysDiff < 0) return `${Math.abs(daysDiff)} day${daysDiff === -1 ? '' : 's'} overdue`;
     return `In ${daysDiff} days`;
 }
 
@@ -421,7 +423,7 @@ const BookingCard = ({
     const initials = getInitials(booking.customer.name);
     const canApprove = booking.displayStatus === 'pending';
     const canCancel = booking.displayStatus === 'confirmed';
-    const canComplete = booking.displayStatus === 'confirmed';
+    const canComplete = booking.displayStatus === 'confirmed' && booking.daysDiff <= 0;
 
     return (
         <motion.div
@@ -609,7 +611,7 @@ const BookingDrawer = ({
     const cfg = STATUS_CONFIG[booking.displayStatus];
     const canApprove = booking.displayStatus === 'pending';
     const canCancel = booking.displayStatus === 'confirmed';
-    const canComplete = booking.displayStatus === 'confirmed';
+    const canComplete = booking.displayStatus === 'confirmed' && booking.daysDiff <= 0;
 
     return (
         <motion.div
@@ -718,6 +720,13 @@ const BookingDrawer = ({
                         <div className="px-4 py-3 bg-red-50 border border-red-100 rounded-2xl">
                             <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-1">Cancellation Reason</p>
                             <p className="text-sm text-red-800 whitespace-pre-wrap">{booking.cancellation_reason}</p>
+                        </div>
+                    )}
+
+                    {booking.timeline.length > 0 && (
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                            <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Booking Activity</p>
+                            <BookingTimeline events={booking.timeline} />
                         </div>
                     )}
 
@@ -892,7 +901,7 @@ const VendorBookings = () => {
     const enriched: EnrichedBooking[] = useMemo(() => {
         return (data?.bookings ?? []).map(b => {
             const daysDiff = daysDiffFromToday(b.selected_date);
-            return { ...b, daysDiff, displayStatus: getDisplayStatus(b.status, daysDiff, b.expires_at) };
+            return { ...b, daysDiff, displayStatus: getDisplayStatus(b.status, b.expires_at) };
         });
     }, [data]);
 

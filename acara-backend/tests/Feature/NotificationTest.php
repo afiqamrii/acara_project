@@ -70,7 +70,7 @@ class NotificationTest extends TestCase
             'pricing_unit' => 'event',
             'status' => 'approved',
         ]);
-        $selectedDate = now()->addDays(7)->toDateString();
+        $selectedDate = now()->toDateString();
         DB::table('service_availabilities')->insert([
             'service_profile_id' => $service->id,
             'available_date' => $selectedDate,

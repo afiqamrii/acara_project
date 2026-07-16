@@ -194,6 +194,7 @@ class ReviewTest extends TestCase
             'service_profile_id' => $this->service->id,
             'selected_date' => now()->subDay()->toDateString(),
             'status' => $status,
+            'completed_at' => $status === 'completed' ? now() : null,
         ]);
     }
 }

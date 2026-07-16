@@ -14,6 +14,7 @@ import {
 } from "@tabler/icons-react";
 import Loader from "../../../components/common/Loader";
 import { usePageTitle } from "../../../utils/usePageTitle";
+import BookingTimeline from "../components/BookingTimeline";
 import { fetchAdminBookings, type BookingItem, type BookingStats } from "../api";
 
 const tabs = [
@@ -282,6 +283,17 @@ const AdminBookings = () => {
                   </div>
 
                   <StatusBadge status={booking.status} />
+
+                  {(booking.timeline?.length ?? 0) > 0 && (
+                    <details className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 lg:col-span-5">
+                      <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-slate-600">
+                        Booking activity
+                      </summary>
+                      <div className="mt-4 border-t border-slate-200 pt-4">
+                        <BookingTimeline events={booking.timeline ?? []} compact />
+                      </div>
+                    </details>
+                  )}
                 </article>
               ))}
             </div>

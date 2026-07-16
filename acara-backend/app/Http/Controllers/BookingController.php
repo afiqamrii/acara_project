@@ -69,23 +69,26 @@ class BookingController extends Controller
 
     private function mapCustomerBooking($item): array
     {
-        $priceValue = (float) $item->pricing_starting_from;
+        $serviceName = $item->service_name_snapshot ?: $item->service_name;
+        $vendorName = $item->vendor_name_snapshot ?: $item->business_name;
+        $priceValue = (float) ($item->price_snapshot ?? $item->pricing_starting_from);
+        $pricingUnit = $item->pricing_unit_snapshot ?: $item->pricing_unit;
         $selectedDate = $this->formatDate($item->selected_date);
 
         return [
             'id' => $item->id,
             'booking_reference' => $this->referenceFor((int) $item->id),
             'service_id' => $item->service_id,
-            'service_name' => $item->service_name,
-            'event_name' => $item->service_name,
+            'service_name' => $serviceName,
+            'event_name' => $serviceName,
             'category' => $item->service_category,
-            'vendor' => $item->business_name,
-            'vendor_name' => $item->business_name,
+            'vendor' => $vendorName,
+            'vendor_name' => $vendorName,
             'location' => $this->locationFrom($item),
             'price' => $this->priceLabel($priceValue),
             'price_value' => $priceValue,
             'total_amount' => $priceValue,
-            'pricing_unit' => $item->pricing_unit,
+            'pricing_unit' => $pricingUnit,
             'selected_date' => $selectedDate,
             'event_date' => $selectedDate,
             'status' => $item->status,
@@ -100,6 +103,9 @@ class BookingController extends Controller
             'expires_at' => $this->formatDateTime($item->expires_at ?? null),
             'reminder_sent_at' => $this->formatDateTime($item->reminder_sent_at ?? null),
             'expired_at' => $this->formatDateTime($item->expired_at ?? null),
+            'confirmed_at' => $this->formatDateTime($item->confirmed_at ?? null),
+            'completed_at' => $this->formatDateTime($item->completed_at ?? null),
+            'timeline' => $item->activityTimeline(),
         ];
     }
 
@@ -254,38 +260,62 @@ class BookingController extends Controller
             foreach ($cartItems as $item) {
                 $dateStr = $item->selected_date->format('Y-m-d');
 
+                $service = ServiceProfile::query()
+                    ->where('id', $item->service_profile_id)
+                    ->lockForUpdate()
+                    ->first();
+
                 $availability = ServiceAvailability::where('service_profile_id', $item->service_profile_id)
                     ->whereDate('available_date', $dateStr)
                     ->lockForUpdate()
                     ->first();
 
-                $alreadyBooked = Booking::where('service_profile_id', $item->service_profile_id)
+                $duplicateForCustomer = Booking::where('user_id', $item->user_id)
+                    ->where('service_profile_id', $item->service_profile_id)
                     ->whereDate('selected_date', $dateStr)
+                    ->where('id', '!=', $item->id)
                     ->whereIn('status', ['pending', 'confirmed', 'completed'])
                     ->lockForUpdate()
                     ->exists();
 
-                if (! $availability || $alreadyBooked) {
+                if (! $service
+                    || $service->status !== 'approved'
+                    || ! $service->is_active
+                    || ! $availability
+                    || $duplicateForCustomer) {
                     $unavailableIds[] = $item->id;
 
                     continue;
                 }
 
-                $lockedItems[] = [$item, $availability];
+                $service->loadMissing('user');
+                $vendorName = DB::table('vendor_profiles')
+                    ->where('user_id', $service->user_id)
+                    ->latest('id')
+                    ->value('business_name') ?: ($service->user?->name ?? 'Vendor');
+
+                $lockedItems[] = [$item, $availability, [
+                    'service_name_snapshot' => $service->service_name,
+                    'vendor_name_snapshot' => $vendorName,
+                    'price_snapshot' => $service->pricing_starting_from,
+                    'pricing_unit_snapshot' => $service->pricing_unit,
+                ]];
             }
 
             if (! empty($unavailableIds)) {
                 return $unavailableIds;
             }
 
-            foreach ($lockedItems as [$item, $availability]) {
+            foreach ($lockedItems as [$item, $availability, $snapshot]) {
                 $availability->delete();
-                $item->update([
+                $item->update(array_merge($snapshot, [
                     'status' => 'pending',
                     'expires_at' => now()->addHours(max(1, (int) config('acara.booking_lifecycle.response_hours', 48))),
                     'reminder_sent_at' => null,
                     'expired_at' => null,
-                ]);
+                    'confirmed_at' => null,
+                    'completed_at' => null,
+                ]));
                 $this->notifications->bookingSubmitted($item);
             }
 
@@ -333,6 +363,12 @@ class BookingController extends Controller
                 'bookings.expires_at',
                 'bookings.reminder_sent_at',
                 'bookings.expired_at',
+                'bookings.confirmed_at',
+                'bookings.completed_at',
+                'bookings.service_name_snapshot',
+                'bookings.vendor_name_snapshot',
+                'bookings.price_snapshot',
+                'bookings.pricing_unit_snapshot',
                 'service_profiles.id as service_id',
                 'service_profiles.service_name',
                 'service_profiles.service_category',
@@ -421,6 +457,12 @@ class BookingController extends Controller
                 'bookings.expires_at',
                 'bookings.reminder_sent_at',
                 'bookings.expired_at',
+                'bookings.confirmed_at',
+                'bookings.completed_at',
+                'bookings.service_name_snapshot',
+                'bookings.vendor_name_snapshot',
+                'bookings.price_snapshot',
+                'bookings.pricing_unit_snapshot',
                 'service_profiles.id as service_id',
                 'service_profiles.service_name',
                 'service_profiles.service_category',
