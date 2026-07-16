@@ -2,15 +2,17 @@ import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import type { AxiosError } from 'axios';
 import api from '../../../lib/Api';
 import { fetchUnreadNotificationCount } from '../../notifications/api';
 import BookingTimeline, { type BookingTimelineEvent } from '../../bookings/components/BookingTimeline';
+import type { BookingRescheduleRequest } from '../../bookings/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Customer = { id: number; name: string; email: string; phone: string | null };
 type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled' | 'expired';
 type DisplayStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled' | 'expired';
-type DialogType = 'approve' | 'reject' | 'cancel' | 'complete';
+type DialogType = 'approve' | 'reject' | 'cancel' | 'complete' | 'reschedule_approve' | 'reschedule_reject';
 
 type VendorBooking = {
     id: number;
@@ -35,6 +37,8 @@ type VendorBooking = {
     expired_at: string | null;
     confirmed_at: string | null;
     completed_at: string | null;
+    reschedule_request: BookingRescheduleRequest | null;
+    reschedule_history: BookingRescheduleRequest[];
     timeline: BookingTimelineEvent[];
     portfolio_url: string | null;
     customer: Customer;
@@ -59,6 +63,11 @@ const approveBooking  = (id: number) => api.patch(`/vendor/bookings/${id}/approv
 const completeBooking = (id: number) => api.patch(`/vendor/bookings/${id}/complete`);
 const rejectBooking   = ({ id, reason }: { id: number; reason: string }) => api.patch(`/vendor/bookings/${id}/reject`, { reason });
 const cancelBooking   = ({ id, reason }: { id: number; reason: string }) => api.patch(`/vendor/bookings/${id}/cancel`, { reason });
+const approveReschedule = (id: number) => api.patch(`/vendor/bookings/${id}/reschedule/approve`);
+const rejectReschedule = ({ id, reason }: { id: number; reason: string }) => api.patch(`/vendor/bookings/${id}/reschedule/reject`, { reason });
+
+const apiErrorMessage = (error: unknown) =>
+    (error as AxiosError<{ message?: string }>).response?.data?.message ?? 'This booking action could not be completed.';
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 function getInitials(name: string) {
@@ -285,20 +294,23 @@ const DIALOG_COPY: Record<DialogType, {
     reject:   { iconBg: 'bg-orange-50',  title: 'Reject booking request?',      confirmLabel: 'Reject Request', loadingLabel: 'Rejecting...',       buttonClass: 'bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md shadow-orange-100' },
     cancel:   { iconBg: 'bg-red-50',     title: 'Cancel booking?',             confirmLabel: 'Yes, Cancel',   loadingLabel: 'Cancelling...',      buttonClass: 'bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-md shadow-red-100' },
     complete: { iconBg: 'bg-blue-50',    title: 'Mark booking as completed?',  confirmLabel: 'Yes, Complete', loadingLabel: 'Marking complete...', buttonClass: 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md shadow-blue-100' },
+    reschedule_approve: { iconBg: 'bg-indigo-50', title: 'Approve the new event date?', confirmLabel: 'Approve Date', loadingLabel: 'Approving date...', buttonClass: 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-md shadow-indigo-100' },
+    reschedule_reject: { iconBg: 'bg-orange-50', title: 'Decline the date change?', confirmLabel: 'Decline Change', loadingLabel: 'Declining...', buttonClass: 'bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md shadow-orange-100' },
 };
 
 const ConfirmDialog = ({
-    type, booking, onConfirm, onClose, loading,
+    type, booking, onConfirm, onClose, loading, error,
 }: {
     type: DialogType;
     booking: VendorBooking;
     onConfirm: (reason?: string) => void;
     onClose: () => void;
     loading: boolean;
+    error?: string;
 }) => {
     const copy = DIALOG_COPY[type];
     const [reason, setReason] = useState('');
-    const requiresReason = type === 'reject' || type === 'cancel';
+    const requiresReason = type === 'reject' || type === 'cancel' || type === 'reschedule_reject';
     const trimmedReason = reason.trim();
     const reasonIsValid = !requiresReason || trimmedReason.length >= 10;
     return (
@@ -321,13 +333,18 @@ const ConfirmDialog = ({
                     {type === 'approve' && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={2} className="w-6 h-6"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
                     {(type === 'reject' || type === 'cancel') && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke={type === 'reject' ? '#f97316' : '#ef4444'} strokeWidth={2} className="w-6 h-6"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>}
                     {type === 'complete' && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-6 h-6"><path d="M20 6L9 17l-5-5"/></svg>}
+                    {(type === 'reschedule_approve' || type === 'reschedule_reject') && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke={type === 'reschedule_approve' ? '#6366f1' : '#f97316'} strokeWidth={2} className="w-6 h-6"><path d="M7 7h11l-3-3"/><path d="m18 7-3 3"/><path d="M17 17H6l3 3"/><path d="m6 17 3-3"/></svg>}
                 </div>
 
                 <h3 className="text-base font-bold text-gray-900 mb-1">{copy.title}</h3>
                 <p className="text-sm text-gray-500 mb-1">
                     <span className="font-semibold text-gray-700">{booking.customer.name}</span> · {booking.service_name}
                 </p>
-                <p className="text-sm text-gray-400 mb-6">{formatDate(booking.selected_date)}</p>
+                <p className="text-sm text-gray-400 mb-6">
+                    {type.startsWith('reschedule_') && booking.reschedule_request
+                        ? `${formatDate(booking.reschedule_request.original_date)} → ${formatDate(booking.reschedule_request.requested_date)}`
+                        : formatDate(booking.selected_date)}
+                </p>
 
                 {type === 'reject' && (
                     <p className="text-xs text-orange-700 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 mb-4">
@@ -339,11 +356,25 @@ const ConfirmDialog = ({
                         The customer will be notified that their booking was cancelled.
                     </p>
                 )}
+                {type === 'reschedule_approve' && booking.reschedule_request && (
+                    <p className="text-xs leading-5 text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2 mb-4">
+                        The new date will be reserved and the original date will be released. The customer will be notified.
+                    </p>
+                )}
+                {type === 'reschedule_reject' && (
+                    <p className="text-xs leading-5 text-orange-700 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 mb-4">
+                        The booking will remain confirmed on its original date.
+                    </p>
+                )}
 
                 {requiresReason && (
                     <label className="block mb-4">
                         <span className="mb-1.5 flex items-center justify-between text-xs font-bold text-gray-700">
-                            {type === 'reject' ? 'Rejection reason' : 'Cancellation reason'}
+                            {type === 'reject'
+                                ? 'Rejection reason'
+                                : type === 'reschedule_reject'
+                                    ? 'Reason for declining the date'
+                                    : 'Cancellation reason'}
                             <span className={`font-medium ${trimmedReason.length > 1000 ? 'text-red-500' : 'text-gray-400'}`}>
                                 {reason.length}/1000
                             </span>
@@ -356,7 +387,9 @@ const ConfirmDialog = ({
                             autoFocus
                             placeholder={type === 'reject'
                                 ? 'Explain why you cannot accept this request...'
-                                : 'Explain why this confirmed booking must be cancelled...'}
+                                : type === 'reschedule_reject'
+                                    ? 'Explain why the requested date cannot be accepted...'
+                                    : 'Explain why this confirmed booking must be cancelled...'}
                             className="w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-purple-300 focus:bg-white focus:ring-4 focus:ring-purple-50"
                         />
                         {trimmedReason.length > 0 && trimmedReason.length < 10 && (
@@ -367,6 +400,12 @@ const ConfirmDialog = ({
                 {type === 'complete' && (
                     <p className="text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 mb-4">
                         This confirms the event has taken place and closes out the booking.
+                    </p>
+                )}
+
+                {error && (
+                    <p className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
+                        {error}
                     </p>
                 )}
 
@@ -405,10 +444,49 @@ const CountdownChip = ({ booking }: { booking: EnrichedBooking }) => {
     );
 };
 
+const RescheduleRequestPanel = ({
+    booking,
+    onApprove,
+    onReject,
+}: {
+    booking: VendorBooking;
+    onApprove: (booking: VendorBooking) => void;
+    onReject: (booking: VendorBooking) => void;
+}) => {
+    const request = booking.reschedule_request;
+    if (!request) return null;
+
+    return (
+        <div className="mb-4 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Date Change Requested</p>
+            <p className="mt-1.5 text-xs font-black text-slate-900">
+                {formatDate(request.original_date)} → {formatDate(request.requested_date)}
+            </p>
+            <p className="mt-1 line-clamp-3 text-xs leading-5 text-slate-600">{request.reason}</p>
+            <div className="mt-3 flex gap-2" onClick={event => event.stopPropagation()}>
+                <button
+                    type="button"
+                    onClick={() => onReject(booking)}
+                    className="flex-1 rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs font-bold text-orange-700 hover:bg-orange-50"
+                >
+                    Decline date
+                </button>
+                <button
+                    type="button"
+                    onClick={() => onApprove(booking)}
+                    className="flex-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-3 py-2 text-xs font-bold text-white hover:from-indigo-700 hover:to-purple-700"
+                >
+                    Approve date
+                </button>
+            </div>
+        </div>
+    );
+};
+
 // ── Booking card ──────────────────────────────────────────────────────────────
 const BookingCard = ({
     booking, index,
-    onApprove, onReject, onCancel, onComplete, onOpen,
+    onApprove, onReject, onCancel, onComplete, onRescheduleApprove, onRescheduleReject, onOpen,
 }: {
     booking: EnrichedBooking;
     index: number;
@@ -416,6 +494,8 @@ const BookingCard = ({
     onReject: (b: VendorBooking) => void;
     onCancel: (b: VendorBooking) => void;
     onComplete: (b: VendorBooking) => void;
+    onRescheduleApprove: (b: VendorBooking) => void;
+    onRescheduleReject: (b: VendorBooking) => void;
     onOpen: (b: EnrichedBooking) => void;
 }) => {
     const cfg = STATUS_CONFIG[booking.displayStatus];
@@ -423,7 +503,7 @@ const BookingCard = ({
     const initials = getInitials(booking.customer.name);
     const canApprove = booking.displayStatus === 'pending';
     const canCancel = booking.displayStatus === 'confirmed';
-    const canComplete = booking.displayStatus === 'confirmed' && booking.daysDiff <= 0;
+    const canComplete = booking.displayStatus === 'confirmed' && booking.daysDiff <= 0 && !booking.reschedule_request;
 
     return (
         <motion.div
@@ -527,6 +607,12 @@ const BookingCard = ({
                     </div>
                 )}
 
+                <RescheduleRequestPanel
+                    booking={booking}
+                    onApprove={onRescheduleApprove}
+                    onReject={onRescheduleReject}
+                />
+
                 {/* Actions */}
                 {canApprove && (
                     <div className="flex gap-2" onClick={e => e.stopPropagation()}>
@@ -599,7 +685,7 @@ const BookingCard = ({
 
 // ── Booking drawer ────────────────────────────────────────────────────────────
 const BookingDrawer = ({
-    booking, onClose, onApprove, onReject, onCancel, onComplete,
+    booking, onClose, onApprove, onReject, onCancel, onComplete, onRescheduleApprove, onRescheduleReject,
 }: {
     booking: EnrichedBooking;
     onClose: () => void;
@@ -607,11 +693,13 @@ const BookingDrawer = ({
     onReject: (b: VendorBooking) => void;
     onCancel: (b: VendorBooking) => void;
     onComplete: (b: VendorBooking) => void;
+    onRescheduleApprove: (b: VendorBooking) => void;
+    onRescheduleReject: (b: VendorBooking) => void;
 }) => {
     const cfg = STATUS_CONFIG[booking.displayStatus];
     const canApprove = booking.displayStatus === 'pending';
     const canCancel = booking.displayStatus === 'confirmed';
-    const canComplete = booking.displayStatus === 'confirmed' && booking.daysDiff <= 0;
+    const canComplete = booking.displayStatus === 'confirmed' && booking.daysDiff <= 0 && !booking.reschedule_request;
 
     return (
         <motion.div
@@ -722,6 +810,12 @@ const BookingDrawer = ({
                             <p className="text-sm text-red-800 whitespace-pre-wrap">{booking.cancellation_reason}</p>
                         </div>
                     )}
+
+                    <RescheduleRequestPanel
+                        booking={booking}
+                        onApprove={onRescheduleApprove}
+                        onReject={onRescheduleReject}
+                    />
 
                     {booking.timeline.length > 0 && (
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
@@ -887,15 +981,60 @@ const VendorBookings = () => {
         onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
     });
 
+    const approveRescheduleMutation = useMutation({
+        mutationFn: (id: number) => approveReschedule(id),
+        onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
+    });
+
+    const rejectRescheduleMutation = useMutation({
+        mutationFn: rejectReschedule,
+        onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
+    });
+
     const handleDialogConfirm = (reason?: string) => {
         if (!dialog) return;
         if (dialog.type === 'approve') approveMutation.mutate(dialog.booking.id);
         else if (dialog.type === 'complete') completeMutation.mutate(dialog.booking.id);
         else if (dialog.type === 'reject') rejectMutation.mutate({ id: dialog.booking.id, reason: reason ?? '' });
+        else if (dialog.type === 'reschedule_approve') approveRescheduleMutation.mutate(dialog.booking.id);
+        else if (dialog.type === 'reschedule_reject') rejectRescheduleMutation.mutate({ id: dialog.booking.id, reason: reason ?? '' });
         else cancelMutation.mutate({ id: dialog.booking.id, reason: reason ?? '' });
     };
 
-    const isActionLoading = approveMutation.isPending || rejectMutation.isPending || cancelMutation.isPending || completeMutation.isPending;
+    const isActionLoading = approveMutation.isPending
+        || rejectMutation.isPending
+        || cancelMutation.isPending
+        || completeMutation.isPending
+        || approveRescheduleMutation.isPending
+        || rejectRescheduleMutation.isPending;
+
+    const resetActionMutations = () => {
+        approveMutation.reset();
+        rejectMutation.reset();
+        cancelMutation.reset();
+        completeMutation.reset();
+        approveRescheduleMutation.reset();
+        rejectRescheduleMutation.reset();
+    };
+
+    const openDialog = (type: DialogType, booking: VendorBooking) => {
+        resetActionMutations();
+        setDialog({ type, booking });
+    };
+
+    const actionError = dialog?.type === 'approve' && approveMutation.isError
+        ? apiErrorMessage(approveMutation.error)
+        : dialog?.type === 'reject' && rejectMutation.isError
+            ? apiErrorMessage(rejectMutation.error)
+            : dialog?.type === 'cancel' && cancelMutation.isError
+                ? apiErrorMessage(cancelMutation.error)
+                : dialog?.type === 'complete' && completeMutation.isError
+                    ? apiErrorMessage(completeMutation.error)
+                    : dialog?.type === 'reschedule_approve' && approveRescheduleMutation.isError
+                        ? apiErrorMessage(approveRescheduleMutation.error)
+                        : dialog?.type === 'reschedule_reject' && rejectRescheduleMutation.isError
+                            ? apiErrorMessage(rejectRescheduleMutation.error)
+                            : undefined;
 
     // ── Enrich bookings with computed status / countdown data ────────────────
     const enriched: EnrichedBooking[] = useMemo(() => {
@@ -916,6 +1055,7 @@ const VendorBookings = () => {
         // Informational sub-counts of "confirmed" by how soon the event is — not statuses of their own.
         today: enriched.filter(b => b.displayStatus === 'confirmed' && b.daysDiff === 0).length,
         upcoming7: enriched.filter(b => b.displayStatus === 'confirmed' && b.daysDiff >= 1 && b.daysDiff <= 7).length,
+        reschedulePending: enriched.filter(b => b.reschedule_request !== null).length,
     }), [enriched]);
 
     // This-month revenue snapshot
@@ -1073,6 +1213,20 @@ const VendorBookings = () => {
                                         <div>
                                             <p className="text-amber-300 text-sm font-black leading-none">{statCounts.pending} pending</p>
                                             <p className="text-amber-400/70 text-[10px] mt-0.5">Awaiting your review</p>
+                                        </div>
+                                    </motion.button>
+                                )}
+                                {statCounts.reschedulePending > 0 && (
+                                    <motion.button
+                                        initial={{ scale: 0.9, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        onClick={() => setActiveTab('confirmed')}
+                                        className="flex items-center gap-3 rounded-2xl border border-indigo-300/30 bg-indigo-300/15 px-4 py-3 text-left transition-colors hover:bg-indigo-300/25"
+                                    >
+                                        <div className="h-2 w-2 rounded-full bg-indigo-300 animate-pulse" />
+                                        <div>
+                                            <p className="text-sm font-black leading-none text-indigo-200">{statCounts.reschedulePending} date change</p>
+                                            <p className="mt-0.5 text-[10px] text-indigo-200/70">Awaiting your decision</p>
                                         </div>
                                     </motion.button>
                                 )}
@@ -1328,10 +1482,12 @@ const VendorBookings = () => {
                                 key={booking.id}
                                 booking={booking}
                                 index={i}
-                                onApprove={b => setDialog({ type: 'approve', booking: b })}
-                                onReject={b => setDialog({ type: 'reject', booking: b })}
-                                onCancel={b => setDialog({ type: 'cancel', booking: b })}
-                                onComplete={b => setDialog({ type: 'complete', booking: b })}
+                                onApprove={b => openDialog('approve', b)}
+                                onReject={b => openDialog('reject', b)}
+                                onCancel={b => openDialog('cancel', b)}
+                                onComplete={b => openDialog('complete', b)}
+                                onRescheduleApprove={b => openDialog('reschedule_approve', b)}
+                                onRescheduleReject={b => openDialog('reschedule_reject', b)}
                                 onOpen={b => setDrawerBooking(b)}
                             />
                         ))
@@ -1348,6 +1504,7 @@ const VendorBookings = () => {
                         onConfirm={handleDialogConfirm}
                         onClose={() => !isActionLoading && setDialog(null)}
                         loading={isActionLoading}
+                        error={actionError}
                     />
                 )}
             </AnimatePresence>
@@ -1358,10 +1515,12 @@ const VendorBookings = () => {
                     <BookingDrawer
                         booking={drawerBooking}
                         onClose={() => setDrawerBooking(null)}
-                        onApprove={b => setDialog({ type: 'approve', booking: b })}
-                        onReject={b => setDialog({ type: 'reject', booking: b })}
-                        onCancel={b => setDialog({ type: 'cancel', booking: b })}
-                        onComplete={b => setDialog({ type: 'complete', booking: b })}
+                        onApprove={b => openDialog('approve', b)}
+                        onReject={b => openDialog('reject', b)}
+                        onCancel={b => openDialog('cancel', b)}
+                        onComplete={b => openDialog('complete', b)}
+                        onRescheduleApprove={b => openDialog('reschedule_approve', b)}
+                        onRescheduleReject={b => openDialog('reschedule_reject', b)}
                     />
                 )}
             </AnimatePresence>

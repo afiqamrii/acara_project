@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Booking extends Model
@@ -57,6 +58,18 @@ class Booking extends Model
         return $this->hasOne(Review::class);
     }
 
+    public function rescheduleRequests(): HasMany
+    {
+        return $this->hasMany(BookingRescheduleRequest::class)->latest('id');
+    }
+
+    public function pendingRescheduleRequest(): HasOne
+    {
+        return $this->hasOne(BookingRescheduleRequest::class)
+            ->where('status', 'pending')
+            ->latestOfMany();
+    }
+
     /**
      * @return array<int, array{type: string, label: string, description: string, occurred_at: string}>
      */
@@ -96,6 +109,49 @@ class Booking extends Model
                 'description' => $description,
                 'occurred_at' => $occurredAt->toDateTimeString(),
             ];
+        }
+
+        $rescheduleRequests = $this->relationLoaded('rescheduleRequests')
+            ? $this->rescheduleRequests
+            : $this->rescheduleRequests()->get();
+
+        foreach ($rescheduleRequests as $request) {
+            $originalDate = $request->original_date->format('j M Y');
+            $requestedDate = $request->requested_date->format('j M Y');
+
+            $events[] = [
+                'type' => 'reschedule_requested',
+                'label' => 'Date change requested',
+                'description' => "The organizer requested changing the event from {$originalDate} to {$requestedDate}. Reason: {$request->reason}",
+                'occurred_at' => $request->created_at->toDateTimeString(),
+            ];
+
+            if ($request->status === 'approved' && $request->decided_at) {
+                $events[] = [
+                    'type' => 'reschedule_approved',
+                    'label' => 'Date change approved',
+                    'description' => "The vendor approved the new event date, {$requestedDate}.",
+                    'occurred_at' => $request->decided_at->toDateTimeString(),
+                ];
+            }
+
+            if ($request->status === 'rejected' && $request->decided_at) {
+                $events[] = [
+                    'type' => 'reschedule_rejected',
+                    'label' => 'Date change declined',
+                    'description' => "The original event date, {$originalDate}, remains confirmed. Reason: {$request->decision_reason}",
+                    'occurred_at' => $request->decided_at->toDateTimeString(),
+                ];
+            }
+
+            if ($request->status === 'withdrawn' && $request->withdrawn_at) {
+                $events[] = [
+                    'type' => 'reschedule_withdrawn',
+                    'label' => 'Date change withdrawn',
+                    'description' => "The request for {$requestedDate} was withdrawn.",
+                    'occurred_at' => $request->withdrawn_at->toDateTimeString(),
+                ];
+            }
         }
 
         usort($events, fn (array $first, array $second) => strcmp($first['occurred_at'], $second['occurred_at']));

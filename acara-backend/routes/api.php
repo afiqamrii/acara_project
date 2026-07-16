@@ -55,6 +55,9 @@ Route::middleware(['auth:sanctum', 'role:user,vendor'])->group(function () {
     Route::post('/bookings/confirm', [BookingController::class, 'confirmCart']);
     Route::get('/bookings', [BookingController::class, 'myBookings']);
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
+    Route::get('/bookings/{id}/reschedule/availability', [BookingController::class, 'rescheduleAvailability']);
+    Route::post('/bookings/{id}/reschedule', [BookingController::class, 'requestReschedule']);
+    Route::patch('/bookings/{id}/reschedule/withdraw', [BookingController::class, 'withdrawReschedule']);
     Route::get('/reviews', [ReviewController::class, 'index']);
     Route::post('/bookings/{id}/review', [ReviewController::class, 'store']);
     Route::patch('/reviews/{id}', [ReviewController::class, 'update']);
@@ -81,6 +84,8 @@ Route::middleware(['auth:sanctum', 'profile.completed', 'role:vendor'])->group(f
     Route::patch('/vendor/bookings/{id}/reject', [VendorBookingController::class, 'reject']);
     Route::patch('/vendor/bookings/{id}/complete', [VendorBookingController::class, 'complete']);
     Route::patch('/vendor/bookings/{id}/cancel', [VendorBookingController::class, 'cancel']);
+    Route::patch('/vendor/bookings/{id}/reschedule/approve', [VendorBookingController::class, 'approveReschedule']);
+    Route::patch('/vendor/bookings/{id}/reschedule/reject', [VendorBookingController::class, 'rejectReschedule']);
 });
 
 // ─── Admin Routes (authenticated + admin role) ────────────────────────────────

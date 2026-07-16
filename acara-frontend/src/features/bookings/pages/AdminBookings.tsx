@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   IconAlertCircle,
+  IconArrowsExchange,
   IconCalendarEvent,
   IconCheck,
   IconClock,
@@ -283,6 +284,45 @@ const AdminBookings = () => {
                   </div>
 
                   <StatusBadge status={booking.status} />
+
+                  {booking.reschedule_request && (
+                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 lg:col-span-5">
+                      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-indigo-700">
+                        <IconArrowsExchange size={16} />
+                        Pending date change
+                      </p>
+                      <p className="mt-2 text-sm font-bold text-slate-900">
+                        {formatDate(booking.reschedule_request.original_date)} → {formatDate(booking.reschedule_request.requested_date)}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-600">{booking.reschedule_request.reason}</p>
+                    </div>
+                  )}
+
+                  {(booking.reschedule_history?.length ?? 0) > 0 && (
+                    <details className="rounded-xl border border-indigo-100 bg-white px-4 py-3 lg:col-span-5">
+                      <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-indigo-700">
+                        Date change audit ({booking.reschedule_history?.length ?? 0})
+                      </summary>
+                      <div className="mt-3 space-y-3 border-t border-indigo-100 pt-3">
+                        {(booking.reschedule_history ?? []).map((request) => (
+                          <div key={request.id} className="rounded-xl bg-slate-50 px-3 py-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-bold text-slate-900">
+                                {formatDate(request.original_date)} → {formatDate(request.requested_date)}
+                              </p>
+                              <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-indigo-700">
+                                {request.status}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-xs leading-5 text-slate-600"><span className="font-bold">Organizer:</span> {request.reason}</p>
+                            {request.decision_reason && (
+                              <p className="mt-1 text-xs leading-5 text-slate-600"><span className="font-bold">Decision:</span> {request.decision_reason}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
 
                   {(booking.timeline?.length ?? 0) > 0 && (
                     <details className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 lg:col-span-5">

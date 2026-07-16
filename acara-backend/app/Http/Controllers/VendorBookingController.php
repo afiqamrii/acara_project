@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\BookingRescheduleRequest;
+use App\Models\ServiceAvailability;
 use App\Models\ServiceProfile;
 use App\Services\BookingLifecycleService;
 use App\Services\NotificationService;
@@ -47,6 +49,7 @@ class VendorBookingController extends Controller
         $status = $request->query('status');
 
         $query = Booking::query()
+            ->with(['rescheduleRequests', 'pendingRescheduleRequest'])
             ->whereIn('bookings.service_profile_id', $serviceIds)
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -120,6 +123,10 @@ class VendorBookingController extends Controller
                 'expired_at' => $item->expired_at?->toDateTimeString(),
                 'confirmed_at' => $item->confirmed_at?->toDateTimeString(),
                 'completed_at' => $item->completed_at?->toDateTimeString(),
+                'reschedule_request' => $item->pendingRescheduleRequest?->toApiArray(),
+                'reschedule_history' => $item->rescheduleRequests
+                    ->map(fn (BookingRescheduleRequest $request) => $request->toApiArray())
+                    ->values(),
                 'timeline' => $item->activityTimeline(),
                 'portfolio_url' => $item->portfolio_path
                     ? $storageUrl.'/'.ltrim($item->portfolio_path, '/')
@@ -204,6 +211,12 @@ class VendorBookingController extends Controller
                 return 'too_early';
             }
 
+            if (BookingRescheduleRequest::where('booking_id', $booking->id)
+                ->where('status', 'pending')
+                ->exists()) {
+                return 'reschedule_pending';
+            }
+
             $booking->update([
                 'status' => 'completed',
                 'completed_at' => now(),
@@ -217,6 +230,12 @@ class VendorBookingController extends Controller
             return response()->json([
                 'message' => 'This booking can only be completed on or after the event date.',
             ], 422);
+        }
+
+        if ($booking === 'reschedule_pending') {
+            return response()->json([
+                'message' => 'Resolve the pending date change request before completing this booking.',
+            ], 409);
         }
 
         if (! $booking) {
@@ -300,6 +319,14 @@ class VendorBookingController extends Controller
                 'cancelled_by' => 'vendor',
                 'cancelled_at' => now(),
             ]);
+            BookingRescheduleRequest::where('booking_id', $booking->id)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'withdrawn',
+                    'decision_reason' => 'Booking was cancelled.',
+                    'withdrawn_at' => now(),
+                    'updated_at' => now(),
+                ]);
             $this->releaseDateIfFuture($booking);
             $this->notifications->bookingCancelledByVendor($booking);
 
@@ -314,6 +341,143 @@ class VendorBookingController extends Controller
             'message' => 'Booking cancelled.',
             'status' => 'cancelled',
             'reason' => $booking->cancellation_reason,
+        ]);
+    }
+
+    /** PATCH /vendor/bookings/{id}/reschedule/approve */
+    public function approveReschedule(Request $request, int $id)
+    {
+        $result = DB::transaction(function () use ($request, $id) {
+            $booking = Booking::whereIn('service_profile_id', $this->vendorServiceIds($request))
+                ->where('id', $id)
+                ->where('status', 'confirmed')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $booking) {
+                return 'not_found';
+            }
+
+            $rescheduleRequest = BookingRescheduleRequest::where('booking_id', $booking->id)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->latest('id')
+                ->first();
+
+            if (! $rescheduleRequest) {
+                return 'not_found';
+            }
+
+            if ($booking->selected_date->lte(today())
+                || $rescheduleRequest->requested_date->lte(today())
+                || ! $booking->selected_date->equalTo($rescheduleRequest->original_date)) {
+                return 'not_eligible';
+            }
+
+            $availability = ServiceAvailability::where('service_profile_id', $booking->service_profile_id)
+                ->whereDate('available_date', $rescheduleRequest->requested_date->format('Y-m-d'))
+                ->lockForUpdate()
+                ->first();
+
+            $duplicateForCustomer = Booking::where('user_id', $booking->user_id)
+                ->where('service_profile_id', $booking->service_profile_id)
+                ->whereDate('selected_date', $rescheduleRequest->requested_date->format('Y-m-d'))
+                ->where('id', '!=', $booking->id)
+                ->whereIn('status', ['pending', 'confirmed', 'completed'])
+                ->lockForUpdate()
+                ->exists();
+
+            if (! $availability || $duplicateForCustomer) {
+                return 'unavailable';
+            }
+
+            $originalDate = $booking->selected_date->format('Y-m-d');
+            $availability->delete();
+            DB::table('service_availabilities')->insertOrIgnore([
+                'service_profile_id' => $booking->service_profile_id,
+                'available_date' => $originalDate,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $booking->update([
+                'selected_date' => $rescheduleRequest->requested_date,
+            ]);
+            $rescheduleRequest->update([
+                'status' => 'approved',
+                'decided_by' => $request->user()->id,
+                'decided_at' => now(),
+            ]);
+            $this->notifications->rescheduleApproved($booking, $rescheduleRequest);
+
+            return $rescheduleRequest;
+        });
+
+        if ($result === 'not_found') {
+            return response()->json(['message' => 'Pending date change request not found.'], 404);
+        }
+
+        if ($result === 'not_eligible') {
+            return response()->json(['message' => 'This date change request can no longer be approved.'], 409);
+        }
+
+        if ($result === 'unavailable') {
+            return response()->json(['message' => 'The requested date is no longer available.'], 409);
+        }
+
+        return response()->json([
+            'message' => 'Date change approved.',
+            'selected_date' => $result->requested_date->format('Y-m-d'),
+            'reschedule_request' => $result->toApiArray(),
+        ]);
+    }
+
+    /** PATCH /vendor/bookings/{id}/reschedule/reject */
+    public function rejectReschedule(Request $request, int $id)
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'min:10', 'max:1000'],
+        ]);
+
+        $result = DB::transaction(function () use ($request, $id, $validated) {
+            $booking = Booking::whereIn('service_profile_id', $this->vendorServiceIds($request))
+                ->where('id', $id)
+                ->where('status', 'confirmed')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $booking) {
+                return null;
+            }
+
+            $rescheduleRequest = BookingRescheduleRequest::where('booking_id', $booking->id)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->latest('id')
+                ->first();
+
+            if (! $rescheduleRequest) {
+                return null;
+            }
+
+            $rescheduleRequest->update([
+                'status' => 'rejected',
+                'decided_by' => $request->user()->id,
+                'decision_reason' => trim($validated['reason']),
+                'decided_at' => now(),
+            ]);
+            $this->notifications->rescheduleRejected($booking, $rescheduleRequest);
+
+            return $rescheduleRequest;
+        });
+
+        if (! $result) {
+            return response()->json(['message' => 'Pending date change request not found.'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Date change request declined.',
+            'reschedule_request' => $result->toApiArray(),
         ]);
     }
 }

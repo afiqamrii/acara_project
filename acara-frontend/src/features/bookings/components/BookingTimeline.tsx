@@ -1,4 +1,4 @@
-import { IconCheck, IconClock, IconX } from "@tabler/icons-react";
+import { IconArrowsExchange, IconCheck, IconClock, IconX } from "@tabler/icons-react";
 
 export type BookingTimelineEvent = {
   type: string;
@@ -17,6 +17,22 @@ const formatTimestamp = (value: string) =>
   });
 
 const eventStyle = (type: string) => {
+  if (type === "reschedule_requested") {
+    return { icon: IconArrowsExchange, dot: "bg-purple-500", iconClass: "bg-purple-50 text-purple-600" };
+  }
+
+  if (type === "reschedule_approved") {
+    return { icon: IconArrowsExchange, dot: "bg-emerald-500", iconClass: "bg-emerald-50 text-emerald-600" };
+  }
+
+  if (type === "reschedule_rejected") {
+    return { icon: IconX, dot: "bg-orange-500", iconClass: "bg-orange-50 text-orange-600" };
+  }
+
+  if (type === "reschedule_withdrawn") {
+    return { icon: IconArrowsExchange, dot: "bg-slate-400", iconClass: "bg-slate-100 text-slate-600" };
+  }
+
   if (["rejected", "cancelled"].includes(type)) {
     return { icon: IconX, dot: "bg-red-500", iconClass: "bg-red-50 text-red-600" };
   }

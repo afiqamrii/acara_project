@@ -3,6 +3,18 @@ import type { BookingTimelineEvent } from "./components/BookingTimeline";
 
 export type BookingStatus = "pending" | "confirmed" | "completed" | "rejected" | "cancelled" | "expired" | string;
 
+export type BookingRescheduleRequest = {
+  id: number;
+  original_date: string;
+  requested_date: string;
+  reason: string;
+  status: "pending" | "approved" | "rejected" | "withdrawn" | string;
+  decision_reason?: string | null;
+  requested_at?: string | null;
+  decided_at?: string | null;
+  withdrawn_at?: string | null;
+};
+
 export type BookingItem = {
   id: number;
   booking_reference: string;
@@ -35,6 +47,8 @@ export type BookingItem = {
   confirmed_at?: string | null;
   completed_at?: string | null;
   booked_at?: string | null;
+  reschedule_request?: BookingRescheduleRequest | null;
+  reschedule_history?: BookingRescheduleRequest[];
   timeline?: BookingTimelineEvent[];
 };
 
@@ -61,6 +75,32 @@ export const fetchCustomerBookings = async (): Promise<BookingResponse> => {
 
 export const cancelCustomerBooking = async (id: number) => {
   const res = await api.patch(`/bookings/${id}/cancel`);
+  return res.data;
+};
+
+export const fetchRescheduleAvailability = async (id: number): Promise<{ current_date: string; dates: string[] }> => {
+  const res = await api.get(`/bookings/${id}/reschedule/availability`);
+  return res.data;
+};
+
+export const requestBookingReschedule = async ({
+  id,
+  requestedDate,
+  reason,
+}: {
+  id: number;
+  requestedDate: string;
+  reason: string;
+}) => {
+  const res = await api.post(`/bookings/${id}/reschedule`, {
+    requested_date: requestedDate,
+    reason,
+  });
+  return res.data;
+};
+
+export const withdrawBookingReschedule = async (id: number) => {
+  const res = await api.patch(`/bookings/${id}/reschedule/withdraw`);
   return res.data;
 };
 

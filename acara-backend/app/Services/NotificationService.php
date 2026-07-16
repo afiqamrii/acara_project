@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\BookingRescheduleRequest;
 use App\Models\Review;
 use App\Models\ServiceProfile;
 use App\Models\UserNotification;
@@ -94,6 +95,66 @@ class NotificationService
             title: 'Booking completed',
             message: "Your {$this->serviceName($booking)} booking was marked as completed.",
             actionUrl: '/bookings',
+        );
+    }
+
+    public function rescheduleRequested(Booking $booking, BookingRescheduleRequest $request): UserNotification
+    {
+        $booking->loadMissing(['serviceProfile', 'user']);
+
+        return $this->create(
+            userId: $booking->serviceProfile->user_id,
+            booking: $booking,
+            type: 'booking_reschedule_requested',
+            title: 'Booking date change requested',
+            message: "{$booking->user->name} requested changing {$this->serviceName($booking)} from {$this->requestDate($request, 'original_date')} to {$this->requestDate($request, 'requested_date')}. Reason: {$request->reason}",
+            actionUrl: '/vendor/bookings',
+            extraData: $this->rescheduleData($request),
+        );
+    }
+
+    public function rescheduleApproved(Booking $booking, BookingRescheduleRequest $request): UserNotification
+    {
+        $booking->loadMissing('serviceProfile');
+
+        return $this->create(
+            userId: $booking->user_id,
+            booking: $booking,
+            type: 'booking_reschedule_approved',
+            title: 'Booking date change approved',
+            message: "Your {$this->serviceName($booking)} booking was moved to {$this->requestDate($request, 'requested_date')}.",
+            actionUrl: '/bookings',
+            extraData: $this->rescheduleData($request),
+        );
+    }
+
+    public function rescheduleRejected(Booking $booking, BookingRescheduleRequest $request): UserNotification
+    {
+        $booking->loadMissing('serviceProfile');
+
+        return $this->create(
+            userId: $booking->user_id,
+            booking: $booking,
+            type: 'booking_reschedule_rejected',
+            title: 'Booking date change declined',
+            message: "Your date change request was declined. The booking remains on {$this->requestDate($request, 'original_date')}. Reason: {$request->decision_reason}",
+            actionUrl: '/bookings',
+            extraData: $this->rescheduleData($request),
+        );
+    }
+
+    public function rescheduleWithdrawn(Booking $booking, BookingRescheduleRequest $request): UserNotification
+    {
+        $booking->loadMissing(['serviceProfile', 'user']);
+
+        return $this->create(
+            userId: $booking->serviceProfile->user_id,
+            booking: $booking,
+            type: 'booking_reschedule_withdrawn',
+            title: 'Date change request withdrawn',
+            message: "{$booking->user->name} withdrew the request to move {$this->serviceName($booking)} to {$this->requestDate($request, 'requested_date')}.",
+            actionUrl: '/vendor/bookings',
+            extraData: $this->rescheduleData($request),
         );
     }
 
@@ -264,5 +325,25 @@ class NotificationService
     {
         return $booking->service_name_snapshot
             ?: $booking->serviceProfile->service_name;
+    }
+
+    private function requestDate(BookingRescheduleRequest $request, string $field): string
+    {
+        return $request->{$field}->format('j M Y');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function rescheduleData(BookingRescheduleRequest $request): array
+    {
+        return [
+            'reschedule_request_id' => $request->id,
+            'original_date' => $request->original_date->format('Y-m-d'),
+            'requested_date' => $request->requested_date->format('Y-m-d'),
+            'reschedule_status' => $request->status,
+            'reschedule_reason' => $request->reason,
+            'decision_reason' => $request->decision_reason,
+        ];
     }
 }

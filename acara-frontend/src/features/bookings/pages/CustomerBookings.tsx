@@ -3,12 +3,14 @@ import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import type { AxiosError } from "axios";
 import {
   IconAlertCircle,
   IconCalendarEvent,
   IconCheck,
   IconClock,
   IconCurrencyDollar,
+  IconArrowsExchange,
   IconMapPin,
   IconSearch,
   IconShoppingBag,
@@ -20,9 +22,12 @@ import { usePageTitle } from "../../../utils/usePageTitle";
 import BookingTimeline from "../components/BookingTimeline";
 import {
   cancelCustomerBooking,
+  fetchRescheduleAvailability,
   fetchCustomerBookings,
+  requestBookingReschedule,
   type BookingItem,
   type BookingStats,
+  withdrawBookingReschedule,
 } from "../api";
 
 const tabs = [
@@ -138,19 +143,164 @@ const StatCard = ({
   </div>
 );
 
+const apiErrorMessage = (error: unknown, fallback: string) =>
+  (error as AxiosError<{ message?: string; errors?: Record<string, string[]> }>).response?.data?.message ?? fallback;
+
+const RescheduleDialog = ({
+  booking,
+  onClose,
+  onSubmit,
+  submitting,
+  error,
+}: {
+  booking: BookingItem;
+  onClose: () => void;
+  onSubmit: (requestedDate: string, reason: string) => void;
+  submitting: boolean;
+  error?: string;
+}) => {
+  const [requestedDate, setRequestedDate] = useState("");
+  const [reason, setReason] = useState("");
+  const availability = useQuery({
+    queryKey: ["reschedule-availability", booking.id],
+    queryFn: () => fetchRescheduleAvailability(booking.id),
+    staleTime: 15_000,
+  });
+  const trimmedReason = reason.trim();
+  const canSubmit = requestedDate.length > 0 && trimmedReason.length >= 10 && !submitting;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">Date Change Request</p>
+            <h3 className="mt-2 text-xl font-black text-slate-900">Request a new event date</h3>
+            <p className="mt-1 text-sm text-slate-500">{booking.service_name} · {booking.booking_reference}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200"
+          >
+            <IconX size={18} />
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4 sm:grid-cols-2">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Current confirmed date</p>
+            <p className="mt-1 text-sm font-bold text-indigo-950">{formatDate(booking.selected_date)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Slot protection</p>
+            <p className="mt-1 text-xs leading-5 text-indigo-800">Your current date stays reserved until the vendor approves.</p>
+          </div>
+        </div>
+
+        <label className="mt-5 block">
+          <span className="text-xs font-bold text-slate-700">Requested date</span>
+          <select
+            value={requestedDate}
+            onChange={(event) => setRequestedDate(event.target.value)}
+            disabled={availability.isPending || submitting}
+            className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 outline-none focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-50"
+          >
+            <option value="">{availability.isPending ? "Loading available dates..." : "Select an available date"}</option>
+            {(availability.data?.dates ?? []).map((date) => (
+              <option key={date} value={date}>{formatDate(date)}</option>
+            ))}
+          </select>
+        </label>
+
+        {!availability.isPending && (availability.data?.dates.length ?? 0) === 0 && (
+          <p className="mt-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            This vendor has no other future dates available right now.
+          </p>
+        )}
+
+        <label className="mt-4 block">
+          <span className="flex items-center justify-between text-xs font-bold text-slate-700">
+            Reason for changing the date
+            <span className="font-medium text-slate-400">{reason.length}/1000</span>
+          </span>
+          <textarea
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={1000}
+            rows={4}
+            placeholder="Explain why the event date needs to change..."
+            className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 outline-none focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-50"
+          />
+          {trimmedReason.length > 0 && trimmedReason.length < 10 && (
+            <span className="mt-1 block text-xs text-red-500">Please enter at least 10 characters.</span>
+          )}
+        </label>
+
+        {(error || availability.isError) && (
+          <p className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error ?? "Available dates could not be loaded. Please try again."}
+          </p>
+        )}
+
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+          >
+            Keep current date
+          </button>
+          <button
+            type="button"
+            onClick={() => onSubmit(requestedDate, trimmedReason)}
+            disabled={!canSubmit}
+            className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-sm font-bold text-white shadow-md shadow-indigo-100 hover:from-indigo-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting ? "Sending request..." : "Send to vendor"}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 const BookingCard = ({
   booking,
   onCancel,
+  onReschedule,
+  onWithdrawReschedule,
   cancelling,
+  withdrawing,
 }: {
   booking: BookingItem;
   onCancel: (id: number) => void;
+  onReschedule: (booking: BookingItem) => void;
+  onWithdrawReschedule: (id: number) => void;
   cancelling: boolean;
+  withdrawing: boolean;
 }) => {
   const navigate = useNavigate();
   const canCancel =
     (booking.status === "pending" || booking.status === "confirmed") &&
     booking.selected_date >= todayIso();
+  const canReschedule =
+    booking.status === "confirmed" &&
+    booking.selected_date > todayIso() &&
+    !booking.reschedule_request;
+  const latestReschedule = booking.reschedule_history?.[0];
 
   return (
     <motion.article
@@ -221,6 +371,47 @@ const BookingCard = ({
             </div>
           )}
 
+          {booking.reschedule_request && (
+            <div className="mt-4 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-indigo-700">
+                    <IconArrowsExchange size={16} />
+                    Date change awaiting vendor
+                  </p>
+                  <p className="mt-2 text-sm font-bold text-slate-900">
+                    {formatDate(booking.reschedule_request.original_date)} → {formatDate(booking.reschedule_request.requested_date)}
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-600">{booking.reschedule_request.reason}</p>
+                  <p className="mt-2 text-[11px] text-indigo-600">Your original date remains reserved until a decision is made.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onWithdrawReschedule(booking.id)}
+                  disabled={withdrawing}
+                  className="shrink-0 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"
+                >
+                  {withdrawing ? "Withdrawing..." : "Withdraw request"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!booking.reschedule_request && latestReschedule?.status === "rejected" && (
+            <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 px-4 py-3">
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-orange-700">
+                <IconArrowsExchange size={16} />
+                Latest date change declined
+              </p>
+              <p className="mt-2 text-sm font-bold text-slate-900">
+                Requested {formatDate(latestReschedule.requested_date)} · Current date remains {formatDate(booking.selected_date)}
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-orange-800">
+                {latestReschedule.decision_reason || "The vendor could not accept the requested date."}
+              </p>
+            </div>
+          )}
+
           {(booking.timeline?.length ?? 0) > 0 && (
             <details className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 open:bg-slate-50/60">
               <summary className="cursor-pointer text-sm font-bold text-slate-700">Booking activity</summary>
@@ -250,6 +441,16 @@ const BookingCard = ({
               Review
             </button>
           )}
+          {canReschedule && (
+            <button
+              type="button"
+              onClick={() => onReschedule(booking)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:bg-indigo-100"
+            >
+              <IconArrowsExchange size={17} />
+              Change date
+            </button>
+          )}
           {canCancel && (
             <button
               type="button"
@@ -273,6 +474,7 @@ const CustomerBookings = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
+  const [rescheduleBooking, setRescheduleBooking] = useState<BookingItem | null>(null);
 
   const { data, isPending, isError } = useQuery({
     queryKey: ["bookings"],
@@ -288,6 +490,23 @@ const CustomerBookings = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["cart"] });
+    },
+  });
+
+  const rescheduleMutation = useMutation({
+    mutationFn: requestBookingReschedule,
+    onSuccess: () => {
+      setRescheduleBooking(null);
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
+    },
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: withdrawBookingReschedule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
     },
   });
 
@@ -309,6 +528,12 @@ const CustomerBookings = () => {
   const handleCancel = (id: number) => {
     if (window.confirm("Cancel this booking request?")) {
       cancelMutation.mutate(id);
+    }
+  };
+
+  const handleWithdrawReschedule = (id: number) => {
+    if (window.confirm("Withdraw this date change request and keep the original confirmed date?")) {
+      withdrawMutation.mutate(id);
     }
   };
 
@@ -403,12 +628,40 @@ const CustomerBookings = () => {
                 key={booking.id}
                 booking={booking}
                 onCancel={handleCancel}
+                onReschedule={(booking) => {
+                  rescheduleMutation.reset();
+                  setRescheduleBooking(booking);
+                }}
+                onWithdrawReschedule={handleWithdrawReschedule}
                 cancelling={cancelMutation.isPending && cancelMutation.variables === booking.id}
+                withdrawing={withdrawMutation.isPending && withdrawMutation.variables === booking.id}
               />
             ))}
           </section>
         )}
+
+        {withdrawMutation.isError && (
+          <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {apiErrorMessage(withdrawMutation.error, "The date change request could not be withdrawn.")}
+          </div>
+        )}
       </div>
+
+      {rescheduleBooking && (
+        <RescheduleDialog
+          booking={rescheduleBooking}
+          onClose={() => !rescheduleMutation.isPending && setRescheduleBooking(null)}
+          onSubmit={(requestedDate, reason) => rescheduleMutation.mutate({
+            id: rescheduleBooking.id,
+            requestedDate,
+            reason,
+          })}
+          submitting={rescheduleMutation.isPending}
+          error={rescheduleMutation.isError
+            ? apiErrorMessage(rescheduleMutation.error, "The date change request could not be sent.")
+            : undefined}
+        />
+      )}
     </main>
   );
 };
