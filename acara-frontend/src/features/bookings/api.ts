@@ -31,6 +31,50 @@ export type BookingBrief = {
   is_locked: boolean;
 };
 
+export type QuotationItem = {
+  id: number;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+};
+
+export type QuotationStatus = "sent" | "accepted" | "declined" | "revision_requested" | "expired" | "withdrawn" | string;
+
+export type Quotation = {
+  id: number;
+  reference: string;
+  version: number;
+  status: QuotationStatus;
+  currency: string;
+  subtotal: number;
+  discount_amount: number;
+  tax_rate: number;
+  tax_amount: number;
+  total_amount: number;
+  terms?: string | null;
+  vendor_notes?: string | null;
+  valid_until: string;
+  sent_at: string;
+  responded_at?: string | null;
+  expired_at?: string | null;
+  response_note?: string | null;
+  items: QuotationItem[];
+};
+
+export type QuotationPayload = {
+  items: Array<{
+    description: string;
+    quantity: number;
+    unit_price: number;
+  }>;
+  discount_amount: number;
+  tax_rate: number;
+  terms: string | null;
+  vendor_notes: string | null;
+  valid_until: string;
+};
+
 export type BookingItem = {
   id: number;
   booking_reference: string;
@@ -53,6 +97,8 @@ export type BookingItem = {
   payment_status?: string;
   notes?: string | null;
   brief?: BookingBrief | null;
+  quotation?: Quotation | null;
+  quotation_history?: Quotation[];
   rejection_reason?: string | null;
   cancellation_reason?: string | null;
   cancelled_by?: "vendor" | "customer" | null;
@@ -118,6 +164,48 @@ export const requestBookingReschedule = async ({
 
 export const withdrawBookingReschedule = async (id: number) => {
   const res = await api.patch(`/bookings/${id}/reschedule/withdraw`);
+  return res.data;
+};
+
+export const sendVendorQuotation = async ({
+  bookingId,
+  payload,
+}: {
+  bookingId: number;
+  payload: QuotationPayload;
+}) => {
+  const res = await api.post(`/vendor/bookings/${bookingId}/quotations`, payload);
+  return res.data;
+};
+
+export const acceptQuotation = async ({ bookingId, quotationId }: { bookingId: number; quotationId: number }) => {
+  const res = await api.patch(`/bookings/${bookingId}/quotations/${quotationId}/accept`);
+  return res.data;
+};
+
+export const declineQuotation = async ({
+  bookingId,
+  quotationId,
+  reason,
+}: {
+  bookingId: number;
+  quotationId: number;
+  reason: string;
+}) => {
+  const res = await api.patch(`/bookings/${bookingId}/quotations/${quotationId}/decline`, { reason });
+  return res.data;
+};
+
+export const requestQuotationRevision = async ({
+  bookingId,
+  quotationId,
+  reason,
+}: {
+  bookingId: number;
+  quotationId: number;
+  reason: string;
+}) => {
+  const res = await api.patch(`/bookings/${bookingId}/quotations/${quotationId}/revision`, { reason });
   return res.data;
 };
 

@@ -173,8 +173,18 @@ class BookingIntegrityTest extends TestCase
         ]);
 
         Sanctum::actingAs($this->vendor);
-        $this->patchJson("/api/vendor/bookings/{$booking->id}/approve")
+        $quotationId = $this->postJson("/api/vendor/bookings/{$booking->id}/quotations", [
+            'items' => [[
+                'description' => 'Corporate photography package',
+                'quantity' => 1,
+                'unit_price' => 1800,
+            ]],
+            'valid_until' => today()->toDateString(),
+        ])->assertCreated()->json('quotation.id');
+        Sanctum::actingAs($this->customer);
+        $this->patchJson("/api/bookings/{$booking->id}/quotations/{$quotationId}/accept")
             ->assertOk();
+        Sanctum::actingAs($this->vendor);
         $this->patchJson("/api/vendor/bookings/{$booking->id}/complete")
             ->assertOk()
             ->assertJsonPath('status', 'completed');
@@ -187,13 +197,15 @@ class BookingIntegrityTest extends TestCase
             ->assertOk()
             ->assertJsonPath('bookings.0.status', 'completed')
             ->assertJsonPath('bookings.0.timeline.0.type', 'submitted')
-            ->assertJsonPath('bookings.0.timeline.1.type', 'confirmed')
-            ->assertJsonPath('bookings.0.timeline.2.type', 'completed');
+            ->assertJsonFragment(['type' => 'quotation_sent'])
+            ->assertJsonFragment(['type' => 'quotation_accepted'])
+            ->assertJsonFragment(['type' => 'confirmed'])
+            ->assertJsonFragment(['type' => 'completed']);
 
         Sanctum::actingAs($this->customer);
         $this->getJson('/api/bookings')
             ->assertOk()
-            ->assertJsonPath('bookings.0.timeline.2.type', 'completed');
+            ->assertJsonFragment(['type' => 'completed']);
         $this->getJson('/api/reviews')
             ->assertOk()
             ->assertJsonPath('summary.total', 1)
@@ -203,7 +215,7 @@ class BookingIntegrityTest extends TestCase
         Sanctum::actingAs($admin);
         $this->getJson('/api/admin/bookings')
             ->assertOk()
-            ->assertJsonPath('bookings.0.timeline.2.type', 'completed');
+            ->assertJsonFragment(['type' => 'completed']);
     }
 
     private function booking(User $customer, string $status, string $selectedDate, array $attributes = []): Booking

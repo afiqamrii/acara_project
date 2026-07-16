@@ -21,15 +21,21 @@ import Loader from "../../../components/common/Loader";
 import { usePageTitle } from "../../../utils/usePageTitle";
 import BookingTimeline from "../components/BookingTimeline";
 import BookingBriefDisplay from "../components/BookingBriefDisplay";
+import QuotationDisplay from "../components/QuotationDisplay";
 import {
+  acceptQuotation,
   cancelCustomerBooking,
+  declineQuotation,
   fetchRescheduleAvailability,
   fetchCustomerBookings,
   requestBookingReschedule,
+  requestQuotationRevision,
   type BookingItem,
   type BookingStats,
   withdrawBookingReschedule,
 } from "../api";
+
+type QuotationAction = "accept" | "decline" | "revision";
 
 const tabs = [
   { key: "all", label: "All" },
@@ -278,20 +284,114 @@ const RescheduleDialog = ({
   );
 };
 
+const QuotationResponseDialog = ({
+  booking,
+  action,
+  onClose,
+  onSubmit,
+  submitting,
+  error,
+}: {
+  booking: BookingItem;
+  action: QuotationAction;
+  onClose: () => void;
+  onSubmit: (reason: string) => void;
+  submitting: boolean;
+  error?: string;
+}) => {
+  const [reason, setReason] = useState("");
+  const quotation = booking.quotation;
+  const needsReason = action !== "accept";
+  const canSubmit = !submitting && (!needsReason || reason.trim().length >= 10);
+  const copy = action === "accept"
+    ? {
+        eyebrow: "Confirm commercial agreement",
+        title: "Accept this quotation?",
+        message: "The agreed total will be locked and your booking will become confirmed.",
+        button: "Accept & Confirm Booking",
+        buttonClass: "from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700",
+      }
+    : action === "revision"
+      ? {
+          eyebrow: "Continue negotiation",
+          title: "Request a revised quotation",
+          message: "Tell the vendor exactly what should change. The current version stays in your audit history.",
+          button: "Request Revision",
+          buttonClass: "from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700",
+        }
+      : {
+          eyebrow: "Close quotation",
+          title: "Decline this quotation?",
+          message: "The booking request will close and the selected date will be released.",
+          button: "Decline & Close Request",
+          buttonClass: "from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700",
+        };
+
+  if (!quotation) return null;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onClick={onClose}>
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">{copy.eyebrow}</p>
+            <h3 className="mt-2 text-xl font-black text-slate-900">{copy.title}</h3>
+            <p className="mt-1 text-sm text-slate-500">{quotation.reference} · {formatRM(quotation.total_amount)}</p>
+          </div>
+          <button type="button" onClick={onClose} disabled={submitting} className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200"><IconX size={18} /></button>
+        </div>
+
+        <p className="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-sm leading-6 text-indigo-900">{copy.message}</p>
+
+        {needsReason && (
+          <label className="mt-5 block">
+            <span className="flex items-center justify-between text-xs font-bold text-slate-700">
+              {action === "revision" ? "Requested changes" : "Reason for declining"}
+              <span className="font-medium text-slate-400">{reason.length}/1000</span>
+            </span>
+            <textarea
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              maxLength={1000}
+              rows={4}
+              placeholder={action === "revision" ? "Explain which items, quantities, pricing or terms should change..." : "Explain why this quotation cannot be accepted..."}
+              className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 outline-none focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-50"
+            />
+            {reason.trim().length > 0 && reason.trim().length < 10 && <span className="mt-1 block text-xs text-red-500">Please enter at least 10 characters.</span>}
+          </label>
+        )}
+
+        {error && <p className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row">
+          <button type="button" onClick={onClose} disabled={submitting} className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Go back</button>
+          <button type="button" onClick={() => onSubmit(reason.trim())} disabled={!canSubmit} className={`flex-1 rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 ${copy.buttonClass}`}>
+            {submitting ? "Processing..." : copy.button}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 const BookingCard = ({
   booking,
   onCancel,
   onReschedule,
   onWithdrawReschedule,
+  onQuotationAction,
   cancelling,
   withdrawing,
+  quotationActionPending,
 }: {
   booking: BookingItem;
   onCancel: (id: number) => void;
   onReschedule: (booking: BookingItem) => void;
   onWithdrawReschedule: (id: number) => void;
+  onQuotationAction: (booking: BookingItem, action: QuotationAction) => void;
   cancelling: boolean;
   withdrawing: boolean;
+  quotationActionPending: boolean;
 }) => {
   const navigate = useNavigate();
   const canCancel =
@@ -350,11 +450,40 @@ const BookingCard = ({
             </details>
           )}
 
+          {booking.quotation && (
+            <div className="mt-4 space-y-3">
+              <QuotationDisplay quotation={booking.quotation} />
+
+              {booking.status === "pending" && booking.quotation.status === "sent" && (
+                <div className="flex flex-col gap-2 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3 sm:flex-row sm:justify-end">
+                  <button type="button" onClick={() => onQuotationAction(booking, "decline")} disabled={quotationActionPending} className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50">Decline</button>
+                  <button type="button" onClick={() => onQuotationAction(booking, "revision")} disabled={quotationActionPending} className="rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-bold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50">Request Revision</button>
+                  <button type="button" onClick={() => onQuotationAction(booking, "accept")} disabled={quotationActionPending} className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50">Accept Quotation</button>
+                </div>
+              )}
+
+              {(booking.quotation_history?.length ?? 0) > 1 && (
+                <details className="rounded-xl border border-indigo-100 bg-white px-4 py-3">
+                  <summary className="cursor-pointer text-sm font-bold text-indigo-700">Previous quotation versions ({(booking.quotation_history?.length ?? 1) - 1})</summary>
+                  <div className="mt-3 space-y-3 border-t border-indigo-100 pt-3">
+                    {(booking.quotation_history ?? []).slice(1).map((quotation) => <QuotationDisplay key={quotation.id} quotation={quotation} compact />)}
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+
           {booking.status === "pending" && booking.expires_at && (
             <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5">
               <IconClock size={18} className="mt-0.5 shrink-0 text-amber-600" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Vendor response deadline</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-amber-700">
+                  {booking.quotation?.status === "sent"
+                    ? "Quotation response deadline"
+                    : booking.quotation?.status === "revision_requested"
+                      ? "Vendor revision deadline"
+                      : "Vendor response deadline"}
+                </p>
                 <p className="mt-1 text-sm text-amber-900">{formatDateTime(booking.expires_at)}</p>
               </div>
             </div>
@@ -364,7 +493,9 @@ const BookingCard = ({
             <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Closed automatically</p>
               <p className="mt-1 text-sm leading-6 text-slate-700">
-                The vendor did not respond before the deadline. No cancellation reason is required, and this date is available to request again.
+                {booking.quotation?.status === "expired"
+                  ? "The quotation expired without a response. No cancellation reason is required, and this date is available to request again."
+                  : "The vendor did not respond before the deadline. No cancellation reason is required, and this date is available to request again."}
               </p>
             </div>
           )}
@@ -487,6 +618,7 @@ const CustomerBookings = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
   const [rescheduleBooking, setRescheduleBooking] = useState<BookingItem | null>(null);
+  const [quotationResponse, setQuotationResponse] = useState<{ booking: BookingItem; action: QuotationAction } | null>(null);
 
   const { data, isPending, isError } = useQuery({
     queryKey: ["bookings"],
@@ -517,6 +649,21 @@ const CustomerBookings = () => {
   const withdrawMutation = useMutation({
     mutationFn: withdrawBookingReschedule,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
+    },
+  });
+
+  const quotationMutation = useMutation({
+    mutationFn: ({ booking, action, reason }: { booking: BookingItem; action: QuotationAction; reason: string }) => {
+      if (!booking.quotation) throw new Error("Quotation not found.");
+      const input = { bookingId: booking.id, quotationId: booking.quotation.id };
+      if (action === "accept") return acceptQuotation(input);
+      if (action === "revision") return requestQuotationRevision({ ...input, reason });
+      return declineQuotation({ ...input, reason });
+    },
+    onSuccess: () => {
+      setQuotationResponse(null);
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
     },
@@ -645,8 +792,13 @@ const CustomerBookings = () => {
                   setRescheduleBooking(booking);
                 }}
                 onWithdrawReschedule={handleWithdrawReschedule}
+                onQuotationAction={(booking, action) => {
+                  quotationMutation.reset();
+                  setQuotationResponse({ booking, action });
+                }}
                 cancelling={cancelMutation.isPending && cancelMutation.variables === booking.id}
                 withdrawing={withdrawMutation.isPending && withdrawMutation.variables === booking.id}
+                quotationActionPending={quotationMutation.isPending && quotationMutation.variables?.booking.id === booking.id}
               />
             ))}
           </section>
@@ -671,6 +823,23 @@ const CustomerBookings = () => {
           submitting={rescheduleMutation.isPending}
           error={rescheduleMutation.isError
             ? apiErrorMessage(rescheduleMutation.error, "The date change request could not be sent.")
+            : undefined}
+        />
+      )}
+
+      {quotationResponse && (
+        <QuotationResponseDialog
+          booking={quotationResponse.booking}
+          action={quotationResponse.action}
+          onClose={() => !quotationMutation.isPending && setQuotationResponse(null)}
+          onSubmit={(reason) => quotationMutation.mutate({
+            booking: quotationResponse.booking,
+            action: quotationResponse.action,
+            reason,
+          })}
+          submitting={quotationMutation.isPending}
+          error={quotationMutation.isError
+            ? apiErrorMessage(quotationMutation.error, "The quotation response could not be completed.")
             : undefined}
         />
       )}

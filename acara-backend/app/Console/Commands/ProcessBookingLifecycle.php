@@ -16,7 +16,7 @@ class ProcessBookingLifecycle extends Command
         $result = $lifecycle->process();
 
         $this->info("Expired booking requests: {$result['expired']}");
-        $this->info("Vendor reminders sent: {$result['reminded']}");
+        $this->info("Response reminders sent: {$result['reminded']}");
 
         return self::SUCCESS;
     }

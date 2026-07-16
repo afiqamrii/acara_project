@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\BookingRescheduleRequest;
+use App\Models\Quotation;
 use App\Models\Review;
 use App\Models\ServiceProfile;
 use App\Models\UserNotification;
@@ -28,20 +29,6 @@ class NotificationService
                 'event_type' => $booking->brief?->event_type,
                 'venue_name' => $booking->brief?->venue_name,
             ],
-        );
-    }
-
-    public function bookingApproved(Booking $booking): UserNotification
-    {
-        $booking->loadMissing('serviceProfile');
-
-        return $this->create(
-            userId: $booking->user_id,
-            booking: $booking,
-            type: 'booking_approved',
-            title: 'Booking approved',
-            message: "Your {$this->serviceName($booking)} booking for {$this->date($booking)} was approved.",
-            actionUrl: '/bookings',
         );
     }
 
@@ -98,6 +85,111 @@ class NotificationService
             title: 'Booking completed',
             message: "Your {$this->serviceName($booking)} booking was marked as completed.",
             actionUrl: '/bookings',
+        );
+    }
+
+    public function quotationSent(Booking $booking, Quotation $quotation): UserNotification
+    {
+        $booking->loadMissing('serviceProfile');
+
+        return $this->create(
+            userId: $booking->user_id,
+            booking: $booking,
+            type: 'quotation_sent',
+            title: 'New quotation received',
+            message: "Your {$this->serviceName($booking)} quotation {$quotation->reference()} is ready for RM ".number_format((float) $quotation->total_amount, 2).'. Respond by '.$quotation->valid_until->format('j M Y, g:i A').'.',
+            actionUrl: '/bookings',
+            extraData: $this->quotationData($quotation),
+        );
+    }
+
+    public function quotationAccepted(Booking $booking, Quotation $quotation): UserNotification
+    {
+        $booking->loadMissing(['serviceProfile', 'user']);
+
+        return $this->create(
+            userId: $booking->serviceProfile->user_id,
+            booking: $booking,
+            type: 'quotation_accepted',
+            title: 'Quotation accepted',
+            message: "{$booking->user->name} accepted {$quotation->reference()} for RM ".number_format((float) $quotation->total_amount, 2).'. The booking is confirmed.',
+            actionUrl: '/vendor/bookings',
+            extraData: $this->quotationData($quotation),
+        );
+    }
+
+    public function quotationDeclined(Booking $booking, Quotation $quotation): UserNotification
+    {
+        $booking->loadMissing(['serviceProfile', 'user']);
+
+        return $this->create(
+            userId: $booking->serviceProfile->user_id,
+            booking: $booking,
+            type: 'quotation_declined',
+            title: 'Quotation declined',
+            message: "{$booking->user->name} declined {$quotation->reference()}. Reason: {$quotation->response_note}",
+            actionUrl: '/vendor/bookings',
+            extraData: $this->quotationData($quotation),
+        );
+    }
+
+    public function quotationRevisionRequested(Booking $booking, Quotation $quotation): UserNotification
+    {
+        $booking->loadMissing(['serviceProfile', 'user']);
+
+        return $this->create(
+            userId: $booking->serviceProfile->user_id,
+            booking: $booking,
+            type: 'quotation_revision_requested',
+            title: 'Quotation revision requested',
+            message: "{$booking->user->name} requested changes to {$quotation->reference()}. Reason: {$quotation->response_note}",
+            actionUrl: '/vendor/bookings',
+            extraData: $this->quotationData($quotation),
+        );
+    }
+
+    public function quotationExpiryReminder(Booking $booking, Quotation $quotation): UserNotification
+    {
+        $booking->loadMissing('serviceProfile');
+
+        return $this->create(
+            userId: $booking->user_id,
+            booking: $booking,
+            type: 'quotation_expiry_reminder',
+            title: 'Quotation response due soon',
+            message: "{$quotation->reference()} for {$this->serviceName($booking)} expires at {$quotation->valid_until->format('j M Y, g:i A')}.",
+            actionUrl: '/bookings',
+            extraData: $this->quotationData($quotation),
+        );
+    }
+
+    public function quotationExpiredForOrganizer(Booking $booking, Quotation $quotation): UserNotification
+    {
+        $booking->loadMissing('serviceProfile');
+
+        return $this->create(
+            userId: $booking->user_id,
+            booking: $booking,
+            type: 'quotation_expired',
+            title: 'Quotation expired',
+            message: "{$quotation->reference()} for {$this->serviceName($booking)} expired without a response. The event date was released.",
+            actionUrl: '/bookings',
+            extraData: $this->quotationData($quotation),
+        );
+    }
+
+    public function quotationExpiredForVendor(Booking $booking, Quotation $quotation): UserNotification
+    {
+        $booking->loadMissing(['serviceProfile', 'user']);
+
+        return $this->create(
+            userId: $booking->serviceProfile->user_id,
+            booking: $booking,
+            type: 'quotation_expired',
+            title: 'Quotation expired',
+            message: "{$quotation->reference()} sent to {$booking->user->name} expired without a response. The event date was released.",
+            actionUrl: '/vendor/bookings',
+            extraData: $this->quotationData($quotation),
         );
     }
 
@@ -352,6 +444,22 @@ class NotificationService
             'reschedule_status' => $request->status,
             'reschedule_reason' => $request->reason,
             'decision_reason' => $request->decision_reason,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function quotationData(Quotation $quotation): array
+    {
+        return [
+            'quotation_id' => $quotation->id,
+            'quotation_reference' => $quotation->reference(),
+            'quotation_version' => $quotation->version,
+            'quotation_status' => $quotation->status,
+            'quotation_total' => (float) $quotation->total_amount,
+            'quotation_valid_until' => $quotation->valid_until?->toDateTimeString(),
+            'quotation_response_note' => $quotation->response_note,
         ];
     }
 }

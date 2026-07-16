@@ -12,6 +12,12 @@ export type UserNotification = {
     | "booking_completed"
     | "booking_expiry_reminder"
     | "booking_expired"
+    | "quotation_sent"
+    | "quotation_accepted"
+    | "quotation_declined"
+    | "quotation_revision_requested"
+    | "quotation_expiry_reminder"
+    | "quotation_expired"
     | "review_received"
     | "service_approved"
     | "service_rejected"
@@ -31,6 +37,13 @@ export type UserNotification = {
     rejection_reason?: string | null;
     expires_at?: string | null;
     expired_at?: string | null;
+    quotation_id?: number;
+    quotation_reference?: string;
+    quotation_version?: number;
+    quotation_status?: string;
+    quotation_total?: number;
+    quotation_valid_until?: string | null;
+    quotation_response_note?: string | null;
   } | null;
   read_at: string | null;
   created_at: string;

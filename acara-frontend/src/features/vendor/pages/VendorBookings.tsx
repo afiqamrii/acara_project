@@ -7,13 +7,27 @@ import api from '../../../lib/Api';
 import { fetchUnreadNotificationCount } from '../../notifications/api';
 import BookingTimeline, { type BookingTimelineEvent } from '../../bookings/components/BookingTimeline';
 import BookingBriefDisplay from '../../bookings/components/BookingBriefDisplay';
-import type { BookingBrief, BookingRescheduleRequest } from '../../bookings/api';
+import QuotationDisplay from '../../bookings/components/QuotationDisplay';
+import QuotationForm from '../../bookings/components/QuotationForm';
+import {
+    emptyQuotationForm,
+    isQuotationFormValid,
+    quotationFormFromExisting,
+    quotationPayload,
+    type QuotationFormValue,
+} from '../../bookings/components/quotationFormState';
+import {
+    sendVendorQuotation,
+    type BookingBrief,
+    type BookingRescheduleRequest,
+    type Quotation,
+} from '../../bookings/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Customer = { id: number; name: string; email: string; phone: string | null };
 type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled' | 'expired';
 type DisplayStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled' | 'expired';
-type DialogType = 'approve' | 'reject' | 'cancel' | 'complete' | 'reschedule_approve' | 'reschedule_reject';
+type DialogType = 'reject' | 'cancel' | 'complete' | 'reschedule_approve' | 'reschedule_reject';
 
 type VendorBooking = {
     id: number;
@@ -29,6 +43,8 @@ type VendorBooking = {
     updated_at: string;
     notes: string | null;
     brief: BookingBrief | null;
+    quotation: Quotation | null;
+    quotation_history: Quotation[];
     rejection_reason: string | null;
     cancellation_reason: string | null;
     cancelled_by: 'vendor' | 'customer' | null;
@@ -61,7 +77,6 @@ const fetchVendorBookings = async (): Promise<BookingsResponse> => {
     return res.data;
 };
 
-const approveBooking  = (id: number) => api.patch(`/vendor/bookings/${id}/approve`);
 const completeBooking = (id: number) => api.patch(`/vendor/bookings/${id}/complete`);
 const rejectBooking   = ({ id, reason }: { id: number; reason: string }) => api.patch(`/vendor/bookings/${id}/reject`, { reason });
 const cancelBooking   = ({ id, reason }: { id: number; reason: string }) => api.patch(`/vendor/bookings/${id}/cancel`, { reason });
@@ -251,8 +266,8 @@ const SuccessOverlay = ({ booking, onDone }: { booking: VendorBooking; onDone: (
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.35 }}
                 >
-                    <p className="text-white/80 text-xs font-semibold uppercase tracking-widest mt-4 mb-1">Booking Approved</p>
-                    <h2 className="text-2xl font-black text-white">All set! 🎉</h2>
+                    <p className="text-white/80 text-xs font-semibold uppercase tracking-widest mt-4 mb-1">Quotation Sent</p>
+                    <h2 className="text-2xl font-black text-white">Ready for review</h2>
                 </motion.div>
             </div>
 
@@ -273,7 +288,7 @@ const SuccessOverlay = ({ booking, onDone }: { booking: VendorBooking; onDone: (
                 </div>
 
                 <p className="text-xs text-gray-400 mb-4">
-                    The customer will be notified that their booking has been confirmed.
+                    The organizer has been notified and can accept, decline, or request a revision.
                 </p>
 
                 <motion.button
@@ -292,7 +307,6 @@ const SuccessOverlay = ({ booking, onDone }: { booking: VendorBooking; onDone: (
 const DIALOG_COPY: Record<DialogType, {
     iconBg: string; title: string; confirmLabel: string; loadingLabel: string; buttonClass: string;
 }> = {
-    approve:  { iconBg: 'bg-emerald-50', title: 'Approve booking?',            confirmLabel: 'Yes, Approve',  loadingLabel: 'Approving...',      buttonClass: 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-md shadow-emerald-100' },
     reject:   { iconBg: 'bg-orange-50',  title: 'Reject booking request?',      confirmLabel: 'Reject Request', loadingLabel: 'Rejecting...',       buttonClass: 'bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md shadow-orange-100' },
     cancel:   { iconBg: 'bg-red-50',     title: 'Cancel booking?',             confirmLabel: 'Yes, Cancel',   loadingLabel: 'Cancelling...',      buttonClass: 'bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-md shadow-red-100' },
     complete: { iconBg: 'bg-blue-50',    title: 'Mark booking as completed?',  confirmLabel: 'Yes, Complete', loadingLabel: 'Marking complete...', buttonClass: 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md shadow-blue-100' },
@@ -332,7 +346,6 @@ const ConfirmDialog = ({
                 onClick={e => e.stopPropagation()}
             >
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${copy.iconBg}`}>
-                    {type === 'approve' && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={2} className="w-6 h-6"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
                     {(type === 'reject' || type === 'cancel') && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke={type === 'reject' ? '#f97316' : '#ef4444'} strokeWidth={2} className="w-6 h-6"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>}
                     {type === 'complete' && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth={2} className="w-6 h-6"><path d="M20 6L9 17l-5-5"/></svg>}
                     {(type === 'reschedule_approve' || type === 'reschedule_reject') && <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke={type === 'reschedule_approve' ? '#6366f1' : '#f97316'} strokeWidth={2} className="w-6 h-6"><path d="M7 7h11l-3-3"/><path d="m18 7-3 3"/><path d="M17 17H6l3 3"/><path d="m6 17 3-3"/></svg>}
@@ -434,6 +447,84 @@ const ConfirmDialog = ({
     );
 };
 
+const QuotationDialog = ({
+    booking,
+    value,
+    onChange,
+    onClose,
+    onSubmit,
+    loading,
+    error,
+}: {
+    booking: VendorBooking;
+    value: QuotationFormValue;
+    onChange: (value: QuotationFormValue) => void;
+    onClose: () => void;
+    onSubmit: () => void;
+    loading: boolean;
+    error?: string;
+}) => (
+    <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+        onClick={onClose}
+    >
+        <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 12 }}
+            className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl"
+            onClick={event => event.stopPropagation()}
+        >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
+                <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-purple-500">
+                        {booking.quotation?.status === 'revision_requested' ? 'Revised quotation' : 'New quotation'}
+                    </p>
+                    <h2 className="mt-1 text-xl font-black text-slate-900">Prepare commercial offer</h2>
+                    <p className="mt-1 text-xs text-slate-500">{booking.customer.name} · {booking.service_name} · {formatDate(booking.selected_date)}</p>
+                    {booking.quotation?.status === 'revision_requested' && booking.quotation.response_note && (
+                        <p className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+                            <span className="font-bold">Requested change:</span> {booking.quotation.response_note}
+                        </p>
+                    )}
+                </div>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={loading}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-50"
+                    aria-label="Close quotation editor"
+                >
+                    <XIcon />
+                </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto bg-slate-50/60 px-5 py-5 sm:px-6">
+                <QuotationForm value={value} onChange={onChange} eventDate={booking.selected_date} />
+                {error && <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-700">{error}</p>}
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <p className="text-xs text-slate-400">Sending creates a locked quotation version and notifies the organizer.</p>
+                <div className="flex gap-2">
+                    <button type="button" onClick={onClose} disabled={loading} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
+                    <button
+                        type="button"
+                        onClick={onSubmit}
+                        disabled={loading || !isQuotationFormValid(value)}
+                        className="rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-purple-100 hover:from-purple-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {loading ? 'Sending...' : booking.quotation?.status === 'revision_requested' ? 'Send revised quotation' : 'Send quotation'}
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    </motion.div>
+);
+
 // ── Countdown chip ────────────────────────────────────────────────────────────
 const CountdownChip = ({ booking }: { booking: EnrichedBooking }) => {
     const priority = getPriority(booking.displayStatus, booking.daysDiff);
@@ -488,11 +579,11 @@ const RescheduleRequestPanel = ({
 // ── Booking card ──────────────────────────────────────────────────────────────
 const BookingCard = ({
     booking, index,
-    onApprove, onReject, onCancel, onComplete, onRescheduleApprove, onRescheduleReject, onOpen,
+    onQuote, onReject, onCancel, onComplete, onRescheduleApprove, onRescheduleReject, onOpen,
 }: {
     booking: EnrichedBooking;
     index: number;
-    onApprove: (b: VendorBooking) => void;
+    onQuote: (b: VendorBooking) => void;
     onReject: (b: VendorBooking) => void;
     onCancel: (b: VendorBooking) => void;
     onComplete: (b: VendorBooking) => void;
@@ -503,7 +594,9 @@ const BookingCard = ({
     const cfg = STATUS_CONFIG[booking.displayStatus];
     const priority = getPriority(booking.displayStatus, booking.daysDiff);
     const initials = getInitials(booking.customer.name);
-    const canApprove = booking.displayStatus === 'pending';
+    const canPrepareQuotation = booking.displayStatus === 'pending'
+        && (!booking.quotation || booking.quotation.status === 'revision_requested');
+    const awaitingQuotationResponse = booking.displayStatus === 'pending' && booking.quotation?.status === 'sent';
     const canCancel = booking.displayStatus === 'confirmed';
     const canComplete = booking.displayStatus === 'confirmed' && booking.daysDiff <= 0 && !booking.reschedule_request;
 
@@ -574,18 +667,21 @@ const BookingCard = ({
                 </div>
 
                 <BookingBriefDisplay brief={booking.brief} compact />
+                <QuotationDisplay quotation={booking.quotation} compact />
 
                 {booking.displayStatus === 'pending' && booking.expires_at && (
                     <div className="mb-4 px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-xl">
-                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-0.5">Response Deadline</p>
-                        <p className="text-xs font-semibold text-amber-900">Respond by {formatBookedAt(booking.expires_at)}</p>
+                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-0.5">
+                            {booking.quotation?.status === 'sent' ? 'Organizer Response Deadline' : 'Vendor Response Deadline'}
+                        </p>
+                        <p className="text-xs font-semibold text-amber-900">{booking.quotation?.status === 'sent' ? 'Organizer responds by' : 'Respond by'} {formatBookedAt(booking.expires_at)}</p>
                     </div>
                 )}
 
                 {booking.displayStatus === 'expired' && (
                     <div className="mb-4 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                         <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-0.5">Closed Automatically</p>
-                        <p className="text-xs leading-5 text-slate-700">The response deadline passed. The organizer was notified and the date was released.</p>
+                        <p className="text-xs leading-5 text-slate-700">{booking.quotation?.status === 'expired' ? 'The quotation expired without an organizer response.' : 'The vendor response deadline passed.'} The parties were notified and the date was released.</p>
                     </div>
                 )}
 
@@ -610,7 +706,7 @@ const BookingCard = ({
                 />
 
                 {/* Actions */}
-                {canApprove && (
+                {canPrepareQuotation && (
                     <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                         <motion.button
                             whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
@@ -621,15 +717,21 @@ const BookingCard = ({
                         </motion.button>
                         <motion.button
                             whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
-                            onClick={() => onApprove(booking)}
+                            onClick={() => onQuote(booking)}
                             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-md shadow-emerald-100 transition-all"
                         >
-                            <CheckIcon /> Approve
+                            <CheckIcon /> {booking.quotation ? 'Revise Quote' : 'Prepare Quote'}
                         </motion.button>
                     </div>
                 )}
 
-                {!canApprove && canCancel && (
+                {awaitingQuotationResponse && (
+                    <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5 text-center text-xs font-semibold text-amber-700">
+                        Quotation sent · awaiting organizer response
+                    </div>
+                )}
+
+                {!canPrepareQuotation && !awaitingQuotationResponse && canCancel && (
                     <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                         <motion.button
                             whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
@@ -650,7 +752,7 @@ const BookingCard = ({
                     </div>
                 )}
 
-                {!canApprove && !canCancel && (
+                {!canPrepareQuotation && !awaitingQuotationResponse && !canCancel && (
                     <div className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-medium ${
                         booking.displayStatus === 'cancelled'
                             ? 'bg-red-50 text-red-500'
@@ -681,11 +783,11 @@ const BookingCard = ({
 
 // ── Booking drawer ────────────────────────────────────────────────────────────
 const BookingDrawer = ({
-    booking, onClose, onApprove, onReject, onCancel, onComplete, onRescheduleApprove, onRescheduleReject,
+    booking, onClose, onQuote, onReject, onCancel, onComplete, onRescheduleApprove, onRescheduleReject,
 }: {
     booking: EnrichedBooking;
     onClose: () => void;
-    onApprove: (b: VendorBooking) => void;
+    onQuote: (b: VendorBooking) => void;
     onReject: (b: VendorBooking) => void;
     onCancel: (b: VendorBooking) => void;
     onComplete: (b: VendorBooking) => void;
@@ -693,7 +795,9 @@ const BookingDrawer = ({
     onRescheduleReject: (b: VendorBooking) => void;
 }) => {
     const cfg = STATUS_CONFIG[booking.displayStatus];
-    const canApprove = booking.displayStatus === 'pending';
+    const canPrepareQuotation = booking.displayStatus === 'pending'
+        && (!booking.quotation || booking.quotation.status === 'revision_requested');
+    const awaitingQuotationResponse = booking.displayStatus === 'pending' && booking.quotation?.status === 'sent';
     const canCancel = booking.displayStatus === 'confirmed';
     const canComplete = booking.displayStatus === 'confirmed' && booking.daysDiff <= 0 && !booking.reschedule_request;
 
@@ -771,19 +875,29 @@ const BookingDrawer = ({
                     </div>
 
                     <BookingBriefDisplay brief={booking.brief} notes={booking.notes} />
+                    <QuotationDisplay quotation={booking.quotation} />
+
+                    {(booking.quotation_history?.length ?? 0) > 1 && (
+                        <details className="rounded-2xl border border-indigo-100 bg-indigo-50/40 px-4 py-3">
+                            <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-indigo-700">Previous quotation versions ({booking.quotation_history.length - 1})</summary>
+                            <div className="mt-4 space-y-3 border-t border-indigo-100 pt-4">
+                                {booking.quotation_history.slice(1).map(quotation => <QuotationDisplay key={quotation.id} quotation={quotation} compact />)}
+                            </div>
+                        </details>
+                    )}
 
                     {booking.displayStatus === 'pending' && booking.expires_at && (
                         <div className="px-4 py-3 bg-amber-50 border border-amber-100 rounded-2xl">
-                            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Response Deadline</p>
+                            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">{booking.quotation?.status === 'sent' ? 'Organizer Response Deadline' : 'Vendor Response Deadline'}</p>
                             <p className="text-sm font-semibold text-amber-900">{formatBookedAt(booking.expires_at)}</p>
-                            <p className="mt-1 text-xs leading-5 text-amber-700">Approve or decline before this time. A reminder is sent as the deadline approaches.</p>
+                            <p className="mt-1 text-xs leading-5 text-amber-700">{booking.quotation?.status === 'sent' ? 'The organizer must respond before this time.' : 'Send a quotation or decline before this time.'} A reminder is sent as the deadline approaches.</p>
                         </div>
                     )}
 
                     {booking.displayStatus === 'expired' && (
                         <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl">
                             <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Closed Automatically</p>
-                            <p className="text-sm leading-6 text-slate-700">No response was recorded before the deadline. The organizer was notified and the selected date is available again.</p>
+                            <p className="text-sm leading-6 text-slate-700">{booking.quotation?.status === 'expired' ? 'The quotation expired without an organizer response.' : 'No vendor response was recorded before the deadline.'} Both parties were notified and the selected date is available again.</p>
                         </div>
                     )}
 
@@ -815,7 +929,7 @@ const BookingDrawer = ({
                     )}
 
                     {/* Actions */}
-                    {canApprove && (
+                    {canPrepareQuotation && (
                         <div className="flex gap-2 pt-2">
                             <button
                                 onClick={() => onReject(booking)}
@@ -824,14 +938,19 @@ const BookingDrawer = ({
                                 <XIcon /> Decline
                             </button>
                             <button
-                                onClick={() => onApprove(booking)}
+                                onClick={() => onQuote(booking)}
                                 className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-md shadow-emerald-100 transition-all"
                             >
-                                <CheckIcon /> Approve
+                                <CheckIcon /> {booking.quotation ? 'Send Revised Quote' : 'Prepare Quote'}
                             </button>
                         </div>
                     )}
-                    {!canApprove && canCancel && (
+                    {awaitingQuotationResponse && (
+                        <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-700">
+                            Quotation sent and awaiting organizer response.
+                        </div>
+                    )}
+                    {!canPrepareQuotation && !awaitingQuotationResponse && canCancel && (
                         <div className="flex gap-2">
                             <button
                                 onClick={() => onCancel(booking)}
@@ -921,6 +1040,8 @@ const VendorBookings = () => {
     const [activeTab, setActiveTab] = useState<'all' | DisplayStatus>('all');
     const [dialog, setDialog] = useState<{ type: DialogType; booking: VendorBooking } | null>(null);
     const [successBooking, setSuccessBooking] = useState<VendorBooking | null>(null);
+    const [quotationBooking, setQuotationBooking] = useState<VendorBooking | null>(null);
+    const [quotationDraft, setQuotationDraft] = useState<QuotationFormValue | null>(null);
     const [drawerBooking, setDrawerBooking] = useState<EnrichedBooking | null>(null);
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const [search, setSearch] = useState('');
@@ -945,14 +1066,16 @@ const VendorBookings = () => {
         queryClient.invalidateQueries({ queryKey: ['vendor-bookings'] });
     };
 
-    const approveMutation = useMutation({
-        mutationFn: (id: number) => approveBooking(id),
+    const quotationMutation = useMutation({
+        mutationFn: sendVendorQuotation,
         onSuccess: () => {
-            const approved = dialog?.booking ?? null;
-            setDialog(null);
+            const sent = quotationBooking;
+            setQuotationBooking(null);
+            setQuotationDraft(null);
             setDrawerBooking(null);
-            setSuccessBooking(approved);
+            setSuccessBooking(sent);
             invalidate();
+            queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
         },
     });
 
@@ -983,23 +1106,20 @@ const VendorBookings = () => {
 
     const handleDialogConfirm = (reason?: string) => {
         if (!dialog) return;
-        if (dialog.type === 'approve') approveMutation.mutate(dialog.booking.id);
-        else if (dialog.type === 'complete') completeMutation.mutate(dialog.booking.id);
+        if (dialog.type === 'complete') completeMutation.mutate(dialog.booking.id);
         else if (dialog.type === 'reject') rejectMutation.mutate({ id: dialog.booking.id, reason: reason ?? '' });
         else if (dialog.type === 'reschedule_approve') approveRescheduleMutation.mutate(dialog.booking.id);
         else if (dialog.type === 'reschedule_reject') rejectRescheduleMutation.mutate({ id: dialog.booking.id, reason: reason ?? '' });
         else cancelMutation.mutate({ id: dialog.booking.id, reason: reason ?? '' });
     };
 
-    const isActionLoading = approveMutation.isPending
-        || rejectMutation.isPending
+    const isActionLoading = rejectMutation.isPending
         || cancelMutation.isPending
         || completeMutation.isPending
         || approveRescheduleMutation.isPending
         || rejectRescheduleMutation.isPending;
 
     const resetActionMutations = () => {
-        approveMutation.reset();
         rejectMutation.reset();
         cancelMutation.reset();
         completeMutation.reset();
@@ -1012,9 +1132,15 @@ const VendorBookings = () => {
         setDialog({ type, booking });
     };
 
-    const actionError = dialog?.type === 'approve' && approveMutation.isError
-        ? apiErrorMessage(approveMutation.error)
-        : dialog?.type === 'reject' && rejectMutation.isError
+    const openQuotation = (booking: VendorBooking) => {
+        quotationMutation.reset();
+        setQuotationDraft(booking.quotation?.status === 'revision_requested'
+            ? quotationFormFromExisting(booking.quotation)
+            : emptyQuotationForm(booking.service_name, booking.price_value, booking.selected_date));
+        setQuotationBooking(booking);
+    };
+
+    const actionError = dialog?.type === 'reject' && rejectMutation.isError
             ? apiErrorMessage(rejectMutation.error)
             : dialog?.type === 'cancel' && cancelMutation.isError
                 ? apiErrorMessage(cancelMutation.error)
@@ -1202,7 +1328,7 @@ const VendorBookings = () => {
                                         <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                                         <div>
                                             <p className="text-amber-300 text-sm font-black leading-none">{statCounts.pending} pending</p>
-                                            <p className="text-amber-400/70 text-[10px] mt-0.5">Awaiting your review</p>
+                                            <p className="text-amber-400/70 text-[10px] mt-0.5">Active quotation workflow</p>
                                         </div>
                                     </motion.button>
                                 )}
@@ -1472,7 +1598,7 @@ const VendorBookings = () => {
                                 key={booking.id}
                                 booking={booking}
                                 index={i}
-                                onApprove={b => openDialog('approve', b)}
+                                onQuote={openQuotation}
                                 onReject={b => openDialog('reject', b)}
                                 onCancel={b => openDialog('cancel', b)}
                                 onComplete={b => openDialog('complete', b)}
@@ -1501,11 +1627,28 @@ const VendorBookings = () => {
 
             {/* ── Booking detail drawer ─────────────────────────── */}
             <AnimatePresence>
-                {drawerBooking && !dialog && (
+                {quotationBooking && quotationDraft && (
+                    <QuotationDialog
+                        booking={quotationBooking}
+                        value={quotationDraft}
+                        onChange={setQuotationDraft}
+                        onClose={() => !quotationMutation.isPending && setQuotationBooking(null)}
+                        onSubmit={() => quotationMutation.mutate({
+                            bookingId: quotationBooking.id,
+                            payload: quotationPayload(quotationDraft),
+                        })}
+                        loading={quotationMutation.isPending}
+                        error={quotationMutation.isError ? apiErrorMessage(quotationMutation.error) : undefined}
+                    />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {drawerBooking && !dialog && !quotationBooking && (
                     <BookingDrawer
                         booking={drawerBooking}
                         onClose={() => setDrawerBooking(null)}
-                        onApprove={b => openDialog('approve', b)}
+                        onQuote={openQuotation}
                         onReject={b => openDialog('reject', b)}
                         onCancel={b => openDialog('cancel', b)}
                         onComplete={b => openDialog('complete', b)}

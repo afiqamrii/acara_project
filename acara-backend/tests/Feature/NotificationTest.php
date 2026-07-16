@@ -54,7 +54,7 @@ class NotificationTest extends TestCase
             ->assertJsonPath('unread_count', 0);
     }
 
-    public function test_booking_submission_approval_and_completion_create_notifications(): void
+    public function test_booking_submission_quotation_acceptance_and_completion_create_notifications(): void
     {
         $customer = User::factory()->create(['role' => 'user']);
         $vendor = User::factory()->create([
@@ -97,23 +97,32 @@ class NotificationTest extends TestCase
         ]);
 
         Sanctum::actingAs($vendor);
-        $this->patchJson("/api/vendor/bookings/{$booking->id}/approve")
-            ->assertOk()
-            ->assertJsonPath('status', 'confirmed');
+        $quotationId = $this->postJson("/api/vendor/bookings/{$booking->id}/quotations", [
+            'items' => [[
+                'description' => 'Wedding photography package',
+                'quantity' => 1,
+                'unit_price' => 1500,
+            ]],
+            'valid_until' => $selectedDate,
+        ])->assertCreated()->json('quotation.id');
 
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $customer->id,
             'booking_id' => $booking->id,
-            'type' => 'booking_approved',
+            'type' => 'quotation_sent',
         ]);
-        $this->patchJson("/api/vendor/bookings/{$booking->id}/approve")
-            ->assertNotFound();
-        $this->assertSame(1, UserNotification::where([
-            'user_id' => $customer->id,
-            'booking_id' => $booking->id,
-            'type' => 'booking_approved',
-        ])->count());
+        Sanctum::actingAs($customer);
+        $this->patchJson("/api/bookings/{$booking->id}/quotations/{$quotationId}/accept")
+            ->assertOk()
+            ->assertJsonPath('status', 'confirmed');
 
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $vendor->id,
+            'booking_id' => $booking->id,
+            'type' => 'quotation_accepted',
+        ]);
+
+        Sanctum::actingAs($vendor);
         $this->patchJson("/api/vendor/bookings/{$booking->id}/complete")
             ->assertOk()
             ->assertJsonPath('status', 'completed');

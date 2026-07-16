@@ -123,12 +123,12 @@ class BookingLifecycleTest extends TestCase
 
         $this->artisan('bookings:process-lifecycle')
             ->expectsOutput('Expired booking requests: 0')
-            ->expectsOutput('Vendor reminders sent: 1')
+            ->expectsOutput('Response reminders sent: 1')
             ->assertSuccessful();
 
         $this->artisan('bookings:process-lifecycle')
             ->expectsOutput('Expired booking requests: 0')
-            ->expectsOutput('Vendor reminders sent: 0')
+            ->expectsOutput('Response reminders sent: 0')
             ->assertSuccessful();
 
         $this->assertNotNull($booking->refresh()->reminder_sent_at);
@@ -148,7 +148,7 @@ class BookingLifecycleTest extends TestCase
 
         $this->artisan('bookings:process-lifecycle')
             ->expectsOutput('Expired booking requests: 1')
-            ->expectsOutput('Vendor reminders sent: 0')
+            ->expectsOutput('Response reminders sent: 0')
             ->assertSuccessful();
 
         $booking->refresh();
@@ -200,7 +200,7 @@ class BookingLifecycleTest extends TestCase
         ]);
 
         Sanctum::actingAs($this->vendor);
-        $this->patchJson("/api/vendor/bookings/{$approveBooking->id}/approve")
+        $this->postJson("/api/vendor/bookings/{$approveBooking->id}/quotations", $this->quotationPayload())
             ->assertStatus(409);
         $this->patchJson("/api/vendor/bookings/{$rejectBooking->id}/reject", [
             'reason' => 'The request deadline has already elapsed for this booking.',
@@ -305,6 +305,20 @@ class BookingLifecycleTest extends TestCase
             'contact_phone' => '+60 12-000 0000',
             'setup_time' => '08:00',
             'requirements' => 'Full photography coverage is required.',
+        ];
+    }
+
+    private function quotationPayload(): array
+    {
+        return [
+            'items' => [[
+                'description' => 'Corporate event photography package',
+                'quantity' => 1,
+                'unit_price' => 1800,
+            ]],
+            'discount_amount' => 0,
+            'tax_rate' => 0,
+            'valid_until' => now()->toDateString(),
         ];
     }
 }

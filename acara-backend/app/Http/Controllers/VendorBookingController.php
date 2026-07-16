@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\BookingRescheduleRequest;
+use App\Models\Quotation;
 use App\Models\ServiceAvailability;
 use App\Models\ServiceProfile;
 use App\Services\BookingLifecycleService;
@@ -49,7 +50,7 @@ class VendorBookingController extends Controller
         $status = $request->query('status');
 
         $query = Booking::query()
-            ->with(['brief', 'rescheduleRequests', 'pendingRescheduleRequest'])
+            ->with(['brief', 'quotations.items', 'rescheduleRequests', 'pendingRescheduleRequest'])
             ->whereIn('bookings.service_profile_id', $serviceIds)
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -114,6 +115,8 @@ class VendorBookingController extends Controller
                 'updated_at' => $item->updated_at->toDateTimeString(),
                 'notes' => $item->notes,
                 'brief' => $item->brief?->toApiArray(),
+                'quotation' => $item->quotations->first()?->toApiArray(),
+                'quotation_history' => $item->quotations->map(fn (Quotation $quotation) => $quotation->toApiArray())->values(),
                 'rejection_reason' => $item->rejection_reason,
                 'cancellation_reason' => $item->cancellation_reason,
                 'cancelled_by' => $item->cancelled_by,
@@ -152,46 +155,6 @@ class VendorBookingController extends Controller
         ];
 
         return response()->json(['bookings' => $bookings, 'counts' => $counts]);
-    }
-
-    /** PATCH /vendor/bookings/{id}/approve */
-    public function approve(Request $request, int $id)
-    {
-        $booking = DB::transaction(function () use ($request, $id) {
-            $booking = Booking::whereIn('service_profile_id', $this->vendorServiceIds($request))
-                ->where('id', $id)
-                ->where('status', 'pending')
-                ->lockForUpdate()
-                ->first();
-
-            if (! $booking) {
-                return null;
-            }
-
-            if ($this->lifecycle->expireIfOverdue($booking)) {
-                return 'expired';
-            }
-
-            $booking->update([
-                'status' => 'confirmed',
-                'confirmed_at' => now(),
-            ]);
-            $this->notifications->bookingApproved($booking);
-
-            return $booking;
-        });
-
-        if ($booking === 'expired') {
-            return response()->json([
-                'message' => 'This booking request expired before it could be approved.',
-            ], 409);
-        }
-
-        if (! $booking) {
-            return response()->json(['message' => 'Booking not found or already processed.'], 404);
-        }
-
-        return response()->json(['message' => 'Booking approved.', 'status' => 'confirmed']);
     }
 
     /** PATCH /vendor/bookings/{id}/complete */
@@ -268,6 +231,10 @@ class VendorBookingController extends Controller
                 return 'expired';
             }
 
+            if (Quotation::where('booking_id', $booking->id)->where('status', 'sent')->exists()) {
+                return 'quotation_pending';
+            }
+
             $booking->update([
                 'status' => 'rejected',
                 'rejection_reason' => trim($validated['reason']),
@@ -282,6 +249,12 @@ class VendorBookingController extends Controller
         if ($booking === 'expired') {
             return response()->json([
                 'message' => 'This booking request expired before it could be rejected.',
+            ], 409);
+        }
+
+        if ($booking === 'quotation_pending') {
+            return response()->json([
+                'message' => 'Wait for the organizer to respond to the current quotation.',
             ], 409);
         }
 

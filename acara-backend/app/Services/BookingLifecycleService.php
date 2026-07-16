@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\Quotation;
 use Illuminate\Support\Facades\DB;
 
 class BookingLifecycleService
@@ -72,7 +73,16 @@ class BookingLifecycleService
                     }
 
                     $booking->update(['reminder_sent_at' => now()]);
-                    $this->notifications->bookingExpiryReminder($booking);
+                    $quotation = Quotation::where('booking_id', $booking->id)
+                        ->where('status', 'sent')
+                        ->latest('version')
+                        ->first();
+
+                    if ($quotation) {
+                        $this->notifications->quotationExpiryReminder($booking, $quotation);
+                    } else {
+                        $this->notifications->bookingExpiryReminder($booking);
+                    }
 
                     return true;
                 });
@@ -93,14 +103,29 @@ class BookingLifecycleService
             return false;
         }
 
+        $quotation = Quotation::where('booking_id', $booking->id)
+            ->where('status', 'sent')
+            ->lockForUpdate()
+            ->latest('version')
+            ->first();
+
         $booking->update([
             'status' => 'expired',
             'expired_at' => now(),
         ]);
 
         $this->releaseDateIfFuture($booking);
-        $this->notifications->bookingExpiredForOrganizer($booking);
-        $this->notifications->bookingExpiredForVendor($booking);
+        if ($quotation) {
+            $quotation->update([
+                'status' => 'expired',
+                'expired_at' => now(),
+            ]);
+            $this->notifications->quotationExpiredForOrganizer($booking, $quotation);
+            $this->notifications->quotationExpiredForVendor($booking, $quotation);
+        } else {
+            $this->notifications->bookingExpiredForOrganizer($booking);
+            $this->notifications->bookingExpiredForVendor($booking);
+        }
 
         return true;
     }

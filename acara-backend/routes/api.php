@@ -6,6 +6,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceVerificationController;
@@ -56,6 +57,9 @@ Route::middleware(['auth:sanctum', 'role:user,vendor'])->group(function () {
     Route::post('/bookings/confirm', [BookingController::class, 'confirmCart']);
     Route::get('/bookings', [BookingController::class, 'myBookings']);
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
+    Route::patch('/bookings/{bookingId}/quotations/{quotationId}/accept', [QuotationController::class, 'accept']);
+    Route::patch('/bookings/{bookingId}/quotations/{quotationId}/decline', [QuotationController::class, 'decline']);
+    Route::patch('/bookings/{bookingId}/quotations/{quotationId}/revision', [QuotationController::class, 'requestRevision']);
     Route::get('/bookings/{id}/reschedule/availability', [BookingController::class, 'rescheduleAvailability']);
     Route::post('/bookings/{id}/reschedule', [BookingController::class, 'requestReschedule']);
     Route::patch('/bookings/{id}/reschedule/withdraw', [BookingController::class, 'withdrawReschedule']);
@@ -81,7 +85,7 @@ Route::middleware(['auth:sanctum', 'profile.completed', 'role:vendor'])->group(f
     Route::post('/vendor/availability/{serviceId}/reopen', [AvailabilityController::class, 'reopenDate']);
 
     Route::get('/vendor/bookings', [VendorBookingController::class, 'index']);
-    Route::patch('/vendor/bookings/{id}/approve', [VendorBookingController::class, 'approve']);
+    Route::post('/vendor/bookings/{bookingId}/quotations', [QuotationController::class, 'store']);
     Route::patch('/vendor/bookings/{id}/reject', [VendorBookingController::class, 'reject']);
     Route::patch('/vendor/bookings/{id}/complete', [VendorBookingController::class, 'complete']);
     Route::patch('/vendor/bookings/{id}/cancel', [VendorBookingController::class, 'cancel']);

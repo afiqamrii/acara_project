@@ -63,6 +63,16 @@ class Booking extends Model
         return $this->hasOne(BookingBrief::class);
     }
 
+    public function quotations(): HasMany
+    {
+        return $this->hasMany(Quotation::class)->latest('version');
+    }
+
+    public function latestQuotation(): HasOne
+    {
+        return $this->hasOne(Quotation::class)->latestOfMany('version');
+    }
+
     public function rescheduleRequests(): HasMany
     {
         return $this->hasMany(BookingRescheduleRequest::class)->latest('id');
@@ -89,7 +99,7 @@ class Booking extends Model
 
         $candidates = [
             ['reminder', 'Response reminder sent', 'The vendor was reminded to respond.', $this->reminder_sent_at],
-            ['confirmed', 'Booking confirmed', 'The vendor approved the booking request.', $this->confirmed_at],
+            ['confirmed', 'Booking confirmed', 'The organizer accepted the vendor quotation.', $this->confirmed_at],
             ['rejected', 'Request rejected', 'The vendor declined the booking request.', $this->rejected_at],
             [
                 'cancelled',
@@ -114,6 +124,57 @@ class Booking extends Model
                 'description' => $description,
                 'occurred_at' => $occurredAt->toDateTimeString(),
             ];
+        }
+
+        $quotations = $this->relationLoaded('quotations')
+            ? $this->quotations
+            : $this->quotations()->with('items')->get();
+
+        foreach ($quotations as $quotation) {
+            if ($quotation->sent_at) {
+                $events[] = [
+                    'type' => 'quotation_sent',
+                    'label' => 'Quotation sent',
+                    'description' => "The vendor sent quotation {$quotation->reference()} for RM ".number_format((float) $quotation->total_amount, 2).'.',
+                    'occurred_at' => $quotation->sent_at->toDateTimeString(),
+                ];
+            }
+
+            if ($quotation->status === 'accepted' && $quotation->responded_at) {
+                $events[] = [
+                    'type' => 'quotation_accepted',
+                    'label' => 'Quotation accepted',
+                    'description' => 'The organizer accepted the quotation and confirmed the booking.',
+                    'occurred_at' => $quotation->responded_at->toDateTimeString(),
+                ];
+            }
+
+            if ($quotation->status === 'revision_requested' && $quotation->responded_at) {
+                $events[] = [
+                    'type' => 'quotation_revision_requested',
+                    'label' => 'Quotation revision requested',
+                    'description' => 'The organizer requested a revised quotation. Reason: '.$quotation->response_note,
+                    'occurred_at' => $quotation->responded_at->toDateTimeString(),
+                ];
+            }
+
+            if ($quotation->status === 'declined' && $quotation->responded_at) {
+                $events[] = [
+                    'type' => 'quotation_declined',
+                    'label' => 'Quotation declined',
+                    'description' => 'The organizer declined the quotation. Reason: '.$quotation->response_note,
+                    'occurred_at' => $quotation->responded_at->toDateTimeString(),
+                ];
+            }
+
+            if ($quotation->status === 'expired' && $quotation->expired_at) {
+                $events[] = [
+                    'type' => 'quotation_expired',
+                    'label' => 'Quotation expired',
+                    'description' => 'The quotation validity period ended without an organizer response.',
+                    'occurred_at' => $quotation->expired_at->toDateTimeString(),
+                ];
+            }
         }
 
         $rescheduleRequests = $this->relationLoaded('rescheduleRequests')

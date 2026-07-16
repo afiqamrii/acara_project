@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\BookingBrief;
 use App\Models\BookingRescheduleRequest;
+use App\Models\Quotation;
 use App\Models\ServiceAvailability;
 use App\Models\ServiceProfile;
 use App\Services\BookingLifecycleService;
@@ -145,6 +146,8 @@ class BookingController extends Controller
             'booked_at' => $this->formatDateTime($item->created_at),
             'notes' => $item->notes ?? null,
             'brief' => $item->brief?->toApiArray(),
+            'quotation' => $item->quotations->first()?->toApiArray(),
+            'quotation_history' => $item->quotations->map(fn (Quotation $quotation) => $quotation->toApiArray())->values(),
             'rejection_reason' => $item->rejection_reason ?? null,
             'cancellation_reason' => $item->cancellation_reason ?? null,
             'cancelled_by' => $item->cancelled_by ?? null,
@@ -474,7 +477,7 @@ class BookingController extends Controller
         $userId = $request->user()->id;
 
         $bookings = Booking::query()
-            ->with(['brief', 'rescheduleRequests', 'pendingRescheduleRequest'])
+            ->with(['brief', 'quotations.items', 'rescheduleRequests', 'pendingRescheduleRequest'])
             ->where('bookings.user_id', $userId)
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -545,6 +548,14 @@ class BookingController extends Controller
                 'cancelled_by' => 'customer',
                 'cancelled_at' => now(),
             ]);
+            Quotation::where('booking_id', $booking->id)
+                ->where('status', 'sent')
+                ->update([
+                    'status' => 'withdrawn',
+                    'responded_at' => now(),
+                    'response_note' => 'The organizer cancelled the booking request.',
+                    'updated_at' => now(),
+                ]);
             BookingRescheduleRequest::where('booking_id', $booking->id)
                 ->where('status', 'pending')
                 ->update([
@@ -727,7 +738,7 @@ class BookingController extends Controller
     public function adminBookings()
     {
         $bookings = Booking::query()
-            ->with(['brief', 'rescheduleRequests', 'pendingRescheduleRequest'])
+            ->with(['brief', 'quotations.items', 'rescheduleRequests', 'pendingRescheduleRequest'])
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->join('users as customers', 'bookings.user_id', '=', 'customers.id')

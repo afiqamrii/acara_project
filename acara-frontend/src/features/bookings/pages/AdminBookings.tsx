@@ -17,6 +17,7 @@ import Loader from "../../../components/common/Loader";
 import { usePageTitle } from "../../../utils/usePageTitle";
 import BookingTimeline from "../components/BookingTimeline";
 import BookingBriefDisplay from "../components/BookingBriefDisplay";
+import QuotationDisplay from "../components/QuotationDisplay";
 import { fetchAdminBookings, type BookingItem, type BookingStats } from "../api";
 
 const tabs = [
@@ -258,7 +259,7 @@ const AdminBookings = () => {
                     )}
                     {booking.status === "expired" && (
                       <p className="mt-2 text-xs leading-5 text-slate-600">
-                        <span className="font-bold">Automatic closure:</span> Vendor response deadline passed; the date was released.
+                        <span className="font-bold">Automatic closure:</span> {booking.quotation?.status === "expired" ? "Quotation response deadline passed" : "Vendor response deadline passed"}; the date was released.
                       </p>
                     )}
                   </div>
@@ -293,6 +294,25 @@ const AdminBookings = () => {
                       </summary>
                       <div className="mt-4 border-t border-purple-100 pt-4">
                         <BookingBriefDisplay brief={booking.brief} notes={booking.notes} />
+                      </div>
+                    </details>
+                  )}
+
+                  {booking.quotation && (
+                    <details className="rounded-xl border border-indigo-100 bg-indigo-50/30 px-4 py-3 lg:col-span-5">
+                      <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-indigo-700">
+                        Quotation · {booking.quotation.reference} · RM {booking.quotation.total_amount.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </summary>
+                      <div className="mt-4 space-y-3 border-t border-indigo-100 pt-4">
+                        <QuotationDisplay quotation={booking.quotation} />
+                        {(booking.quotation_history?.length ?? 0) > 1 && (
+                          <details className="rounded-xl border border-indigo-100 bg-white px-4 py-3">
+                            <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-indigo-600">Previous versions ({(booking.quotation_history?.length ?? 1) - 1})</summary>
+                            <div className="mt-3 space-y-3 border-t border-indigo-100 pt-3">
+                              {(booking.quotation_history ?? []).slice(1).map((quotation) => <QuotationDisplay key={quotation.id} quotation={quotation} compact />)}
+                            </div>
+                          </details>
+                        )}
                       </div>
                     </details>
                   )}

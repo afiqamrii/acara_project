@@ -17,6 +17,22 @@ const formatTimestamp = (value: string) =>
   });
 
 const eventStyle = (type: string) => {
+  if (type === "quotation_sent") {
+    return { icon: IconClock, dot: "bg-indigo-500", iconClass: "bg-indigo-50 text-indigo-600" };
+  }
+
+  if (type === "quotation_accepted") {
+    return { icon: IconCheck, dot: "bg-emerald-500", iconClass: "bg-emerald-50 text-emerald-600" };
+  }
+
+  if (type === "quotation_revision_requested") {
+    return { icon: IconArrowsExchange, dot: "bg-purple-500", iconClass: "bg-purple-50 text-purple-600" };
+  }
+
+  if (["quotation_declined", "quotation_expired"].includes(type)) {
+    return { icon: type === "quotation_expired" ? IconClock : IconX, dot: "bg-red-500", iconClass: "bg-red-50 text-red-600" };
+  }
+
   if (type === "reschedule_requested") {
     return { icon: IconArrowsExchange, dot: "bg-purple-500", iconClass: "bg-purple-50 text-purple-600" };
   }
