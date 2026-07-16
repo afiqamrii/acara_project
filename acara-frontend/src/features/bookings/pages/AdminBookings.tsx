@@ -16,6 +16,7 @@ import {
 import Loader from "../../../components/common/Loader";
 import { usePageTitle } from "../../../utils/usePageTitle";
 import BookingTimeline from "../components/BookingTimeline";
+import BookingBriefDisplay from "../components/BookingBriefDisplay";
 import { fetchAdminBookings, type BookingItem, type BookingStats } from "../api";
 
 const tabs = [
@@ -284,6 +285,17 @@ const AdminBookings = () => {
                   </div>
 
                   <StatusBadge status={booking.status} />
+
+                  {booking.brief && (
+                    <details className="rounded-xl border border-purple-100 bg-purple-50/30 px-4 py-3 lg:col-span-5">
+                      <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-purple-700">
+                        Event brief · {booking.brief.event_title}
+                      </summary>
+                      <div className="mt-4 border-t border-purple-100 pt-4">
+                        <BookingBriefDisplay brief={booking.brief} notes={booking.notes} />
+                      </div>
+                    </details>
+                  )}
 
                   {booking.reschedule_request && (
                     <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 lg:col-span-5">

@@ -208,13 +208,36 @@ class BookingIntegrityTest extends TestCase
 
     private function booking(User $customer, string $status, string $selectedDate, array $attributes = []): Booking
     {
-        return Booking::create(array_merge([
+        $booking = Booking::create(array_merge([
             'user_id' => $customer->id,
             'service_profile_id' => $this->service->id,
             'selected_date' => $selectedDate,
             'status' => $status,
             'notes' => 'Please arrive before the event begins.',
         ], $attributes));
+
+        if ($status === 'cart') {
+            $booking->brief()->create($this->briefData());
+        }
+
+        return $booking;
+    }
+
+    private function briefData(): array
+    {
+        return [
+            'event_title' => 'Corporate Product Launch',
+            'event_type' => 'Corporate Event',
+            'venue_name' => 'Acara Convention Centre',
+            'venue_address' => 'Shah Alam, Selangor',
+            'start_time' => '10:00',
+            'end_time' => '17:00',
+            'guest_count' => 200,
+            'contact_name' => 'Aina Organizer',
+            'contact_phone' => '+60 12-000 0000',
+            'setup_time' => '08:00',
+            'requirements' => 'Full photography coverage is required.',
+        ];
     }
 
     private function availability(string $selectedDate): void

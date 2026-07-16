@@ -83,6 +83,7 @@ class NotificationTest extends TestCase
             'selected_date' => $selectedDate,
             'status' => 'cart',
         ]);
+        $this->attachBrief($booking);
 
         Sanctum::actingAs($customer);
         $this->postJson('/api/bookings/confirm')
@@ -212,6 +213,7 @@ class NotificationTest extends TestCase
             'selected_date' => $selectedDate,
             'status' => 'cart',
         ]);
+        $this->attachBrief($booking);
 
         Sanctum::actingAs($customer);
         $this->postJson('/api/bookings/confirm')
@@ -244,6 +246,23 @@ class NotificationTest extends TestCase
             'title' => $title,
             'message' => 'Test notification body.',
             'action_url' => '/bookings',
+        ]);
+    }
+
+    private function attachBrief(Booking $booking): void
+    {
+        $booking->brief()->create([
+            'event_title' => 'Wedding Reception',
+            'event_type' => 'Wedding',
+            'venue_name' => 'Acara Grand Hall',
+            'venue_address' => 'Kuala Lumpur, Malaysia',
+            'start_time' => '18:00',
+            'end_time' => '23:00',
+            'guest_count' => 300,
+            'contact_name' => 'Aina Organizer',
+            'contact_phone' => '+60 12-000 0000',
+            'setup_time' => '15:00',
+            'requirements' => 'Full event coverage is required.',
         ]);
     }
 }

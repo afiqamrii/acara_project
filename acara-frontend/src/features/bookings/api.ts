@@ -15,6 +15,22 @@ export type BookingRescheduleRequest = {
   withdrawn_at?: string | null;
 };
 
+export type BookingBrief = {
+  event_title: string;
+  event_type: string;
+  venue_name: string;
+  venue_address: string;
+  start_time: string;
+  end_time?: string | null;
+  guest_count?: number | null;
+  contact_name: string;
+  contact_phone: string;
+  setup_time?: string | null;
+  requirements?: string | null;
+  locked_at?: string | null;
+  is_locked: boolean;
+};
+
 export type BookingItem = {
   id: number;
   booking_reference: string;
@@ -36,6 +52,7 @@ export type BookingItem = {
   status: BookingStatus;
   payment_status?: string;
   notes?: string | null;
+  brief?: BookingBrief | null;
   rejection_reason?: string | null;
   cancellation_reason?: string | null;
   cancelled_by?: "vendor" | "customer" | null;

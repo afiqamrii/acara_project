@@ -21,7 +21,7 @@ import IconUser from "@tabler/icons-react/dist/esm/icons/IconUser.mjs";
 import IconX from "@tabler/icons-react/dist/esm/icons/IconX.mjs";
 import IconCalendarStats from "@tabler/icons-react/dist/esm/icons/IconCalendarStats.mjs";
 import IconClipboardCheck from "@tabler/icons-react/dist/esm/icons/IconClipboardCheck.mjs";
-import { fetchCart } from "./cartdrawer";
+import { fetchCart } from "./cartApi";
 import { useCurrentUser } from "../../../hooks/useCurrentUser";
 import { performLogout } from "../../../lib/auth";
 import { LogoutConfirmationModal } from "../../../components/common/LogoutConfirmationModal";

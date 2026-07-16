@@ -20,6 +20,7 @@ import {
 import Loader from "../../../components/common/Loader";
 import { usePageTitle } from "../../../utils/usePageTitle";
 import BookingTimeline from "../components/BookingTimeline";
+import BookingBriefDisplay from "../components/BookingBriefDisplay";
 import {
   cancelCustomerBooking,
   fetchRescheduleAvailability,
@@ -337,6 +338,17 @@ const BookingCard = ({
               <span className="truncate">{booking.location || "Malaysia"}</span>
             </div>
           </div>
+
+          {booking.brief && (
+            <details className="mt-4 rounded-xl border border-purple-100 bg-white px-4 py-3 open:bg-purple-50/30">
+              <summary className="cursor-pointer text-sm font-bold text-purple-700">
+                {booking.brief.event_title} · Event brief
+              </summary>
+              <div className="mt-4 border-t border-purple-100 pt-4">
+                <BookingBriefDisplay brief={booking.brief} notes={booking.notes} />
+              </div>
+            </details>
+          )}
 
           {booking.status === "pending" && booking.expires_at && (
             <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5">

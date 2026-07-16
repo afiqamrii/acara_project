@@ -5,6 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { AxiosError } from 'axios';
 import Loader from '../../../components/common/Loader';
 import api from '../../../lib/Api';
+import BookingBriefForm from '../../bookings/components/BookingBriefForm';
+import {
+    bookingBriefPayload,
+    emptyBookingBrief,
+    isBookingBriefValid,
+    type BookingBriefFormValue,
+} from '../../bookings/components/bookingBriefFormState';
 
 import hero1 from '../../../img/wedimg1.jpg';
 import hero2 from '../../../img/wedimg2.jpg';
@@ -167,11 +174,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
     const [viewYear, setViewYear] = useState(today.getFullYear());
     const [viewMonth, setViewMonth] = useState(today.getMonth());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
+    const [step, setStep] = useState<'date' | 'brief'>('date');
+    const [brief, setBrief] = useState<BookingBriefFormValue>(() => emptyBookingBrief());
     const [submitted, setSubmitted] = useState(false);
     const [cartError, setCartError] = useState<string | null>(null);
 
     const addToCartMutation = useMutation({
-        mutationFn: (data: { service_id: number; date: string }) =>
+        mutationFn: (data: { service_id: number; date: string } & ReturnType<typeof bookingBriefPayload>) =>
             api.post('/bookings/cart', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['cart'] });
@@ -231,12 +240,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
                 exit={{ opacity: 0, scale: 0.95, y: 8 }}
                 transition={{ duration: 0.2 }}
                 onClick={e => e.stopPropagation()}
-                className="bg-white rounded-[28px] w-full max-w-sm shadow-2xl overflow-hidden"
+                className={`bg-white rounded-[28px] w-full shadow-2xl overflow-hidden ${step === 'brief' ? 'max-w-3xl' : 'max-w-sm'}`}
             >
                 {/* Header */}
                 <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-gray-100">
                     <div>
-                        <h3 className="font-bold text-gray-900 text-base">Choose a Date</h3>
+                        <h3 className="font-bold text-gray-900 text-base">{step === 'brief' ? 'Event Brief' : 'Choose a Date'}</h3>
                         <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{service.title}</p>
                     </div>
                     <button
@@ -275,7 +284,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
                                 Done
                             </button>
                         </motion.div>
-                    ) : (
+                    ) : step === 'date' ? (
                         /* ── Calendar state ── */
                         <motion.div key="calendar">
                             <div className="px-6 pt-5 pb-4">
@@ -404,15 +413,67 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
                                         </div>
                                         <motion.button
                                             whileTap={{ scale: 0.97 }}
-                                            onClick={() => addToCartMutation.mutate({ service_id: service.id, date: selectedDate })}
-                                            disabled={addToCartMutation.isPending || cartError?.includes('already in your cart')}
+                                            onClick={() => {
+                                                setCartError(null);
+                                                setStep('brief');
+                                            }}
+                                            disabled={cartError?.includes('already in your cart')}
                                             className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 rounded-2xl font-bold text-sm transition-colors shadow-lg shadow-purple-200"
                                         >
-                                            {addToCartMutation.isPending ? 'Adding...' : cartError?.includes('already in your cart') ? 'Already in Cart' : 'Add to Cart'}
+                                            {cartError?.includes('already in your cart') ? 'Already in Cart' : 'Continue to Event Details'}
                                         </motion.button>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="brief"
+                            initial={{ opacity: 0, x: 16 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="flex max-h-[78vh] flex-col"
+                        >
+                            <div className="flex-1 overflow-y-auto px-6 py-5">
+                                {selectedDate && (
+                                    <BookingBriefForm
+                                        value={brief}
+                                        onChange={setBrief}
+                                        selectedDate={selectedDate}
+                                    />
+                                )}
+                            </div>
+                            <div className="border-t border-gray-100 bg-white px-6 py-4">
+                                {cartError && (
+                                    <div className="mb-3 rounded-2xl border border-red-100 bg-red-50 p-3 text-xs text-red-600">
+                                        {cartError}
+                                    </div>
+                                )}
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep('date')}
+                                        disabled={addToCartMutation.isPending}
+                                        className="flex-1 rounded-2xl border border-gray-200 py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50 disabled:opacity-60"
+                                    >
+                                        Back to date
+                                    </button>
+                                    <motion.button
+                                        whileTap={{ scale: 0.97 }}
+                                        onClick={() => selectedDate && addToCartMutation.mutate({
+                                            service_id: service.id,
+                                            date: selectedDate,
+                                            ...bookingBriefPayload(brief),
+                                        })}
+                                        disabled={addToCartMutation.isPending || !isBookingBriefValid(brief)}
+                                        className="flex-1 rounded-2xl bg-purple-600 py-3 text-sm font-bold text-white shadow-lg shadow-purple-200 transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {addToCartMutation.isPending ? 'Adding...' : 'Add Complete Request'}
+                                    </motion.button>
+                                </div>
+                                {!isBookingBriefValid(brief) && (
+                                    <p className="mt-2 text-center text-[10px] text-gray-400">Complete all required fields before adding this service.</p>
+                                )}
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>

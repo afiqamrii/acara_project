@@ -49,7 +49,7 @@ class VendorBookingController extends Controller
         $status = $request->query('status');
 
         $query = Booking::query()
-            ->with(['rescheduleRequests', 'pendingRescheduleRequest'])
+            ->with(['brief', 'rescheduleRequests', 'pendingRescheduleRequest'])
             ->whereIn('bookings.service_profile_id', $serviceIds)
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -113,6 +113,7 @@ class VendorBookingController extends Controller
                 'booked_at' => $item->created_at->toDateTimeString(),
                 'updated_at' => $item->updated_at->toDateTimeString(),
                 'notes' => $item->notes,
+                'brief' => $item->brief?->toApiArray(),
                 'rejection_reason' => $item->rejection_reason,
                 'cancellation_reason' => $item->cancellation_reason,
                 'cancelled_by' => $item->cancelled_by,

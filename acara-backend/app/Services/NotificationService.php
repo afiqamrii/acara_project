@@ -13,17 +13,20 @@ class NotificationService
 {
     public function bookingSubmitted(Booking $booking): UserNotification
     {
-        $booking->loadMissing(['serviceProfile', 'user']);
+        $booking->loadMissing(['serviceProfile', 'user', 'brief']);
 
         return $this->create(
             userId: $booking->serviceProfile->user_id,
             booking: $booking,
             type: 'booking_request',
             title: 'New booking request',
-            message: "{$booking->user->name} requested {$this->serviceName($booking)} for {$this->date($booking)}. Please respond by {$this->deadline($booking)}.",
+            message: "{$booking->user->name} requested {$this->serviceName($booking)} for {$this->eventName($booking)} on {$this->date($booking)}. Please respond by {$this->deadline($booking)}.",
             actionUrl: '/vendor/bookings',
             extraData: [
                 'expires_at' => $booking->expires_at?->toDateTimeString(),
+                'event_title' => $booking->brief?->event_title,
+                'event_type' => $booking->brief?->event_type,
+                'venue_name' => $booking->brief?->venue_name,
             ],
         );
     }
@@ -325,6 +328,11 @@ class NotificationService
     {
         return $booking->service_name_snapshot
             ?: $booking->serviceProfile->service_name;
+    }
+
+    private function eventName(Booking $booking): string
+    {
+        return $booking->brief?->event_title ?? 'an event';
     }
 
     private function requestDate(BookingRescheduleRequest $request, string $field): string

@@ -52,6 +52,7 @@ Route::middleware(['auth:sanctum', 'role:user,vendor'])->group(function () {
     Route::get('/bookings/cart', [BookingController::class, 'cartIndex']);
     Route::post('/bookings/cart', [BookingController::class, 'addToCart']);
     Route::delete('/bookings/cart/{id}', [BookingController::class, 'removeFromCart']);
+    Route::put('/bookings/cart/{id}/brief', [BookingController::class, 'updateCartBrief']);
     Route::post('/bookings/confirm', [BookingController::class, 'confirmCart']);
     Route::get('/bookings', [BookingController::class, 'myBookings']);
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);

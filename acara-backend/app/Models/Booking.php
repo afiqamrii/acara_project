@@ -58,6 +58,11 @@ class Booking extends Model
         return $this->hasOne(Review::class);
     }
 
+    public function brief(): HasOne
+    {
+        return $this->hasOne(BookingBrief::class);
+    }
+
     public function rescheduleRequests(): HasMany
     {
         return $this->hasMany(BookingRescheduleRequest::class)->latest('id');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\BookingBrief;
 use App\Models\BookingRescheduleRequest;
 use App\Models\ServiceAvailability;
 use App\Models\ServiceProfile;
@@ -54,6 +55,53 @@ class BookingController extends Controller
             : date('Y-m-d H:i:s', strtotime($value));
     }
 
+    /**
+     * @return array<string, array<int, string>|string>
+     */
+    private function briefRules(): array
+    {
+        return [
+            'brief' => ['required', 'array'],
+            'brief.event_title' => ['required', 'string', 'max:150'],
+            'brief.event_type' => ['required', 'string', 'max:100'],
+            'brief.venue_name' => ['required', 'string', 'max:150'],
+            'brief.venue_address' => ['required', 'string', 'max:1000'],
+            'brief.start_time' => ['required', 'date_format:H:i'],
+            'brief.end_time' => ['nullable', 'date_format:H:i', 'after:brief.start_time'],
+            'brief.guest_count' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'brief.contact_name' => ['required', 'string', 'max:150'],
+            'brief.contact_phone' => ['required', 'string', 'max:30'],
+            'brief.setup_time' => ['nullable', 'date_format:H:i'],
+            'brief.requirements' => ['nullable', 'string', 'max:2000'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function briefValues(array $validated): array
+    {
+        $brief = $validated['brief'];
+
+        return [
+            'event_title' => trim($brief['event_title']),
+            'event_type' => trim($brief['event_type']),
+            'venue_name' => trim($brief['venue_name']),
+            'venue_address' => trim($brief['venue_address']),
+            'start_time' => $brief['start_time'],
+            'end_time' => $brief['end_time'] ?? null,
+            'guest_count' => $brief['guest_count'] ?? null,
+            'contact_name' => trim($brief['contact_name']),
+            'contact_phone' => trim($brief['contact_phone']),
+            'setup_time' => $brief['setup_time'] ?? null,
+            'requirements' => isset($brief['requirements']) && trim($brief['requirements']) !== ''
+                ? trim($brief['requirements'])
+                : null,
+        ];
+    }
+
     private function releaseDateIfFuture(Booking $booking): void
     {
         if ($booking->selected_date->lt(today())) {
@@ -96,6 +144,7 @@ class BookingController extends Controller
             'payment_status' => in_array($item->status, ['confirmed', 'completed'], true) ? 'pending' : 'unpaid',
             'booked_at' => $this->formatDateTime($item->created_at),
             'notes' => $item->notes ?? null,
+            'brief' => $item->brief?->toApiArray(),
             'rejection_reason' => $item->rejection_reason ?? null,
             'cancellation_reason' => $item->cancellation_reason ?? null,
             'cancelled_by' => $item->cancelled_by ?? null,
@@ -134,6 +183,7 @@ class BookingController extends Controller
         $userId = $request->user()->id;
 
         $items = Booking::query()
+            ->with('brief')
             ->where('bookings.user_id', $userId)
             ->where('bookings.status', 'cart')
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -146,6 +196,7 @@ class BookingController extends Controller
                 'bookings.id',
                 'bookings.selected_date',
                 'bookings.status',
+                'bookings.notes',
                 'service_profiles.id as service_id',
                 'service_profiles.service_name',
                 'service_profiles.service_category',
@@ -169,6 +220,8 @@ class BookingController extends Controller
                     'price_value' => (float) $item->pricing_starting_from,
                     'pricing_unit' => $item->pricing_unit,
                     'selected_date' => $this->formatDate($item->selected_date),
+                    'notes' => $item->notes,
+                    'brief' => $item->brief?->toApiArray(),
                 ];
             });
 
@@ -178,11 +231,10 @@ class BookingController extends Controller
     // POST /bookings/cart
     public function addToCart(Request $request)
     {
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'service_id' => 'required|integer|exists:service_profiles,id',
             'date' => 'required|date_format:Y-m-d|after_or_equal:today',
-            'notes' => 'nullable|string|max:1000',
-        ]);
+        ], $this->briefRules()));
 
         $serviceId = $validated['service_id'];
         $date = $validated['date'];
@@ -215,18 +267,74 @@ class BookingController extends Controller
             return response()->json(['message' => $msg], 409);
         }
 
-        $booking = Booking::create([
-            'user_id' => $userId,
-            'service_profile_id' => $serviceId,
-            'selected_date' => $date,
-            'status' => 'cart',
-            'notes' => $validated['notes'] ?? null,
-        ]);
+        $booking = DB::transaction(function () use ($userId, $serviceId, $date, $validated) {
+            $booking = Booking::create([
+                'user_id' => $userId,
+                'service_profile_id' => $serviceId,
+                'selected_date' => $date,
+                'status' => 'cart',
+                'notes' => isset($validated['notes']) ? trim($validated['notes']) : null,
+            ]);
+            $booking->brief()->create($this->briefValues($validated));
+
+            return $booking;
+        });
 
         return response()->json([
             'message' => 'Added to cart.',
             'booking_id' => $booking->id,
         ], 201);
+    }
+
+    // PUT /bookings/cart/{id}/brief
+    public function updateCartBrief(Request $request, int $id)
+    {
+        $validated = $request->validate($this->briefRules());
+
+        $booking = DB::transaction(function () use ($request, $id, $validated) {
+            $booking = Booking::where('id', $id)
+                ->where('user_id', $request->user()->id)
+                ->where('status', 'cart')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $booking) {
+                return null;
+            }
+
+            $brief = BookingBrief::where('booking_id', $booking->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($brief?->locked_at) {
+                return 'locked';
+            }
+
+            $brief = BookingBrief::updateOrCreate(
+                ['booking_id' => $booking->id],
+                $this->briefValues($validated),
+            );
+            $booking->update([
+                'notes' => isset($validated['notes']) && trim($validated['notes']) !== ''
+                    ? trim($validated['notes'])
+                    : null,
+            ]);
+
+            return $brief;
+        });
+
+        if ($booking === 'locked') {
+            return response()->json(['message' => 'This booking brief is already locked.'], 409);
+        }
+
+        if (! $booking) {
+            return response()->json(['message' => 'Cart item not found.'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Booking brief updated.',
+            'brief' => $booking->toApiArray(),
+        ]);
     }
 
     // DELETE /bookings/cart/{id}
@@ -258,12 +366,23 @@ class BookingController extends Controller
             return response()->json(['message' => 'Your cart is empty.'], 422);
         }
 
-        $unavailableIds = DB::transaction(function () use ($cartItems) {
+        $confirmationIssues = DB::transaction(function () use ($cartItems) {
             $lockedItems = [];
             $unavailableIds = [];
+            $incompleteIds = [];
 
             foreach ($cartItems as $item) {
                 $dateStr = $item->selected_date->format('Y-m-d');
+
+                $brief = BookingBrief::where('booking_id', $item->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $brief || $brief->locked_at) {
+                    $incompleteIds[] = $item->id;
+
+                    continue;
+                }
 
                 $service = ServiceProfile::query()
                     ->where('id', $item->service_profile_id)
@@ -299,7 +418,7 @@ class BookingController extends Controller
                     ->latest('id')
                     ->value('business_name') ?: ($service->user?->name ?? 'Vendor');
 
-                $lockedItems[] = [$item, $availability, [
+                $lockedItems[] = [$item, $availability, $brief, [
                     'service_name_snapshot' => $service->service_name,
                     'vendor_name_snapshot' => $vendorName,
                     'price_snapshot' => $service->pricing_starting_from,
@@ -307,12 +426,13 @@ class BookingController extends Controller
                 ]];
             }
 
-            if (! empty($unavailableIds)) {
-                return $unavailableIds;
+            if (! empty($unavailableIds) || ! empty($incompleteIds)) {
+                return compact('unavailableIds', 'incompleteIds');
             }
 
-            foreach ($lockedItems as [$item, $availability, $snapshot]) {
+            foreach ($lockedItems as [$item, $availability, $brief, $snapshot]) {
                 $availability->delete();
+                $brief->update(['locked_at' => now()]);
                 $item->update(array_merge($snapshot, [
                     'status' => 'pending',
                     'expires_at' => now()->addHours(max(1, (int) config('acara.booking_lifecycle.response_hours', 48))),
@@ -324,13 +444,21 @@ class BookingController extends Controller
                 $this->notifications->bookingSubmitted($item);
             }
 
-            return [];
+            return ['unavailableIds' => [], 'incompleteIds' => []];
         });
 
-        if (! empty($unavailableIds)) {
+        if (! empty($confirmationIssues['incompleteIds'])) {
+            return response()->json([
+                'message' => 'Complete the event brief for every cart item before submitting.',
+                'incomplete_ids' => $confirmationIssues['incompleteIds'],
+                'unavailable_ids' => $confirmationIssues['unavailableIds'],
+            ], 422);
+        }
+
+        if (! empty($confirmationIssues['unavailableIds'])) {
             return response()->json([
                 'message' => 'Some selected dates are no longer available. Please remove them and try again.',
-                'unavailable_ids' => $unavailableIds,
+                'unavailable_ids' => $confirmationIssues['unavailableIds'],
             ], 422);
         }
 
@@ -346,7 +474,7 @@ class BookingController extends Controller
         $userId = $request->user()->id;
 
         $bookings = Booking::query()
-            ->with(['rescheduleRequests', 'pendingRescheduleRequest'])
+            ->with(['brief', 'rescheduleRequests', 'pendingRescheduleRequest'])
             ->where('bookings.user_id', $userId)
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -599,7 +727,7 @@ class BookingController extends Controller
     public function adminBookings()
     {
         $bookings = Booking::query()
-            ->with(['rescheduleRequests', 'pendingRescheduleRequest'])
+            ->with(['brief', 'rescheduleRequests', 'pendingRescheduleRequest'])
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->join('users as customers', 'bookings.user_id', '=', 'customers.id')

@@ -6,7 +6,8 @@ import type { AxiosError } from 'axios';
 import api from '../../../lib/Api';
 import { fetchUnreadNotificationCount } from '../../notifications/api';
 import BookingTimeline, { type BookingTimelineEvent } from '../../bookings/components/BookingTimeline';
-import type { BookingRescheduleRequest } from '../../bookings/api';
+import BookingBriefDisplay from '../../bookings/components/BookingBriefDisplay';
+import type { BookingBrief, BookingRescheduleRequest } from '../../bookings/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Customer = { id: number; name: string; email: string; phone: string | null };
@@ -27,6 +28,7 @@ type VendorBooking = {
     booked_at: string;
     updated_at: string;
     notes: string | null;
+    brief: BookingBrief | null;
     rejection_reason: string | null;
     cancellation_reason: string | null;
     cancelled_by: 'vendor' | 'customer' | null;
@@ -571,13 +573,7 @@ const BookingCard = ({
                     <span className="font-semibold text-gray-500">{booking.price} / {booking.pricing_unit}</span>
                 </div>
 
-                {/* Notes */}
-                {booking.notes && (
-                    <div className="mb-4 px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
-                        <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-0.5">Customer Note</p>
-                        <p className="text-xs text-blue-700 line-clamp-2">{booking.notes}</p>
-                    </div>
-                )}
+                <BookingBriefDisplay brief={booking.brief} compact />
 
                 {booking.displayStatus === 'pending' && booking.expires_at && (
                     <div className="mb-4 px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-xl">
@@ -774,13 +770,7 @@ const BookingDrawer = ({
                         </div>
                     </div>
 
-                    {/* Notes */}
-                    {booking.notes && (
-                        <div className="px-4 py-3 bg-blue-50 border border-blue-100 rounded-2xl">
-                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Customer Note</p>
-                            <p className="text-sm text-blue-700">{booking.notes}</p>
-                        </div>
-                    )}
+                    <BookingBriefDisplay brief={booking.brief} notes={booking.notes} />
 
                     {booking.displayStatus === 'pending' && booking.expires_at && (
                         <div className="px-4 py-3 bg-amber-50 border border-amber-100 rounded-2xl">
