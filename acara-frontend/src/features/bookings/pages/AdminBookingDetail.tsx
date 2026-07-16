@@ -21,6 +21,7 @@ import { usePageTitle } from "../../../utils/usePageTitle";
 import AdminCompletionResolutionDialog, { type ResolutionAction } from "../components/AdminCompletionResolutionDialog";
 import BookingBriefDisplay from "../components/BookingBriefDisplay";
 import BookingCompletionDisplay from "../components/BookingCompletionDisplay";
+import BookingConversation from "../components/BookingConversation";
 import BookingTimeline from "../components/BookingTimeline";
 import QuotationDisplay from "../components/QuotationDisplay";
 import { fetchAdminBooking, resolveBookingCompletion, type BookingItem } from "../api";
@@ -238,6 +239,16 @@ const AdminBookingDetail = () => {
 
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
           <div className="space-y-5">
+            <Section eyebrow="Communication evidence" title="Organizer and vendor transcript">
+              <BookingConversation
+                bookingId={booking.id}
+                defaultOpen={booking.status === "completion_disputed"}
+                messageCount={booking.message_count}
+                unreadCount={0}
+                title="Booking conversation"
+              />
+            </Section>
+
             <Section eyebrow="Event scope" title="Organizer's submitted event brief">
               {booking.brief ? <BookingBriefDisplay brief={booking.brief} notes={booking.notes} /> : <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">No structured event brief is attached.</p>}
             </Section>

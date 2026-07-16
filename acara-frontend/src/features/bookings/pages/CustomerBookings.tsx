@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import type { AxiosError } from "axios";
@@ -22,6 +22,7 @@ import { usePageTitle } from "../../../utils/usePageTitle";
 import BookingTimeline from "../components/BookingTimeline";
 import BookingBriefDisplay from "../components/BookingBriefDisplay";
 import BookingCompletionDisplay from "../components/BookingCompletionDisplay";
+import BookingConversation from "../components/BookingConversation";
 import QuotationDisplay from "../components/QuotationDisplay";
 import {
   acceptQuotation,
@@ -464,6 +465,7 @@ const BookingCard = ({
   withdrawing,
   quotationActionPending,
   completionActionPending,
+  openConversation,
 }: {
   booking: BookingItem;
   onCancel: (id: number) => void;
@@ -475,6 +477,7 @@ const BookingCard = ({
   withdrawing: boolean;
   quotationActionPending: boolean;
   completionActionPending: boolean;
+  openConversation: boolean;
 }) => {
   const navigate = useNavigate();
   const canCancel =
@@ -658,6 +661,16 @@ const BookingCard = ({
             </div>
           )}
 
+          <div className="mt-4">
+            <BookingConversation
+              bookingId={booking.id}
+              defaultOpen={openConversation}
+              messageCount={booking.message_count}
+              unreadCount={booking.unread_message_count}
+              title={`Conversation with ${booking.vendor_name || booking.vendor || "vendor"}`}
+            />
+          </div>
+
           {(booking.timeline?.length ?? 0) > 0 && (
             <details className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 open:bg-slate-50/60">
               <summary className="cursor-pointer text-sm font-bold text-slate-700">Booking activity</summary>
@@ -717,6 +730,7 @@ const BookingCard = ({
 const CustomerBookings = () => {
   usePageTitle("My Bookings");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
@@ -731,6 +745,7 @@ const CustomerBookings = () => {
   });
 
   const bookings = useMemo(() => data?.bookings ?? [], [data?.bookings]);
+  const conversationBookingId = Number(searchParams.get("conversation"));
   const stats = data?.stats ?? buildStats(bookings);
 
   const cancelMutation = useMutation({
@@ -920,6 +935,7 @@ const CustomerBookings = () => {
                 withdrawing={withdrawMutation.isPending && withdrawMutation.variables === booking.id}
                 quotationActionPending={quotationMutation.isPending && quotationMutation.variables?.booking.id === booking.id}
                 completionActionPending={completionMutation.isPending && completionMutation.variables?.booking.id === booking.id}
+                openConversation={conversationBookingId === booking.id}
               />
             ))}
           </section>

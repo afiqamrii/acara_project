@@ -10,6 +10,32 @@ const Label = ({ children, required = false }: { children: ReactNode; required?:
   </span>
 );
 
+const TimeInput = ({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+}) => (
+  <input
+    type="time"
+    step={900}
+    value={value}
+    onChange={(event) => onChange(event.target.value)}
+    onClick={(event) => {
+      try {
+        event.currentTarget.showPicker?.();
+      } catch {
+        event.currentTarget.focus();
+      }
+    }}
+    aria-label={label}
+    className={`${inputClass} cursor-pointer`}
+  />
+);
+
 const BookingBriefForm = ({
   value,
   onChange,
@@ -79,15 +105,15 @@ const BookingBriefForm = ({
         <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <label>
             <Label required>Start time</Label>
-            <input type="time" value={value.start_time} onChange={(event) => update("start_time", event.target.value)} className={inputClass} />
+            <TimeInput label="Start time" value={value.start_time} onChange={(time) => update("start_time", time)} />
           </label>
           <label>
             <Label>End time</Label>
-            <input type="time" value={value.end_time} onChange={(event) => update("end_time", event.target.value)} className={inputClass} />
+            <TimeInput label="End time" value={value.end_time} onChange={(time) => update("end_time", time)} />
           </label>
           <label>
             <Label>Vendor setup time</Label>
-            <input type="time" value={value.setup_time} onChange={(event) => update("setup_time", event.target.value)} className={inputClass} />
+            <TimeInput label="Vendor setup time" value={value.setup_time} onChange={(time) => update("setup_time", time)} />
           </label>
           <label>
             <Label>Estimated guests</Label>

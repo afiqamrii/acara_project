@@ -92,6 +92,58 @@ export type BookingCompletion = {
   resolved_at?: string | null;
 };
 
+export type BookingMessage = {
+  id: number;
+  booking_id: number;
+  message: string;
+  sender: {
+    id: number;
+    name: string;
+    role: string;
+  };
+  is_mine: boolean;
+  read_at?: string | null;
+  created_at: string;
+};
+
+export type BookingConversationResponse = {
+  booking: {
+    id: number;
+    reference: string;
+    status: BookingStatus;
+  };
+  messages: BookingMessage[];
+  participant_role: "organizer" | "vendor" | "admin";
+  can_send: boolean;
+  read_only_reason?: string | null;
+  unread_count: number;
+};
+
+export type VendorConversationSummary = {
+  booking_id: number;
+  booking_reference: string;
+  service_name: string;
+  selected_date: string;
+  status: BookingStatus;
+  customer: {
+    id: number;
+    name: string;
+  };
+  message_count: number;
+  unread_message_count: number;
+  last_message: {
+    message: string;
+    sender_name: string;
+    is_mine: boolean;
+    created_at: string;
+  } | null;
+};
+
+export type VendorConversationSummariesResponse = {
+  conversations: VendorConversationSummary[];
+  unread_count: number;
+};
+
 export type BookingItem = {
   id: number;
   booking_reference: string;
@@ -128,6 +180,8 @@ export type BookingItem = {
   completed_at?: string | null;
   completion?: BookingCompletion | null;
   completion_history?: BookingCompletion[];
+  message_count?: number;
+  unread_message_count?: number;
   booked_at?: string | null;
   reschedule_request?: BookingRescheduleRequest | null;
   reschedule_history?: BookingRescheduleRequest[];
@@ -281,5 +335,25 @@ export const fetchAdminBookings = async (): Promise<BookingResponse> => {
 
 export const fetchAdminBooking = async (bookingId: number): Promise<AdminBookingDetailResponse> => {
   const res = await api.get<AdminBookingDetailResponse>(`/admin/bookings/${bookingId}`);
+  return res.data;
+};
+
+export const fetchBookingConversation = async (bookingId: number): Promise<BookingConversationResponse> => {
+  const res = await api.get<BookingConversationResponse>(`/bookings/${bookingId}/messages`);
+  return res.data;
+};
+
+export const sendBookingMessage = async ({ bookingId, message }: { bookingId: number; message: string }) => {
+  const res = await api.post(`/bookings/${bookingId}/messages`, { message });
+  return res.data;
+};
+
+export const markBookingConversationRead = async (bookingId: number) => {
+  const res = await api.patch(`/bookings/${bookingId}/messages/read`);
+  return res.data;
+};
+
+export const fetchVendorConversationSummaries = async (): Promise<VendorConversationSummariesResponse> => {
+  const res = await api.get<VendorConversationSummariesResponse>("/vendor/booking-conversations");
   return res.data;
 };

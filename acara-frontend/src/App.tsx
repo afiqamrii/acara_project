@@ -57,6 +57,7 @@ function App() {
               <Route path="/vendor/register" element={<ProtectedRoute requiredRole={["vendor"]}><VendorRegister /></ProtectedRoute>} />
               <Route path="/vendor/availability" element={<ProtectedRoute requiredRole={["vendor"]}><VendorAvailability /></ProtectedRoute>} />
               <Route path="/vendor/bookings" element={<ProtectedRoute requiredRole={["vendor"]}><VendorBookings /></ProtectedRoute>} />
+              <Route path="/vendor/bookings/:bookingId" element={<ProtectedRoute requiredRole={["vendor"]}><VendorBookings /></ProtectedRoute>} />
               <Route path="/vendor/services" element={<ProtectedRoute requiredRole={["vendor"]}><VendorServices /></ProtectedRoute>} />
               <Route path="/service/register" element={<ProtectedRoute requiredRole={["vendor"]}><ServiceRegister /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute requiredRole={["user", "vendor"]}><ComingSoon title="My Events" description="Manage all your upcoming and past events in one place. Create, edit, and track event status seamlessly." /></ProtectedRoute>} />

@@ -164,6 +164,8 @@ class BookingController extends Controller
             'completion_history' => $item->completions
                 ->map(fn ($completion) => $completion->toApiArray())
                 ->values(),
+            'message_count' => (int) ($item->message_count ?? 0),
+            'unread_message_count' => (int) ($item->unread_message_count ?? 0),
             'reschedule_request' => $item->pendingRescheduleRequest?->toApiArray(),
             'reschedule_history' => $item->rescheduleRequests
                 ->map(fn (BookingRescheduleRequest $request) => $request->toApiArray())
@@ -525,6 +527,12 @@ class BookingController extends Controller
                 'vendor_profiles.service_area_state',
                 'vendor_profiles.service_area_town',
             ])
+            ->withCount([
+                'messages as message_count',
+                'messages as unread_message_count' => fn ($query) => $query
+                    ->where('sender_id', '!=', $userId)
+                    ->whereNull('read_at'),
+            ])
             ->orderBy('bookings.created_at', 'desc')
             ->get()
             ->map(fn ($item) => $this->mapCustomerBooking($item));
@@ -791,7 +799,8 @@ class BookingController extends Controller
                 DB::raw('COALESCE(vendor_profiles.business_name, vendors.name) as business_name'),
                 'vendor_profiles.service_area_state',
                 'vendor_profiles.service_area_town',
-            ]);
+            ])
+            ->withCount('messages as message_count');
     }
 
     // GET /admin/bookings - admin monitor

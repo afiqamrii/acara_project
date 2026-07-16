@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\BookingCompletion;
+use App\Models\BookingMessage;
 use App\Models\BookingRescheduleRequest;
 use App\Models\Quotation;
 use App\Models\Review;
@@ -14,6 +15,28 @@ use App\Notifications\BookingActivityEmail;
 
 class NotificationService
 {
+    public function bookingMessage(Booking $booking, BookingMessage $bookingMessage, User $sender, User $recipient): UserNotification
+    {
+        $booking->loadMissing('serviceProfile');
+        $actionUrl = $recipient->id === $booking->user_id
+            ? "/bookings?conversation={$booking->id}"
+            : "/vendor/bookings?conversation={$booking->id}";
+
+        return $this->create(
+            userId: $recipient->id,
+            booking: $booking,
+            type: 'booking_message',
+            title: 'New booking message',
+            message: "{$sender->name} sent a message about {$this->serviceName($booking)}: ".str($bookingMessage->message)->limit(160),
+            actionUrl: $actionUrl,
+            extraData: [
+                'booking_message_id' => $bookingMessage->id,
+                'message_sender_id' => $sender->id,
+                'message_sender_name' => $sender->name,
+            ],
+        );
+    }
+
     public function bookingSubmitted(Booking $booking): UserNotification
     {
         $booking->loadMissing(['serviceProfile', 'user', 'brief']);

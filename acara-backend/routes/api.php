@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\BookingCompletionController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\BookingMessageController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -47,6 +48,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+
+    Route::get('/bookings/{id}/messages', [BookingMessageController::class, 'index']);
+    Route::post('/bookings/{id}/messages', [BookingMessageController::class, 'store']);
+    Route::patch('/bookings/{id}/messages/read', [BookingMessageController::class, 'markRead']);
 });
 
 // ─── Planning Booking Routes (organizers and vendors) ────────────────────────
@@ -88,6 +93,7 @@ Route::middleware(['auth:sanctum', 'profile.completed', 'role:vendor'])->group(f
     Route::post('/vendor/availability/{serviceId}/reopen', [AvailabilityController::class, 'reopenDate']);
 
     Route::get('/vendor/bookings', [VendorBookingController::class, 'index']);
+    Route::get('/vendor/booking-conversations', [BookingMessageController::class, 'vendorConversations']);
     Route::post('/vendor/bookings/{bookingId}/quotations', [QuotationController::class, 'store']);
     Route::patch('/vendor/bookings/{id}/reject', [VendorBookingController::class, 'reject']);
     Route::post('/vendor/bookings/{id}/completion', [BookingCompletionController::class, 'store']);

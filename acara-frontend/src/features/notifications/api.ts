@@ -6,6 +6,7 @@ export type UserNotification = {
   id: number;
   type:
     | "booking_request"
+    | "booking_message"
     | "booking_approved"
     | "booking_rejected"
     | "booking_cancelled"
@@ -44,6 +45,9 @@ export type UserNotification = {
     quotation_total?: number;
     quotation_valid_until?: string | null;
     quotation_response_note?: string | null;
+    booking_message_id?: number;
+    message_sender_id?: number;
+    message_sender_name?: string;
   } | null;
   read_at: string | null;
   created_at: string;

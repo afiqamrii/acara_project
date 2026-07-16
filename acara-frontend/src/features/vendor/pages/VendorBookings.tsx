@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { AxiosError } from 'axios';
 import api from '../../../lib/Api';
 import { fetchUnreadNotificationCount } from '../../notifications/api';
 import BookingTimeline, { type BookingTimelineEvent } from '../../bookings/components/BookingTimeline';
 import BookingBriefDisplay from '../../bookings/components/BookingBriefDisplay';
 import BookingCompletionDisplay from '../../bookings/components/BookingCompletionDisplay';
+import BookingConversation from '../../bookings/components/BookingConversation';
 import QuotationDisplay from '../../bookings/components/QuotationDisplay';
 import QuotationForm from '../../bookings/components/QuotationForm';
 import {
@@ -65,6 +66,8 @@ type VendorBooking = {
     timeline: BookingTimelineEvent[];
     portfolio_url: string | null;
     customer: Customer;
+    message_count: number;
+    unread_message_count: number;
 };
 
 type EnrichedBooking = VendorBooking & { displayStatus: DisplayStatus; daysDiff: number };
@@ -821,18 +824,19 @@ const BookingCard = ({
     );
 };
 
-// ── Booking drawer ────────────────────────────────────────────────────────────
-const BookingDrawer = ({
-    booking, onClose, onQuote, onReject, onCancel, onComplete, onRescheduleApprove, onRescheduleReject,
+// ── Dedicated booking detail page ────────────────────────────────────────────
+const BookingDetailPage = ({
+    booking, onBack, onQuote, onReject, onCancel, onComplete, onRescheduleApprove, onRescheduleReject, openConversation,
 }: {
     booking: EnrichedBooking;
-    onClose: () => void;
+    onBack: () => void;
     onQuote: (b: VendorBooking) => void;
     onReject: (b: VendorBooking) => void;
     onCancel: (b: VendorBooking) => void;
     onComplete: (b: VendorBooking) => void;
     onRescheduleApprove: (b: VendorBooking) => void;
     onRescheduleReject: (b: VendorBooking) => void;
+    openConversation: boolean;
 }) => {
     const cfg = STATUS_CONFIG[booking.displayStatus];
     const canPrepareQuotation = booking.displayStatus === 'pending'
@@ -842,37 +846,39 @@ const BookingDrawer = ({
     const canComplete = booking.displayStatus === 'confirmed' && booking.daysDiff <= 0 && !booking.reschedule_request;
 
     return (
-        <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
-        >
+        <main className="min-w-0 flex-1 overflow-y-auto bg-[#f5f4fb]">
             <motion.div
-                initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-                transition={{ type: 'spring', stiffness: 340, damping: 32 }}
-                className="w-full max-w-md h-full bg-white shadow-2xl overflow-y-auto"
-                onClick={e => e.stopPropagation()}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mx-auto w-full max-w-6xl space-y-5 p-4 pt-16 sm:p-6 md:pt-6 lg:p-8"
             >
-                <div className="relative h-40 overflow-hidden shrink-0">
+                <button
+                    type="button"
+                    onClick={onBack}
+                    className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 transition-colors hover:text-purple-700"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+                        <path d="M19 12H5" /><path d="m12 19-7-7 7-7" />
+                    </svg>
+                    Back to Booking Requests
+                </button>
+
+                <header className="relative min-h-56 overflow-hidden rounded-[28px] shadow-xl shadow-purple-900/20">
                     {booking.portfolio_url
-                        ? <img src={booking.portfolio_url} alt={booking.service_name} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full bg-gradient-to-br from-violet-500 to-purple-700" />}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                    <button
-                        onClick={onClose}
-                        className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur flex items-center justify-center text-white transition-colors"
-                    >
-                        <XIcon />
-                    </button>
-                    <div className="absolute bottom-4 left-5 right-5">
-                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${cfg.pill}`}>
+                        ? <img src={booking.portfolio_url} alt={booking.service_name} className="absolute inset-0 h-full w-full object-cover" />
+                        : <div className="absolute inset-0 bg-gradient-to-br from-[#19083d] via-violet-800 to-purple-600" />}
+                    <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-purple-950/70 to-purple-900/20" />
+                    <div className="relative flex min-h-56 flex-col justify-end p-6 sm:p-8">
+                        <span className={`inline-flex w-fit items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${cfg.pill}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} /> {cfg.label}
                         </span>
-                        <h2 className="text-lg font-black text-white mt-1.5 drop-shadow leading-tight">{booking.service_name}</h2>
+                        <p className="mt-5 text-[10px] font-black uppercase tracking-[0.2em] text-purple-200">Vendor booking record</p>
+                        <h1 className="mt-2 text-2xl font-black leading-tight text-white drop-shadow sm:text-3xl">{booking.brief?.event_title || booking.service_name}</h1>
+                        <p className="mt-2 text-sm font-medium text-purple-100">{booking.service_name} · {booking.customer.name}</p>
                     </div>
-                </div>
+                </header>
 
-                <div className="p-5 space-y-5">
+                <div className="space-y-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
                     <div className="flex items-center justify-between">
                         <p className="text-sm font-bold text-gray-800">{formatDate(booking.selected_date)}</p>
                         <CountdownChip booking={booking} />
@@ -970,6 +976,14 @@ const BookingDrawer = ({
                         onReject={onRescheduleReject}
                     />
 
+                    <BookingConversation
+                        bookingId={booking.id}
+                        defaultOpen={openConversation}
+                        messageCount={booking.message_count}
+                        unreadCount={booking.unread_message_count}
+                        title={`Conversation with ${booking.customer.name}`}
+                    />
+
                     {booking.timeline.length > 0 && (
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                             <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Booking Activity</p>
@@ -1019,7 +1033,7 @@ const BookingDrawer = ({
                     )}
                 </div>
             </motion.div>
-        </motion.div>
+        </main>
     );
 };
 
@@ -1088,12 +1102,13 @@ const EmptyState = ({ activeTab, hasAnyBookings }: { activeTab: string; hasAnyBo
 const VendorBookings = () => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const { bookingId: bookingIdParam } = useParams();
+    const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState<'all' | DisplayStatus>('all');
     const [dialog, setDialog] = useState<{ type: DialogType; booking: VendorBooking } | null>(null);
     const [successBooking, setSuccessBooking] = useState<VendorBooking | null>(null);
     const [quotationBooking, setQuotationBooking] = useState<VendorBooking | null>(null);
     const [quotationDraft, setQuotationDraft] = useState<QuotationFormValue | null>(null);
-    const [drawerBooking, setDrawerBooking] = useState<EnrichedBooking | null>(null);
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<SortKey>('nearest');
@@ -1113,6 +1128,13 @@ const VendorBookings = () => {
     });
     const unreadNotificationCount = notificationCountData?.unread_count ?? 0;
 
+    useEffect(() => {
+        const legacyConversationId = Number(searchParams.get('conversation'));
+        if (!bookingIdParam && Number.isInteger(legacyConversationId) && legacyConversationId > 0) {
+            navigate(`/vendor/bookings/${legacyConversationId}?conversation=1`, { replace: true });
+        }
+    }, [bookingIdParam, navigate, searchParams]);
+
     const invalidate = () => {
         queryClient.invalidateQueries({ queryKey: ['vendor-bookings'] });
     };
@@ -1123,7 +1145,6 @@ const VendorBookings = () => {
             const sent = quotationBooking;
             setQuotationBooking(null);
             setQuotationDraft(null);
-            setDrawerBooking(null);
             setSuccessBooking(sent);
             invalidate();
             queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
@@ -1132,27 +1153,27 @@ const VendorBookings = () => {
 
     const cancelMutation = useMutation({
         mutationFn: cancelBooking,
-        onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
+        onSuccess: () => { setDialog(null); invalidate(); },
     });
 
     const rejectMutation = useMutation({
         mutationFn: rejectBooking,
-        onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
+        onSuccess: () => { setDialog(null); invalidate(); },
     });
 
     const completeMutation = useMutation({
         mutationFn: submitVendorCompletion,
-        onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
+        onSuccess: () => { setDialog(null); invalidate(); },
     });
 
     const approveRescheduleMutation = useMutation({
         mutationFn: (id: number) => approveReschedule(id),
-        onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
+        onSuccess: () => { setDialog(null); invalidate(); },
     });
 
     const rejectRescheduleMutation = useMutation({
         mutationFn: rejectReschedule,
-        onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
+        onSuccess: () => { setDialog(null); invalidate(); },
     });
 
     const handleDialogConfirm = (reason?: string, proof?: File | null) => {
@@ -1210,6 +1231,12 @@ const VendorBookings = () => {
             return { ...b, daysDiff, displayStatus: getDisplayStatus(b.status, b.expires_at) };
         });
     }, [data]);
+
+    const bookingDetailId = Number(bookingIdParam);
+    const isDetailRoute = bookingIdParam !== undefined;
+    const detailBooking = Number.isInteger(bookingDetailId) && bookingDetailId > 0
+        ? enriched.find(booking => booking.id === bookingDetailId) ?? null
+        : null;
 
     const statCounts = useMemo(() => ({
         total: enriched.length,
@@ -1330,6 +1357,79 @@ const VendorBookings = () => {
         { key: 'cancelled', label: 'Cancelled', count: statCounts.cancelled },
     ];
 
+    if (isDetailRoute) {
+        return (
+            <>
+                {isPending ? (
+                    <main className="flex min-w-0 flex-1 items-center justify-center bg-[#f5f4fb] p-6">
+                        <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+                            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-purple-100 border-t-purple-600" />
+                            <h1 className="mt-5 text-xl font-black text-slate-900">Loading booking record</h1>
+                            <p className="mt-2 text-sm text-slate-500">Preparing the event scope, quotation, messages, and activity.</p>
+                        </div>
+                    </main>
+                ) : detailBooking ? (
+                    <BookingDetailPage
+                        booking={detailBooking}
+                        onBack={() => navigate('/vendor/bookings')}
+                        onQuote={openQuotation}
+                        onReject={b => openDialog('reject', b)}
+                        onCancel={b => openDialog('cancel', b)}
+                        onComplete={b => openDialog('complete', b)}
+                        onRescheduleApprove={b => openDialog('reschedule_approve', b)}
+                        onRescheduleReject={b => openDialog('reschedule_reject', b)}
+                        openConversation={searchParams.get('conversation') === '1'}
+                    />
+                ) : (
+                    <main className="flex min-w-0 flex-1 items-center justify-center bg-[#f5f4fb] p-6">
+                        <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600"><XIcon /></div>
+                            <h1 className="mt-4 text-xl font-black text-slate-900">Booking record not found</h1>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">This booking does not exist or it does not belong to one of your vendor services.</p>
+                            <button type="button" onClick={() => navigate('/vendor/bookings')} className="mt-5 rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-purple-700">Back to Booking Requests</button>
+                        </div>
+                    </main>
+                )}
+
+                <AnimatePresence>
+                    {dialog && (
+                        <ConfirmDialog
+                            type={dialog.type}
+                            booking={dialog.booking}
+                            onConfirm={handleDialogConfirm}
+                            onClose={() => !isActionLoading && setDialog(null)}
+                            loading={isActionLoading}
+                            error={actionError}
+                        />
+                    )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                    {quotationBooking && quotationDraft && (
+                        <QuotationDialog
+                            booking={quotationBooking}
+                            value={quotationDraft}
+                            onChange={setQuotationDraft}
+                            onClose={() => !quotationMutation.isPending && setQuotationBooking(null)}
+                            onSubmit={() => quotationMutation.mutate({
+                                bookingId: quotationBooking.id,
+                                payload: quotationPayload(quotationDraft),
+                            })}
+                            loading={quotationMutation.isPending}
+                            error={quotationMutation.isError ? apiErrorMessage(quotationMutation.error) : undefined}
+                        />
+                    )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                    {successBooking && (
+                        <SuccessOverlay booking={successBooking} onDone={() => setSuccessBooking(null)} />
+                    )}
+                </AnimatePresence>
+            </>
+        );
+    }
+
     return (
         <main className="flex-1 overflow-y-auto bg-[#f5f4fb] p-4 sm:p-5">
             <div className="max-w-6xl mx-auto space-y-4 pt-12 md:pt-0">
@@ -1447,7 +1547,7 @@ const VendorBookings = () => {
                                     </div>
                                 </div>
                                 <button
-                                    onClick={() => setDrawerBooking(b)}
+                                    onClick={() => navigate(`/vendor/bookings/${b.id}`)}
                                     className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
                                         b.daysDiff === 0 ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-orange-500 text-white hover:bg-orange-600'
                                     }`}
@@ -1661,7 +1761,7 @@ const VendorBookings = () => {
                                 onComplete={b => openDialog('complete', b)}
                                 onRescheduleApprove={b => openDialog('reschedule_approve', b)}
                                 onRescheduleReject={b => openDialog('reschedule_reject', b)}
-                                onOpen={b => setDrawerBooking(b)}
+                                onOpen={b => navigate(`/vendor/bookings/${b.id}`)}
                             />
                         ))
                     )}
@@ -1682,7 +1782,6 @@ const VendorBookings = () => {
                 )}
             </AnimatePresence>
 
-            {/* ── Booking detail drawer ─────────────────────────── */}
             <AnimatePresence>
                 {quotationBooking && quotationDraft && (
                     <QuotationDialog
@@ -1696,21 +1795,6 @@ const VendorBookings = () => {
                         })}
                         loading={quotationMutation.isPending}
                         error={quotationMutation.isError ? apiErrorMessage(quotationMutation.error) : undefined}
-                    />
-                )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-                {drawerBooking && !dialog && !quotationBooking && (
-                    <BookingDrawer
-                        booking={drawerBooking}
-                        onClose={() => setDrawerBooking(null)}
-                        onQuote={openQuotation}
-                        onReject={b => openDialog('reject', b)}
-                        onCancel={b => openDialog('cancel', b)}
-                        onComplete={b => openDialog('complete', b)}
-                        onRescheduleApprove={b => openDialog('reschedule_approve', b)}
-                        onRescheduleReject={b => openDialog('reschedule_reject', b)}
                     />
                 )}
             </AnimatePresence>

@@ -74,6 +74,7 @@ class BookingActivityEmail extends Notification implements ShouldQueue
     private function actionLabel(): string
     {
         return match ($this->activity->type) {
+            'booking_message' => 'Open conversation',
             'review_received' => 'View review',
             'service_approved', 'service_rejected' => 'Manage service',
             default => 'View booking',

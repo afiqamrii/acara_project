@@ -79,6 +79,16 @@ class Booking extends Model
         return $this->hasMany(BookingCompletion::class)->latest('id');
     }
 
+    public function messages(): HasMany
+    {
+        return $this->hasMany(BookingMessage::class);
+    }
+
+    public function latestMessage(): HasOne
+    {
+        return $this->hasOne(BookingMessage::class)->latestOfMany();
+    }
+
     public function latestCompletion(): HasOne
     {
         return $this->hasOne(BookingCompletion::class)->latestOfMany();

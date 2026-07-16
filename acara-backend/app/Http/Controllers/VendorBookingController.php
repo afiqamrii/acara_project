@@ -88,6 +88,12 @@ class VendorBookingController extends Controller
                 'users.email as customer_email',
                 'users.phone_number as customer_phone',
             ])
+            ->withCount([
+                'messages as message_count',
+                'messages as unread_message_count' => fn ($query) => $query
+                    ->where('sender_id', '!=', $request->user()->id)
+                    ->whereNull('read_at'),
+            ])
             ->orderByRaw("CASE bookings.completion_status WHEN 'completion_disputed' THEN 0 WHEN 'completion_pending' THEN 1 ELSE CASE bookings.status WHEN 'pending' THEN 2 WHEN 'confirmed' THEN 3 WHEN 'completed' THEN 4 WHEN 'expired' THEN 5 WHEN 'rejected' THEN 6 ELSE 7 END END")
             ->orderBy('bookings.selected_date', 'asc');
 
@@ -140,6 +146,8 @@ class VendorBookingController extends Controller
                 'completion_history' => $item->completions
                     ->map(fn ($completion) => $completion->toApiArray())
                     ->values(),
+                'message_count' => (int) $item->message_count,
+                'unread_message_count' => (int) $item->unread_message_count,
                 'reschedule_request' => $item->pendingRescheduleRequest?->toApiArray(),
                 'reschedule_history' => $item->rescheduleRequests
                     ->map(fn (BookingRescheduleRequest $request) => $request->toApiArray())

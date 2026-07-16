@@ -11,6 +11,7 @@ import {
   IconCircleX,
   IconClipboardCheck,
   IconClock,
+  IconMessageCircle,
   IconRefresh,
   IconStar,
 } from "@tabler/icons-react";
@@ -32,6 +33,8 @@ const notificationStyle = (type: string) => {
   switch (type) {
     case "booking_request":
       return { icon: IconClipboardCheck, className: "bg-purple-100 text-purple-700" };
+    case "booking_message":
+      return { icon: IconMessageCircle, className: "bg-indigo-100 text-indigo-700" };
     case "booking_approved":
       return { icon: IconCircleCheck, className: "bg-emerald-100 text-emerald-700" };
     case "booking_rejected":
@@ -56,6 +59,7 @@ const notificationStyle = (type: string) => {
 };
 
 const notificationActionLabel = (type: string) => {
+  if (type === "booking_message") return "Open conversation";
   if (type === "review_received") return "View review";
   if (type === "service_approved" || type === "service_rejected") return "Manage service";
   return "View booking";
