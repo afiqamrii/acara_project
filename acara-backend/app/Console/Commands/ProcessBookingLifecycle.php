@@ -9,7 +9,7 @@ class ProcessBookingLifecycle extends Command
 {
     protected $signature = 'bookings:process-lifecycle';
 
-    protected $description = 'Send pending booking reminders and expire requests past their response deadline';
+    protected $description = 'Process booking request and completion response deadlines';
 
     public function handle(BookingLifecycleService $lifecycle): int
     {
@@ -17,6 +17,8 @@ class ProcessBookingLifecycle extends Command
 
         $this->info("Expired booking requests: {$result['expired']}");
         $this->info("Response reminders sent: {$result['reminded']}");
+        $this->info("Completions confirmed automatically: {$result['completions_auto_confirmed']}");
+        $this->info("Completion reminders sent: {$result['completion_reminders']}");
 
         return self::SUCCESS;
     }

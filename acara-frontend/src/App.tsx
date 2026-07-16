@@ -29,6 +29,7 @@ const UserProfile = lazy(() => import('./features/profile/pages/UserProfile'));
 const VendorDashboard = lazy(() => import('./features/dashboard/pages/VendorDashboard'));
 const CustomerBookings = lazy(() => import('./features/bookings/pages/CustomerBookings'));
 const AdminBookings = lazy(() => import('./features/bookings/pages/AdminBookings'));
+const AdminBookingDetail = lazy(() => import('./features/bookings/pages/AdminBookingDetail'));
 const NotificationCenter = lazy(() => import('./features/notifications/pages/NotificationCenter'));
 const ReviewsPage = lazy(() => import('./features/reviews/pages/ReviewsPage'));
 
@@ -72,6 +73,7 @@ function App() {
               <Route path="/admin/verifications/services" element={<ServiceVerificationQueue />} />
               <Route path="/admin/verifications/vendors" element={<VendorVerificationQueue />} />
               <Route path="/admin/bookings" element={<AdminBookings />} />
+              <Route path="/admin/bookings/:bookingId" element={<AdminBookingDetail />} />
               <Route path="/admin/verifications/crew" element={<ComingSoon title="Crew Verification Queue" description="Review and process IC verification documents submitted by event crew members." />} />
               <Route path="/admin/users" element={<ComingSoon title="User Management" description="View, manage, and moderate all registered users, organizers, vendors, and crew members." />} />
               <Route path="/admin/conflicts" element={<ComingSoon title="Conflict Monitor" description="Monitor and resolve conflicts between organizers, vendors, and crew members on the platform." />} />

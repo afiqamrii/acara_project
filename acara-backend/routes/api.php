@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AvailabilityController;
+use App\Http\Controllers\BookingCompletionController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
@@ -60,6 +61,8 @@ Route::middleware(['auth:sanctum', 'role:user,vendor'])->group(function () {
     Route::patch('/bookings/{bookingId}/quotations/{quotationId}/accept', [QuotationController::class, 'accept']);
     Route::patch('/bookings/{bookingId}/quotations/{quotationId}/decline', [QuotationController::class, 'decline']);
     Route::patch('/bookings/{bookingId}/quotations/{quotationId}/revision', [QuotationController::class, 'requestRevision']);
+    Route::patch('/bookings/{id}/completion/confirm', [BookingCompletionController::class, 'confirm']);
+    Route::patch('/bookings/{id}/completion/dispute', [BookingCompletionController::class, 'dispute']);
     Route::get('/bookings/{id}/reschedule/availability', [BookingController::class, 'rescheduleAvailability']);
     Route::post('/bookings/{id}/reschedule', [BookingController::class, 'requestReschedule']);
     Route::patch('/bookings/{id}/reschedule/withdraw', [BookingController::class, 'withdrawReschedule']);
@@ -87,7 +90,7 @@ Route::middleware(['auth:sanctum', 'profile.completed', 'role:vendor'])->group(f
     Route::get('/vendor/bookings', [VendorBookingController::class, 'index']);
     Route::post('/vendor/bookings/{bookingId}/quotations', [QuotationController::class, 'store']);
     Route::patch('/vendor/bookings/{id}/reject', [VendorBookingController::class, 'reject']);
-    Route::patch('/vendor/bookings/{id}/complete', [VendorBookingController::class, 'complete']);
+    Route::post('/vendor/bookings/{id}/completion', [BookingCompletionController::class, 'store']);
     Route::patch('/vendor/bookings/{id}/cancel', [VendorBookingController::class, 'cancel']);
     Route::patch('/vendor/bookings/{id}/reschedule/approve', [VendorBookingController::class, 'approveReschedule']);
     Route::patch('/vendor/bookings/{id}/reschedule/reject', [VendorBookingController::class, 'rejectReschedule']);
@@ -104,6 +107,8 @@ Route::middleware(['auth:sanctum', 'role:admin,super_admin'])->group(function ()
     Route::patch('/admin/vendors/{id}/reject', [VendorVerificationController::class, 'reject']);
 
     Route::get('/admin/bookings', [BookingController::class, 'adminBookings']);
+    Route::get('/admin/bookings/{id}', [BookingController::class, 'adminBooking']);
+    Route::patch('/admin/bookings/{id}/completion/resolve', [BookingCompletionController::class, 'resolve']);
 });
 
 // ─── Super Admin Routes ───────────────────────────────────────────────────────

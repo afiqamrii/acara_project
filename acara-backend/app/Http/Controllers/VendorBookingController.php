@@ -44,13 +44,13 @@ class VendorBookingController extends Controller
         $serviceIds = $this->vendorServiceIds($request);
 
         if ($serviceIds->isEmpty()) {
-            return response()->json(['bookings' => [], 'counts' => ['pending' => 0, 'confirmed' => 0, 'completed' => 0, 'rejected' => 0, 'cancelled' => 0, 'expired' => 0]]);
+            return response()->json(['bookings' => [], 'counts' => ['pending' => 0, 'confirmed' => 0, 'completion_pending' => 0, 'completion_disputed' => 0, 'completed' => 0, 'rejected' => 0, 'cancelled' => 0, 'expired' => 0]]);
         }
 
         $status = $request->query('status');
 
         $query = Booking::query()
-            ->with(['brief', 'quotations.items', 'rescheduleRequests', 'pendingRescheduleRequest'])
+            ->with(['brief', 'quotations.items', 'completions', 'rescheduleRequests', 'pendingRescheduleRequest'])
             ->whereIn('bookings.service_profile_id', $serviceIds)
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -59,6 +59,7 @@ class VendorBookingController extends Controller
                 'bookings.id',
                 'bookings.selected_date',
                 'bookings.status',
+                'bookings.completion_status',
                 'bookings.created_at',
                 'bookings.updated_at',
                 'bookings.notes',
@@ -87,11 +88,18 @@ class VendorBookingController extends Controller
                 'users.email as customer_email',
                 'users.phone_number as customer_phone',
             ])
-            ->orderByRaw("CASE bookings.status WHEN 'pending' THEN 0 WHEN 'confirmed' THEN 1 WHEN 'completed' THEN 2 WHEN 'expired' THEN 3 WHEN 'rejected' THEN 4 ELSE 5 END")
+            ->orderByRaw("CASE bookings.completion_status WHEN 'completion_disputed' THEN 0 WHEN 'completion_pending' THEN 1 ELSE CASE bookings.status WHEN 'pending' THEN 2 WHEN 'confirmed' THEN 3 WHEN 'completed' THEN 4 WHEN 'expired' THEN 5 WHEN 'rejected' THEN 6 ELSE 7 END END")
             ->orderBy('bookings.selected_date', 'asc');
 
-        if ($status && in_array($status, ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'], true)) {
-            $query->where('bookings.status', $status);
+        if ($status && in_array($status, ['pending', 'confirmed', 'completion_pending', 'completion_disputed', 'completed', 'rejected', 'cancelled', 'expired'], true)) {
+            if (in_array($status, ['completion_pending', 'completion_disputed'], true)) {
+                $query->where('bookings.completion_status', $status);
+            } else {
+                $query->where('bookings.status', $status);
+                if ($status === 'confirmed') {
+                    $query->whereNull('bookings.completion_status');
+                }
+            }
         }
 
         $storageUrl = rtrim(asset('storage'), '/');
@@ -100,6 +108,7 @@ class VendorBookingController extends Controller
             $serviceName = $item->service_name_snapshot ?: $item->service_name;
             $priceValue = (float) ($item->price_snapshot ?? $item->pricing_starting_from);
             $pricingUnit = $item->pricing_unit_snapshot ?: $item->pricing_unit;
+            $status = $item->completion_status ?: $item->status;
 
             return [
                 'id' => $item->id,
@@ -110,7 +119,7 @@ class VendorBookingController extends Controller
                 'price_value' => $priceValue,
                 'pricing_unit' => $pricingUnit,
                 'selected_date' => $item->selected_date->format('Y-m-d'),
-                'status' => $item->status,
+                'status' => $status,
                 'booked_at' => $item->created_at->toDateTimeString(),
                 'updated_at' => $item->updated_at->toDateTimeString(),
                 'notes' => $item->notes,
@@ -127,6 +136,10 @@ class VendorBookingController extends Controller
                 'expired_at' => $item->expired_at?->toDateTimeString(),
                 'confirmed_at' => $item->confirmed_at?->toDateTimeString(),
                 'completed_at' => $item->completed_at?->toDateTimeString(),
+                'completion' => $item->completions->first()?->toApiArray(),
+                'completion_history' => $item->completions
+                    ->map(fn ($completion) => $completion->toApiArray())
+                    ->values(),
                 'reschedule_request' => $item->pendingRescheduleRequest?->toApiArray(),
                 'reschedule_history' => $item->rescheduleRequests
                     ->map(fn (BookingRescheduleRequest $request) => $request->toApiArray())
@@ -147,7 +160,9 @@ class VendorBookingController extends Controller
         $base = Booking::whereIn('service_profile_id', $serviceIds)->whereIn('status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired']);
         $counts = [
             'pending' => (clone $base)->where('status', 'pending')->count(),
-            'confirmed' => (clone $base)->where('status', 'confirmed')->count(),
+            'confirmed' => (clone $base)->where('status', 'confirmed')->whereNull('completion_status')->count(),
+            'completion_pending' => (clone $base)->where('completion_status', 'completion_pending')->count(),
+            'completion_disputed' => (clone $base)->where('completion_status', 'completion_disputed')->count(),
             'completed' => (clone $base)->where('status', 'completed')->count(),
             'rejected' => (clone $base)->where('status', 'rejected')->count(),
             'cancelled' => (clone $base)->where('status', 'cancelled')->count(),
@@ -155,58 +170,6 @@ class VendorBookingController extends Controller
         ];
 
         return response()->json(['bookings' => $bookings, 'counts' => $counts]);
-    }
-
-    /** PATCH /vendor/bookings/{id}/complete */
-    public function complete(Request $request, int $id)
-    {
-        $booking = DB::transaction(function () use ($request, $id) {
-            $booking = Booking::whereIn('service_profile_id', $this->vendorServiceIds($request))
-                ->where('id', $id)
-                ->where('status', 'confirmed')
-                ->lockForUpdate()
-                ->first();
-
-            if (! $booking) {
-                return null;
-            }
-
-            if ($booking->selected_date->gt(today())) {
-                return 'too_early';
-            }
-
-            if (BookingRescheduleRequest::where('booking_id', $booking->id)
-                ->where('status', 'pending')
-                ->exists()) {
-                return 'reschedule_pending';
-            }
-
-            $booking->update([
-                'status' => 'completed',
-                'completed_at' => now(),
-            ]);
-            $this->notifications->bookingCompleted($booking);
-
-            return $booking;
-        });
-
-        if ($booking === 'too_early') {
-            return response()->json([
-                'message' => 'This booking can only be completed on or after the event date.',
-            ], 422);
-        }
-
-        if ($booking === 'reschedule_pending') {
-            return response()->json([
-                'message' => 'Resolve the pending date change request before completing this booking.',
-            ], 409);
-        }
-
-        if (! $booking) {
-            return response()->json(['message' => 'Booking not found or not confirmed.'], 404);
-        }
-
-        return response()->json(['message' => 'Booking marked as completed.', 'status' => 'completed']);
     }
 
     /** PATCH /vendor/bookings/{id}/reject */
@@ -280,6 +243,7 @@ class VendorBookingController extends Controller
             $booking = Booking::whereIn('service_profile_id', $this->vendorServiceIds($request))
                 ->where('id', $id)
                 ->where('status', 'confirmed')
+                ->whereNull('completion_status')
                 ->lockForUpdate()
                 ->first();
 
@@ -325,6 +289,7 @@ class VendorBookingController extends Controller
             $booking = Booking::whereIn('service_profile_id', $this->vendorServiceIds($request))
                 ->where('id', $id)
                 ->where('status', 'confirmed')
+                ->whereNull('completion_status')
                 ->lockForUpdate()
                 ->first();
 
@@ -417,6 +382,7 @@ class VendorBookingController extends Controller
             $booking = Booking::whereIn('service_profile_id', $this->vendorServiceIds($request))
                 ->where('id', $id)
                 ->where('status', 'confirmed')
+                ->whereNull('completion_status')
                 ->lockForUpdate()
                 ->first();
 

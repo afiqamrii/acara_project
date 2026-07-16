@@ -187,6 +187,14 @@ class BookingBriefTest extends TestCase
             ->assertOk()
             ->assertJsonPath('bookings.0.brief.guest_count', 280)
             ->assertJsonPath('bookings.0.brief.requirements', 'Buffet service with a registration welcome drink.');
+
+        $this->getJson("/api/admin/bookings/{$bookingId}")
+            ->assertOk()
+            ->assertJsonPath('booking.id', $bookingId)
+            ->assertJsonPath('booking.brief.event_title', 'Acara Annual Dinner')
+            ->assertJsonPath('booking.customer_email', $this->customer->email);
+
+        $this->getJson('/api/admin/bookings/999999')->assertNotFound();
     }
 
     public function test_legacy_cart_item_without_brief_cannot_be_submitted(): void

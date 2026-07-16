@@ -12,4 +12,9 @@ return [
         'response_hours' => env('BOOKING_REQUEST_EXPIRY_HOURS', 48),
         'reminder_hours_before_expiry' => env('BOOKING_REQUEST_REMINDER_HOURS', 12),
     ],
+
+    'booking_completion' => [
+        'response_hours' => env('BOOKING_COMPLETION_RESPONSE_HOURS', 72),
+        'reminder_hours_before_expiry' => env('BOOKING_COMPLETION_REMINDER_HOURS', 24),
+    ],
 ];

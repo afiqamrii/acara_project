@@ -18,6 +18,7 @@ class Booking extends Model
         'pricing_unit_snapshot',
         'selected_date',
         'status',
+        'completion_status',
         'notes',
         'rejection_reason',
         'cancellation_reason',
@@ -73,6 +74,16 @@ class Booking extends Model
         return $this->hasOne(Quotation::class)->latestOfMany('version');
     }
 
+    public function completions(): HasMany
+    {
+        return $this->hasMany(BookingCompletion::class)->latest('id');
+    }
+
+    public function latestCompletion(): HasOne
+    {
+        return $this->hasOne(BookingCompletion::class)->latestOfMany();
+    }
+
     public function rescheduleRequests(): HasMany
     {
         return $this->hasMany(BookingRescheduleRequest::class)->latest('id');
@@ -110,7 +121,7 @@ class Booking extends Model
                 $this->cancelled_at,
             ],
             ['expired', 'Request expired', 'The response deadline passed without a vendor decision.', $this->expired_at],
-            ['completed', 'Service completed', 'The vendor marked the service as completed.', $this->completed_at],
+            ['completed', 'Service completed', 'The service completion was verified and the booking was closed.', $this->completed_at],
         ];
 
         foreach ($candidates as [$type, $label, $description, $occurredAt]) {
@@ -173,6 +184,48 @@ class Booking extends Model
                     'label' => 'Quotation expired',
                     'description' => 'The quotation validity period ended without an organizer response.',
                     'occurred_at' => $quotation->expired_at->toDateTimeString(),
+                ];
+            }
+        }
+
+        $completions = $this->relationLoaded('completions')
+            ? $this->completions
+            : $this->completions()->get();
+
+        foreach ($completions as $completion) {
+            $events[] = [
+                'type' => 'completion_submitted',
+                'label' => 'Completion submitted',
+                'description' => 'The vendor submitted service completion for organizer verification.',
+                'occurred_at' => $completion->submitted_at->toDateTimeString(),
+            ];
+
+            if (in_array($completion->status, ['confirmed', 'auto_confirmed'], true) && $completion->confirmed_at) {
+                $events[] = [
+                    'type' => $completion->status === 'auto_confirmed' ? 'completion_auto_confirmed' : 'completion_confirmed',
+                    'label' => $completion->status === 'auto_confirmed' ? 'Completion confirmed automatically' : 'Completion confirmed',
+                    'description' => $completion->status === 'auto_confirmed'
+                        ? 'The organizer response period ended without an issue being reported.'
+                        : 'The organizer verified that the service was completed.',
+                    'occurred_at' => $completion->confirmed_at->toDateTimeString(),
+                ];
+            }
+
+            if ($completion->disputed_at) {
+                $events[] = [
+                    'type' => 'completion_disputed',
+                    'label' => 'Completion issue reported',
+                    'description' => 'The organizer requested an administrator review. Reason: '.$completion->dispute_reason,
+                    'occurred_at' => $completion->disputed_at->toDateTimeString(),
+                ];
+            }
+
+            if ($completion->resolved_at) {
+                $events[] = [
+                    'type' => $completion->resolution === 'complete' ? 'completion_resolved_completed' : 'completion_resolved_reopened',
+                    'label' => $completion->resolution === 'complete' ? 'Completion approved by admin' : 'Completion returned to vendor',
+                    'description' => 'Administrator resolution: '.$completion->resolution_note,
+                    'occurred_at' => $completion->resolved_at->toDateTimeString(),
                 ];
             }
         }

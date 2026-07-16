@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\BookingCompletion;
 use App\Models\BookingRescheduleRequest;
 use App\Models\Quotation;
 use App\Models\Review;
 use App\Models\ServiceProfile;
+use App\Models\User;
 use App\Models\UserNotification;
 use App\Notifications\BookingActivityEmail;
 
@@ -86,6 +88,151 @@ class NotificationService
             message: "Your {$this->serviceName($booking)} booking was marked as completed.",
             actionUrl: '/bookings',
         );
+    }
+
+    public function completionSubmitted(Booking $booking, BookingCompletion $completion): UserNotification
+    {
+        $booking->loadMissing('serviceProfile');
+
+        return $this->create(
+            userId: $booking->user_id,
+            booking: $booking,
+            type: 'completion_submitted',
+            title: 'Confirm service completion',
+            message: "The vendor submitted completion for {$this->serviceName($booking)}. Confirm it or report an issue by {$this->completionDeadline($completion)}.",
+            actionUrl: '/bookings',
+            extraData: $this->completionData($completion),
+        );
+    }
+
+    public function completionReminder(Booking $booking, BookingCompletion $completion): UserNotification
+    {
+        $booking->loadMissing('serviceProfile');
+
+        return $this->create(
+            userId: $booking->user_id,
+            booking: $booking,
+            type: 'completion_response_reminder',
+            title: 'Completion confirmation due soon',
+            message: "Please confirm {$this->serviceName($booking)} or report an issue by {$this->completionDeadline($completion)}.",
+            actionUrl: '/bookings',
+            extraData: $this->completionData($completion),
+        );
+    }
+
+    public function completionConfirmed(Booking $booking, BookingCompletion $completion): UserNotification
+    {
+        $booking->loadMissing(['serviceProfile', 'user']);
+
+        return $this->create(
+            userId: $booking->serviceProfile->user_id,
+            booking: $booking,
+            type: 'completion_confirmed',
+            title: 'Service completion confirmed',
+            message: "{$booking->user->name} confirmed completion of {$this->serviceName($booking)}.",
+            actionUrl: '/vendor/bookings',
+            extraData: $this->completionData($completion),
+        );
+    }
+
+    /**
+     * @return array<int, UserNotification>
+     */
+    public function completionDisputed(Booking $booking, BookingCompletion $completion): array
+    {
+        $booking->loadMissing(['serviceProfile', 'user']);
+        $notifications = [
+            $this->create(
+                userId: $booking->serviceProfile->user_id,
+                booking: $booking,
+                type: 'completion_disputed',
+                title: 'Completion issue reported',
+                message: "{$booking->user->name} reported an issue with {$this->serviceName($booking)}. Reason: {$completion->dispute_reason}",
+                actionUrl: '/vendor/bookings',
+                extraData: $this->completionData($completion),
+            ),
+        ];
+
+        User::whereIn('role', ['admin', 'super_admin'])
+            ->pluck('id')
+            ->each(function (int $userId) use ($booking, $completion, &$notifications): void {
+                $notifications[] = $this->create(
+                    userId: $userId,
+                    booking: $booking,
+                    type: 'completion_disputed',
+                    title: 'Completion dispute requires review',
+                    message: "{$booking->user->name} disputed completion of {$this->serviceName($booking)}. Reason: {$completion->dispute_reason}",
+                    actionUrl: "/admin/bookings/{$booking->id}",
+                    extraData: $this->completionData($completion),
+                );
+            });
+
+        return $notifications;
+    }
+
+    /**
+     * @return array<int, UserNotification>
+     */
+    public function completionResolved(Booking $booking, BookingCompletion $completion): array
+    {
+        $booking->loadMissing(['serviceProfile', 'user']);
+        $completed = $completion->resolution === 'complete';
+        $title = $completed ? 'Completion dispute approved' : 'Completion returned for follow-up';
+        $outcome = $completed
+            ? 'The administrator marked the booking as completed.'
+            : 'The administrator returned the booking to the vendor for another completion submission.';
+        $message = "{$outcome} Reason: {$completion->resolution_note}";
+
+        return [
+            $this->create(
+                userId: $booking->user_id,
+                booking: $booking,
+                type: 'completion_resolved',
+                title: $title,
+                message: $message,
+                actionUrl: '/bookings',
+                extraData: $this->completionData($completion),
+            ),
+            $this->create(
+                userId: $booking->serviceProfile->user_id,
+                booking: $booking,
+                type: 'completion_resolved',
+                title: $title,
+                message: $message,
+                actionUrl: '/vendor/bookings',
+                extraData: $this->completionData($completion),
+            ),
+        ];
+    }
+
+    /**
+     * @return array<int, UserNotification>
+     */
+    public function completionAutoConfirmed(Booking $booking, BookingCompletion $completion): array
+    {
+        $booking->loadMissing('serviceProfile');
+        $message = "{$this->serviceName($booking)} was confirmed automatically because the organizer response period ended without an issue report.";
+
+        return [
+            $this->create(
+                userId: $booking->user_id,
+                booking: $booking,
+                type: 'completion_auto_confirmed',
+                title: 'Completion confirmed automatically',
+                message: $message,
+                actionUrl: '/bookings',
+                extraData: $this->completionData($completion),
+            ),
+            $this->create(
+                userId: $booking->serviceProfile->user_id,
+                booking: $booking,
+                type: 'completion_auto_confirmed',
+                title: 'Completion confirmed automatically',
+                message: $message,
+                actionUrl: '/vendor/bookings',
+                extraData: $this->completionData($completion),
+            ),
+        ];
     }
 
     public function quotationSent(Booking $booking, Quotation $quotation): UserNotification
@@ -414,6 +561,26 @@ class NotificationService
     private function deadline(Booking $booking): string
     {
         return $booking->expires_at?->format('j M Y, g:i A') ?? 'the response deadline';
+    }
+
+    private function completionDeadline(BookingCompletion $completion): string
+    {
+        return $completion->response_due_at->format('j M Y, g:i A');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function completionData(BookingCompletion $completion): array
+    {
+        return [
+            'completion_id' => $completion->id,
+            'completion_status' => $completion->status,
+            'response_due_at' => $completion->response_due_at?->toDateTimeString(),
+            'dispute_reason' => $completion->dispute_reason,
+            'resolution' => $completion->resolution,
+            'resolution_note' => $completion->resolution_note,
+        ];
     }
 
     private function serviceName(Booking $booking): string

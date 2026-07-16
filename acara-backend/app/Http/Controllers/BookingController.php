@@ -10,6 +10,7 @@ use App\Models\ServiceAvailability;
 use App\Models\ServiceProfile;
 use App\Services\BookingLifecycleService;
 use App\Services\NotificationService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -124,6 +125,7 @@ class BookingController extends Controller
         $priceValue = (float) ($item->price_snapshot ?? $item->pricing_starting_from);
         $pricingUnit = $item->pricing_unit_snapshot ?: $item->pricing_unit;
         $selectedDate = $this->formatDate($item->selected_date);
+        $status = $item->completion_status ?: $item->status;
 
         return [
             'id' => $item->id,
@@ -141,8 +143,8 @@ class BookingController extends Controller
             'pricing_unit' => $pricingUnit,
             'selected_date' => $selectedDate,
             'event_date' => $selectedDate,
-            'status' => $item->status,
-            'payment_status' => in_array($item->status, ['confirmed', 'completed'], true) ? 'pending' : 'unpaid',
+            'status' => $status,
+            'payment_status' => in_array($status, ['confirmed', 'completion_pending', 'completion_disputed', 'completed'], true) ? 'pending' : 'unpaid',
             'booked_at' => $this->formatDateTime($item->created_at),
             'notes' => $item->notes ?? null,
             'brief' => $item->brief?->toApiArray(),
@@ -158,6 +160,10 @@ class BookingController extends Controller
             'expired_at' => $this->formatDateTime($item->expired_at ?? null),
             'confirmed_at' => $this->formatDateTime($item->confirmed_at ?? null),
             'completed_at' => $this->formatDateTime($item->completed_at ?? null),
+            'completion' => $item->completions->first()?->toApiArray(),
+            'completion_history' => $item->completions
+                ->map(fn ($completion) => $completion->toApiArray())
+                ->values(),
             'reschedule_request' => $item->pendingRescheduleRequest?->toApiArray(),
             'reschedule_history' => $item->rescheduleRequests
                 ->map(fn (BookingRescheduleRequest $request) => $request->toApiArray())
@@ -172,6 +178,8 @@ class BookingController extends Controller
             'total' => $items->count(),
             'pending' => $items->where('status', 'pending')->count(),
             'confirmed' => $items->where('status', 'confirmed')->count(),
+            'completion_pending' => $items->where('status', 'completion_pending')->count(),
+            'completion_disputed' => $items->where('status', 'completion_disputed')->count(),
             'completed' => $items->where('status', 'completed')->count(),
             'rejected' => $items->where('status', 'rejected')->count(),
             'cancelled' => $items->where('status', 'cancelled')->count(),
@@ -199,6 +207,7 @@ class BookingController extends Controller
                 'bookings.id',
                 'bookings.selected_date',
                 'bookings.status',
+                'bookings.completion_status',
                 'bookings.notes',
                 'service_profiles.id as service_id',
                 'service_profiles.service_name',
@@ -477,7 +486,7 @@ class BookingController extends Controller
         $userId = $request->user()->id;
 
         $bookings = Booking::query()
-            ->with(['brief', 'quotations.items', 'rescheduleRequests', 'pendingRescheduleRequest'])
+            ->with(['brief', 'quotations.items', 'completions', 'rescheduleRequests', 'pendingRescheduleRequest'])
             ->where('bookings.user_id', $userId)
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -490,6 +499,7 @@ class BookingController extends Controller
                 'bookings.id',
                 'bookings.selected_date',
                 'bookings.status',
+                'bookings.completion_status',
                 'bookings.created_at',
                 'bookings.notes',
                 'bookings.rejection_reason',
@@ -532,6 +542,7 @@ class BookingController extends Controller
             $booking = Booking::where('id', $id)
                 ->where('user_id', $request->user()->id)
                 ->whereIn('status', ['pending', 'confirmed'])
+                ->whereNull('completion_status')
                 ->lockForUpdate()
                 ->first();
 
@@ -589,6 +600,7 @@ class BookingController extends Controller
         $booking = Booking::where('id', $id)
             ->where('user_id', $request->user()->id)
             ->where('status', 'confirmed')
+            ->whereNull('completion_status')
             ->whereDate('selected_date', '>', today())
             ->first();
 
@@ -622,6 +634,7 @@ class BookingController extends Controller
             $booking = Booking::where('id', $id)
                 ->where('user_id', $request->user()->id)
                 ->where('status', 'confirmed')
+                ->whereNull('completion_status')
                 ->lockForUpdate()
                 ->first();
 
@@ -734,11 +747,10 @@ class BookingController extends Controller
         return response()->json(['message' => 'Date change request withdrawn.']);
     }
 
-    // GET /admin/bookings - admin monitor
-    public function adminBookings()
+    private function adminBookingsQuery(): Builder
     {
-        $bookings = Booking::query()
-            ->with(['brief', 'quotations.items', 'rescheduleRequests', 'pendingRescheduleRequest'])
+        return Booking::query()
+            ->with(['brief', 'quotations.items', 'completions', 'rescheduleRequests', 'pendingRescheduleRequest'])
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->join('users as customers', 'bookings.user_id', '=', 'customers.id')
@@ -752,6 +764,7 @@ class BookingController extends Controller
                 'bookings.id',
                 'bookings.selected_date',
                 'bookings.status',
+                'bookings.completion_status',
                 'bookings.created_at',
                 'bookings.notes',
                 'bookings.rejection_reason',
@@ -778,8 +791,14 @@ class BookingController extends Controller
                 DB::raw('COALESCE(vendor_profiles.business_name, vendors.name) as business_name'),
                 'vendor_profiles.service_area_state',
                 'vendor_profiles.service_area_town',
-            ])
-            ->orderByRaw("CASE bookings.status WHEN 'pending' THEN 0 WHEN 'confirmed' THEN 1 WHEN 'completed' THEN 2 WHEN 'expired' THEN 3 WHEN 'rejected' THEN 4 ELSE 5 END")
+            ]);
+    }
+
+    // GET /admin/bookings - admin monitor
+    public function adminBookings()
+    {
+        $bookings = $this->adminBookingsQuery()
+            ->orderByRaw("CASE bookings.completion_status WHEN 'completion_disputed' THEN 0 WHEN 'completion_pending' THEN 1 ELSE CASE bookings.status WHEN 'pending' THEN 2 WHEN 'confirmed' THEN 3 WHEN 'completed' THEN 4 WHEN 'expired' THEN 5 WHEN 'rejected' THEN 6 ELSE 7 END END")
             ->orderBy('bookings.created_at', 'desc')
             ->get()
             ->map(function ($item) {
@@ -792,6 +811,25 @@ class BookingController extends Controller
         return response()->json([
             'bookings' => $bookings,
             'stats' => $this->bookingSummary($bookings),
+        ]);
+    }
+
+    // GET /admin/bookings/{id} - complete admin audit record
+    public function adminBooking(int $id)
+    {
+        $item = $this->adminBookingsQuery()
+            ->where('bookings.id', $id)
+            ->first();
+
+        if (! $item) {
+            return response()->json(['message' => 'Booking record not found.'], 404);
+        }
+
+        return response()->json([
+            'booking' => array_merge($this->mapCustomerBooking($item), [
+                'customer_name' => $item->customer_name,
+                'customer_email' => $item->customer_email,
+            ]),
         ]);
     }
 }

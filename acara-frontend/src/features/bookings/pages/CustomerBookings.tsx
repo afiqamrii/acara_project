@@ -21,11 +21,14 @@ import Loader from "../../../components/common/Loader";
 import { usePageTitle } from "../../../utils/usePageTitle";
 import BookingTimeline from "../components/BookingTimeline";
 import BookingBriefDisplay from "../components/BookingBriefDisplay";
+import BookingCompletionDisplay from "../components/BookingCompletionDisplay";
 import QuotationDisplay from "../components/QuotationDisplay";
 import {
   acceptQuotation,
   cancelCustomerBooking,
+  confirmBookingCompletion,
   declineQuotation,
+  disputeBookingCompletion,
   fetchRescheduleAvailability,
   fetchCustomerBookings,
   requestBookingReschedule,
@@ -36,11 +39,14 @@ import {
 } from "../api";
 
 type QuotationAction = "accept" | "decline" | "revision";
+type CompletionAction = "confirm" | "dispute";
 
 const tabs = [
   { key: "all", label: "All" },
   { key: "pending", label: "Pending" },
   { key: "confirmed", label: "Confirmed" },
+  { key: "completion_pending", label: "Confirm Completion" },
+  { key: "completion_disputed", label: "Issues" },
   { key: "completed", label: "Completed" },
   { key: "expired", label: "Expired" },
   { key: "rejected", label: "Rejected" },
@@ -62,6 +68,16 @@ const statusMeta: Record<string, { label: string; className: string; icon: React
     label: "Completed",
     className: "border-blue-200 bg-blue-50 text-blue-700",
     icon: <IconCheck size={13} />,
+  },
+  completion_pending: {
+    label: "Completion Action",
+    className: "border-amber-200 bg-amber-50 text-amber-700",
+    icon: <IconClock size={13} />,
+  },
+  completion_disputed: {
+    label: "Under Admin Review",
+    className: "border-red-200 bg-red-50 text-red-700",
+    icon: <IconAlertCircle size={13} />,
   },
   expired: {
     label: "Expired",
@@ -113,6 +129,8 @@ const buildStats = (bookings: BookingItem[]): BookingStats => ({
   total: bookings.length,
   pending: bookings.filter((booking) => booking.status === "pending").length,
   confirmed: bookings.filter((booking) => booking.status === "confirmed").length,
+  completion_pending: bookings.filter((booking) => booking.status === "completion_pending").length,
+  completion_disputed: bookings.filter((booking) => booking.status === "completion_disputed").length,
   completed: bookings.filter((booking) => booking.status === "completed").length,
   rejected: bookings.filter((booking) => booking.status === "rejected").length,
   cancelled: bookings.filter((booking) => booking.status === "cancelled").length,
@@ -374,24 +392,89 @@ const QuotationResponseDialog = ({
   );
 };
 
+const CompletionResponseDialog = ({
+  booking,
+  action,
+  onClose,
+  onSubmit,
+  submitting,
+  error,
+}: {
+  booking: BookingItem;
+  action: CompletionAction;
+  onClose: () => void;
+  onSubmit: (reason: string) => void;
+  submitting: boolean;
+  error?: string;
+}) => {
+  const [reason, setReason] = useState("");
+  const isDispute = action === "dispute";
+  const canSubmit = !submitting && (!isDispute || reason.trim().length >= 10);
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onClick={onClose}>
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className={`text-xs font-bold uppercase tracking-widest ${isDispute ? "text-red-600" : "text-emerald-600"}`}>Service verification</p>
+            <h3 className="mt-2 text-xl font-black text-slate-900">{isDispute ? "Report a completion issue" : "Confirm service completion?"}</h3>
+            <p className="mt-1 text-sm text-slate-500">{booking.service_name} · {booking.booking_reference}</p>
+          </div>
+          <button type="button" onClick={onClose} disabled={submitting} className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200"><IconX size={18} /></button>
+        </div>
+
+        <p className={`mt-5 rounded-2xl border px-4 py-3 text-sm leading-6 ${isDispute ? "border-red-100 bg-red-50 text-red-900" : "border-emerald-100 bg-emerald-50 text-emerald-900"}`}>
+          {isDispute
+            ? "Describe what remains incomplete or differs from the accepted quotation. An administrator will review the submission."
+            : "Confirm only when the vendor has delivered the agreed service. This closes the booking and unlocks your review."}
+        </p>
+
+        {isDispute && (
+          <label className="mt-5 block">
+            <span className="flex items-center justify-between text-xs font-bold text-slate-700">
+              Issue details
+              <span className="font-medium text-slate-400">{reason.length}/2000</span>
+            </span>
+            <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} rows={5} placeholder="Explain what was not delivered, what needs correction, or why completion cannot be confirmed..." className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 outline-none focus:border-red-300 focus:bg-white focus:ring-4 focus:ring-red-50" />
+            {reason.trim().length > 0 && reason.trim().length < 10 && <span className="mt-1 block text-xs text-red-500">Please enter at least 10 characters.</span>}
+          </label>
+        )}
+
+        {error && <p className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row">
+          <button type="button" onClick={onClose} disabled={submitting} className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Go back</button>
+          <button type="button" onClick={() => onSubmit(reason.trim())} disabled={!canSubmit} className={`flex-1 rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 ${isDispute ? "from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700" : "from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"}`}>
+            {submitting ? "Processing..." : isDispute ? "Submit for Admin Review" : "Confirm Completion"}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 const BookingCard = ({
   booking,
   onCancel,
   onReschedule,
   onWithdrawReschedule,
   onQuotationAction,
+  onCompletionAction,
   cancelling,
   withdrawing,
   quotationActionPending,
+  completionActionPending,
 }: {
   booking: BookingItem;
   onCancel: (id: number) => void;
   onReschedule: (booking: BookingItem) => void;
   onWithdrawReschedule: (id: number) => void;
   onQuotationAction: (booking: BookingItem, action: QuotationAction) => void;
+  onCompletionAction: (booking: BookingItem, action: CompletionAction) => void;
   cancelling: boolean;
   withdrawing: boolean;
   quotationActionPending: boolean;
+  completionActionPending: boolean;
 }) => {
   const navigate = useNavigate();
   const canCancel =
@@ -467,6 +550,26 @@ const BookingCard = ({
                   <summary className="cursor-pointer text-sm font-bold text-indigo-700">Previous quotation versions ({(booking.quotation_history?.length ?? 1) - 1})</summary>
                   <div className="mt-3 space-y-3 border-t border-indigo-100 pt-3">
                     {(booking.quotation_history ?? []).slice(1).map((quotation) => <QuotationDisplay key={quotation.id} quotation={quotation} compact />)}
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+
+          {booking.completion && (
+            <div className="mt-4 space-y-3">
+              <BookingCompletionDisplay completion={booking.completion} />
+              {booking.status === "completion_pending" && (
+                <div className="flex flex-col gap-2 rounded-2xl border border-amber-100 bg-amber-50/60 p-3 sm:flex-row sm:justify-end">
+                  <button type="button" onClick={() => onCompletionAction(booking, "dispute")} disabled={completionActionPending} className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50">Report Issue</button>
+                  <button type="button" onClick={() => onCompletionAction(booking, "confirm")} disabled={completionActionPending} className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50">Confirm Completion</button>
+                </div>
+              )}
+              {(booking.completion_history?.length ?? 0) > 1 && (
+                <details className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                  <summary className="cursor-pointer text-sm font-bold text-slate-700">Previous completion submissions ({(booking.completion_history?.length ?? 1) - 1})</summary>
+                  <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+                    {(booking.completion_history ?? []).slice(1).map((completion) => <BookingCompletionDisplay key={completion.id} completion={completion} compact />)}
                   </div>
                 </details>
               )}
@@ -619,6 +722,7 @@ const CustomerBookings = () => {
   const [search, setSearch] = useState("");
   const [rescheduleBooking, setRescheduleBooking] = useState<BookingItem | null>(null);
   const [quotationResponse, setQuotationResponse] = useState<{ booking: BookingItem; action: QuotationAction } | null>(null);
+  const [completionResponse, setCompletionResponse] = useState<{ booking: BookingItem; action: CompletionAction } | null>(null);
 
   const { data, isPending, isError } = useQuery({
     queryKey: ["bookings"],
@@ -664,6 +768,18 @@ const CustomerBookings = () => {
     },
     onSuccess: () => {
       setQuotationResponse(null);
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
+    },
+  });
+
+  const completionMutation = useMutation({
+    mutationFn: ({ booking, action, reason }: { booking: BookingItem; action: CompletionAction; reason: string }) =>
+      action === "confirm"
+        ? confirmBookingCompletion(booking.id)
+        : disputeBookingCompletion({ bookingId: booking.id, reason }),
+    onSuccess: () => {
+      setCompletionResponse(null);
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
     },
@@ -796,9 +912,14 @@ const CustomerBookings = () => {
                   quotationMutation.reset();
                   setQuotationResponse({ booking, action });
                 }}
+                onCompletionAction={(booking, action) => {
+                  completionMutation.reset();
+                  setCompletionResponse({ booking, action });
+                }}
                 cancelling={cancelMutation.isPending && cancelMutation.variables === booking.id}
                 withdrawing={withdrawMutation.isPending && withdrawMutation.variables === booking.id}
                 quotationActionPending={quotationMutation.isPending && quotationMutation.variables?.booking.id === booking.id}
+                completionActionPending={completionMutation.isPending && completionMutation.variables?.booking.id === booking.id}
               />
             ))}
           </section>
@@ -840,6 +961,23 @@ const CustomerBookings = () => {
           submitting={quotationMutation.isPending}
           error={quotationMutation.isError
             ? apiErrorMessage(quotationMutation.error, "The quotation response could not be completed.")
+            : undefined}
+        />
+      )}
+
+      {completionResponse && (
+        <CompletionResponseDialog
+          booking={completionResponse.booking}
+          action={completionResponse.action}
+          onClose={() => !completionMutation.isPending && setCompletionResponse(null)}
+          onSubmit={(reason) => completionMutation.mutate({
+            booking: completionResponse.booking,
+            action: completionResponse.action,
+            reason,
+          })}
+          submitting={completionMutation.isPending}
+          error={completionMutation.isError
+            ? apiErrorMessage(completionMutation.error, "The completion response could not be saved.")
             : undefined}
         />
       )}

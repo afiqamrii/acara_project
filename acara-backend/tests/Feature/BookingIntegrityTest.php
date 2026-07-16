@@ -146,9 +146,11 @@ class BookingIntegrityTest extends TestCase
         ]);
 
         Sanctum::actingAs($this->vendor);
-        $this->patchJson("/api/vendor/bookings/{$booking->id}/complete")
+        $this->postJson("/api/vendor/bookings/{$booking->id}/completion", [
+            'note' => 'The vendor is attempting to submit completion too early.',
+        ])
             ->assertUnprocessable()
-            ->assertJsonPath('message', 'This booking can only be completed on or after the event date.');
+            ->assertJsonPath('message', 'Completion can only be submitted on or after the event date.');
 
         $booking->refresh();
         $this->assertSame('confirmed', $booking->status);
@@ -185,7 +187,13 @@ class BookingIntegrityTest extends TestCase
         $this->patchJson("/api/bookings/{$booking->id}/quotations/{$quotationId}/accept")
             ->assertOk();
         Sanctum::actingAs($this->vendor);
-        $this->patchJson("/api/vendor/bookings/{$booking->id}/complete")
+        $this->postJson("/api/vendor/bookings/{$booking->id}/completion", [
+            'note' => 'The agreed corporate photography coverage has been delivered.',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('status', 'completion_pending');
+        Sanctum::actingAs($this->customer);
+        $this->patchJson("/api/bookings/{$booking->id}/completion/confirm")
             ->assertOk()
             ->assertJsonPath('status', 'completed');
 
@@ -193,6 +201,7 @@ class BookingIntegrityTest extends TestCase
         $this->assertNotNull($booking->confirmed_at);
         $this->assertNotNull($booking->completed_at);
 
+        Sanctum::actingAs($this->vendor);
         $this->getJson('/api/vendor/bookings')
             ->assertOk()
             ->assertJsonPath('bookings.0.status', 'completed')
@@ -200,6 +209,8 @@ class BookingIntegrityTest extends TestCase
             ->assertJsonFragment(['type' => 'quotation_sent'])
             ->assertJsonFragment(['type' => 'quotation_accepted'])
             ->assertJsonFragment(['type' => 'confirmed'])
+            ->assertJsonFragment(['type' => 'completion_submitted'])
+            ->assertJsonFragment(['type' => 'completion_confirmed'])
             ->assertJsonFragment(['type' => 'completed']);
 
         Sanctum::actingAs($this->customer);

@@ -251,9 +251,11 @@ class BookingRescheduleTest extends TestCase
 
         Carbon::setTestNow('2026-07-17 10:00:00');
         Sanctum::actingAs($this->vendor);
-        $this->patchJson("/api/vendor/bookings/{$booking->id}/complete")
+        $this->postJson("/api/vendor/bookings/{$booking->id}/completion", [
+            'note' => 'The service cannot be completed while the date change is pending.',
+        ])
             ->assertConflict()
-            ->assertJsonPath('message', 'Resolve the pending date change request before completing this booking.');
+            ->assertJsonPath('message', 'Resolve the pending date change request before submitting completion.');
 
         $this->patchJson("/api/vendor/bookings/{$booking->id}/cancel", [
             'reason' => 'The business can no longer deliver this booking as confirmed.',

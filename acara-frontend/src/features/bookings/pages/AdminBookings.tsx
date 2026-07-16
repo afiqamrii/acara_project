@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   IconAlertCircle,
-  IconArrowsExchange,
   IconCalendarEvent,
   IconCheck,
+  IconChevronRight,
   IconClock,
   IconCurrencyDollar,
   IconSearch,
@@ -15,15 +15,14 @@ import {
 } from "@tabler/icons-react";
 import Loader from "../../../components/common/Loader";
 import { usePageTitle } from "../../../utils/usePageTitle";
-import BookingTimeline from "../components/BookingTimeline";
-import BookingBriefDisplay from "../components/BookingBriefDisplay";
-import QuotationDisplay from "../components/QuotationDisplay";
 import { fetchAdminBookings, type BookingItem, type BookingStats } from "../api";
 
 const tabs = [
   { key: "all", label: "All" },
   { key: "pending", label: "Pending" },
   { key: "confirmed", label: "Confirmed" },
+  { key: "completion_pending", label: "Awaiting Organizer" },
+  { key: "completion_disputed", label: "Needs Resolution" },
   { key: "completed", label: "Completed" },
   { key: "expired", label: "Expired" },
   { key: "rejected", label: "Rejected" },
@@ -31,36 +30,14 @@ const tabs = [
 ];
 
 const statusMeta: Record<string, { label: string; className: string; icon: ReactNode }> = {
-  pending: {
-    label: "Pending",
-    className: "border-amber-200 bg-amber-50 text-amber-700",
-    icon: <IconAlertCircle size={13} />,
-  },
-  confirmed: {
-    label: "Confirmed",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    icon: <IconCheck size={13} />,
-  },
-  completed: {
-    label: "Completed",
-    className: "border-indigo-200 bg-indigo-50 text-indigo-700",
-    icon: <IconCheck size={13} />,
-  },
-  expired: {
-    label: "Expired",
-    className: "border-slate-200 bg-slate-100 text-slate-700",
-    icon: <IconClock size={13} />,
-  },
-  rejected: {
-    label: "Rejected",
-    className: "border-orange-200 bg-orange-50 text-orange-700",
-    icon: <IconX size={13} />,
-  },
-  cancelled: {
-    label: "Cancelled",
-    className: "border-red-200 bg-red-50 text-red-700",
-    icon: <IconX size={13} />,
-  },
+  pending: { label: "Pending", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <IconAlertCircle size={13} /> },
+  confirmed: { label: "Confirmed", className: "border-emerald-200 bg-emerald-50 text-emerald-700", icon: <IconCheck size={13} /> },
+  completed: { label: "Completed", className: "border-indigo-200 bg-indigo-50 text-indigo-700", icon: <IconCheck size={13} /> },
+  completion_pending: { label: "Awaiting Organizer", className: "border-amber-200 bg-amber-50 text-amber-700", icon: <IconClock size={13} /> },
+  completion_disputed: { label: "Needs Resolution", className: "border-red-200 bg-red-50 text-red-700", icon: <IconAlertCircle size={13} /> },
+  expired: { label: "Expired", className: "border-slate-200 bg-slate-100 text-slate-700", icon: <IconClock size={13} /> },
+  rejected: { label: "Rejected", className: "border-orange-200 bg-orange-50 text-orange-700", icon: <IconX size={13} /> },
+  cancelled: { label: "Cancelled", className: "border-red-200 bg-red-50 text-red-700", icon: <IconX size={13} /> },
 };
 
 const formatDate = (value?: string) => {
@@ -79,6 +56,8 @@ const buildStats = (bookings: BookingItem[]): BookingStats => ({
   total: bookings.length,
   pending: bookings.filter((booking) => booking.status === "pending").length,
   confirmed: bookings.filter((booking) => booking.status === "confirmed").length,
+  completion_pending: bookings.filter((booking) => booking.status === "completion_pending").length,
+  completion_disputed: bookings.filter((booking) => booking.status === "completion_disputed").length,
   completed: bookings.filter((booking) => booking.status === "completed").length,
   rejected: bookings.filter((booking) => booking.status === "rejected").length,
   cancelled: bookings.filter((booking) => booking.status === "cancelled").length,
@@ -96,21 +75,11 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const StatCard = ({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon: ReactNode;
-}) => (
+const StatCard = ({ label, value, icon }: { label: string; value: string; icon: ReactNode }) => (
   <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
     <div className="flex items-center justify-between gap-3">
       <p className="text-sm font-medium text-neutral-500">{label}</p>
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
-        {icon}
-      </span>
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">{icon}</span>
     </div>
     <p className="mt-3 text-2xl font-black text-neutral-900">{value}</p>
   </div>
@@ -138,6 +107,7 @@ const AdminBookings = () => {
       const matchesSearch =
         !query ||
         booking.service_name.toLowerCase().includes(query) ||
+        (booking.brief?.event_title || "").toLowerCase().includes(query) ||
         (booking.customer_name || "").toLowerCase().includes(query) ||
         (booking.customer_email || "").toLowerCase().includes(query) ||
         (booking.vendor_name || booking.vendor || "").toLowerCase().includes(query) ||
@@ -152,26 +122,22 @@ const AdminBookings = () => {
   }
 
   return (
-    <main className="flex flex-1 overflow-auto bg-gray-100">
-      <div className="flex h-full w-full flex-1 flex-col gap-6 p-4 md:p-10">
+    <main className="min-w-0 flex-1 overflow-y-auto bg-gray-100">
+      <div className="flex min-h-full w-full flex-col gap-6 p-4 md:p-10">
         <section className="rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-700 to-purple-600 p-6 text-white shadow-lg">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-indigo-100">Admin Monitor</p>
               <h1 className="mt-2 text-2xl font-black md:text-3xl">Booking Orders</h1>
-              <p className="mt-2 max-w-2xl text-sm text-indigo-100">
-                See every customer request, response deadline, vendor decision, and automatic expiry in one audit view.
-              </p>
+              <p className="mt-2 max-w-2xl text-sm text-indigo-100">Open any booking to review its event scope, quotation, delivery records, decisions, and complete audit trail.</p>
             </div>
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/20">
-              <IconShieldCheck size={30} />
-            </div>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/20"><IconShieldCheck size={30} /></div>
           </div>
         </section>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Total Orders" value={String(stats.total)} icon={<IconCalendarEvent size={21} />} />
-          <StatCard label="Pending Review" value={String(stats.pending)} icon={<IconClock size={21} />} />
+          <StatCard label="Pending Review" value={String(stats.pending + stats.completion_disputed)} icon={<IconClock size={21} />} />
           <StatCard label="Confirmed" value={String(stats.confirmed)} icon={<IconCheck size={21} />} />
           <StatCard label="Marketplace Value" value={formatRM(stats.estimate)} icon={<IconCurrencyDollar size={21} />} />
         </section>
@@ -184,11 +150,7 @@ const AdminBookings = () => {
                   key={tab.key}
                   type="button"
                   onClick={() => setActiveTab(tab.key)}
-                  className={`rounded-xl px-4 py-2 text-sm font-bold transition-colors ${
-                    activeTab === tab.key
-                      ? "bg-indigo-600 text-white shadow-sm shadow-indigo-100"
-                      : "bg-gray-50 text-gray-500 hover:bg-indigo-50 hover:text-indigo-700"
-                  }`}
+                  className={`rounded-xl px-4 py-2 text-sm font-bold transition-colors ${activeTab === tab.key ? "bg-indigo-600 text-white shadow-sm shadow-indigo-100" : "bg-gray-50 text-gray-500 hover:bg-indigo-50 hover:text-indigo-700"}`}
                 >
                   {tab.label}
                 </button>
@@ -200,7 +162,7 @@ const AdminBookings = () => {
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search orders"
+                placeholder="Search orders or events"
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm text-gray-700 outline-none transition focus:border-indigo-300 focus:bg-white focus:ring-4 focus:ring-indigo-50"
               />
             </div>
@@ -214,159 +176,57 @@ const AdminBookings = () => {
           </div>
         ) : filteredBookings.length === 0 ? (
           <div className="rounded-2xl border border-neutral-200 bg-white p-10 text-center shadow-sm">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-              <IconCalendarEvent size={28} />
-            </div>
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600"><IconCalendarEvent size={28} /></div>
             <p className="mt-4 text-lg font-black text-gray-900">No booking orders found</p>
             <p className="mt-1 text-sm text-gray-500">Orders will appear once customers confirm their cart.</p>
           </div>
         ) : (
-          <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
-            <div className="hidden grid-cols-[1.3fr_1fr_1fr_1fr_120px] gap-4 border-b border-neutral-100 bg-neutral-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-neutral-500 lg:grid">
-              <span>Service</span>
-              <span>Customer</span>
-              <span>Vendor</span>
-              <span>Date</span>
-              <span>Status</span>
+          <section className="shrink-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+            <div className="hidden grid-cols-[1.35fr_1fr_1fr_0.75fr_150px] gap-4 border-b border-neutral-100 bg-neutral-50 px-5 py-3 text-xs font-bold uppercase tracking-wider text-neutral-500 lg:grid">
+              <span>Event & service</span><span>Customer</span><span>Vendor</span><span>Date</span><span>Status</span>
             </div>
 
             <div className="divide-y divide-neutral-100">
               {filteredBookings.map((booking) => (
-                <article
+                <Link
                   key={booking.id}
-                  className="grid gap-4 px-5 py-4 lg:grid-cols-[1.3fr_1fr_1fr_1fr_120px] lg:items-center"
+                  to={`/admin/bookings/${booking.id}`}
+                  className="group grid gap-4 px-5 py-4 outline-none transition hover:bg-indigo-50/50 focus-visible:bg-indigo-50 focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-indigo-100 lg:grid-cols-[1.35fr_1fr_1fr_0.75fr_150px] lg:items-center"
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700">
-                        {booking.booking_reference}
-                      </span>
-                      <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-500">
-                        {booking.category}
+                      <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700">{booking.booking_reference}</span>
+                      <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-500">{booking.category}</span>
+                    </div>
+                    <p className="mt-2 truncate font-bold text-gray-900">{booking.brief?.event_title || booking.service_name}</p>
+                    {booking.brief?.event_title && <p className="mt-0.5 truncate text-xs font-medium text-slate-500">{booking.service_name}</p>}
+                    <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-purple-700">{booking.price}</p>
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-black ${booking.status === "completion_disputed" ? "text-red-600" : "text-indigo-600"}`}>
+                        {booking.status === "completion_disputed" ? "Review conflict" : "Open record"}<IconChevronRight size={15} />
                       </span>
                     </div>
-                    <p className="mt-2 truncate font-bold text-gray-900">{booking.service_name}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-purple-700">{booking.price}</p>
-                    {booking.status === "rejected" && booking.rejection_reason && (
-                      <p className="mt-2 whitespace-pre-wrap text-xs text-orange-700">
-                        <span className="font-bold">Rejection:</span> {booking.rejection_reason}
-                      </p>
-                    )}
-                    {booking.status === "cancelled" && booking.cancelled_by === "vendor" && booking.cancellation_reason && (
-                      <p className="mt-2 whitespace-pre-wrap text-xs text-red-700">
-                        <span className="font-bold">Vendor cancellation:</span> {booking.cancellation_reason}
-                      </p>
-                    )}
-                    {booking.status === "expired" && (
-                      <p className="mt-2 text-xs leading-5 text-slate-600">
-                        <span className="font-bold">Automatic closure:</span> {booking.quotation?.status === "expired" ? "Quotation response deadline passed" : "Vendor response deadline passed"}; the date was released.
-                      </p>
-                    )}
                   </div>
 
                   <div className="min-w-0 rounded-xl bg-gray-50 px-3 py-2 lg:bg-transparent lg:px-0 lg:py-0">
-                    <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 lg:hidden">
-                      <IconUser size={14} />
-                      Customer
-                    </p>
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 lg:hidden"><IconUser size={14} /> Customer</p>
                     <p className="truncate font-semibold text-gray-800">{booking.customer_name || "Customer"}</p>
                     <p className="truncate text-xs text-gray-400">{booking.customer_email || "-"}</p>
                   </div>
 
                   <div className="min-w-0 rounded-xl bg-gray-50 px-3 py-2 lg:bg-transparent lg:px-0 lg:py-0">
                     <p className="text-xs font-semibold text-gray-400 lg:hidden">Vendor</p>
-                    <p className="truncate font-semibold text-gray-800">
-                      {booking.vendor_name || booking.vendor || "Vendor"}
-                    </p>
+                    <p className="truncate font-semibold text-gray-800">{booking.vendor_name || booking.vendor || "Vendor"}</p>
                     <p className="truncate text-xs text-gray-400">{booking.location || "Malaysia"}</p>
                   </div>
 
-                  <div className="rounded-xl bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 lg:bg-transparent lg:px-0 lg:py-0">
-                    {formatDate(booking.selected_date)}
+                  <div className="rounded-xl bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-700 lg:bg-transparent lg:px-0 lg:py-0">{formatDate(booking.selected_date)}</div>
+
+                  <div className="flex items-center justify-between gap-2 lg:block">
+                    <StatusBadge status={booking.status} />
+                    <IconChevronRight size={18} className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-indigo-500 lg:mt-2" />
                   </div>
-
-                  <StatusBadge status={booking.status} />
-
-                  {booking.brief && (
-                    <details className="rounded-xl border border-purple-100 bg-purple-50/30 px-4 py-3 lg:col-span-5">
-                      <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-purple-700">
-                        Event brief · {booking.brief.event_title}
-                      </summary>
-                      <div className="mt-4 border-t border-purple-100 pt-4">
-                        <BookingBriefDisplay brief={booking.brief} notes={booking.notes} />
-                      </div>
-                    </details>
-                  )}
-
-                  {booking.quotation && (
-                    <details className="rounded-xl border border-indigo-100 bg-indigo-50/30 px-4 py-3 lg:col-span-5">
-                      <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-indigo-700">
-                        Quotation · {booking.quotation.reference} · RM {booking.quotation.total_amount.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </summary>
-                      <div className="mt-4 space-y-3 border-t border-indigo-100 pt-4">
-                        <QuotationDisplay quotation={booking.quotation} />
-                        {(booking.quotation_history?.length ?? 0) > 1 && (
-                          <details className="rounded-xl border border-indigo-100 bg-white px-4 py-3">
-                            <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-indigo-600">Previous versions ({(booking.quotation_history?.length ?? 1) - 1})</summary>
-                            <div className="mt-3 space-y-3 border-t border-indigo-100 pt-3">
-                              {(booking.quotation_history ?? []).slice(1).map((quotation) => <QuotationDisplay key={quotation.id} quotation={quotation} compact />)}
-                            </div>
-                          </details>
-                        )}
-                      </div>
-                    </details>
-                  )}
-
-                  {booking.reschedule_request && (
-                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 lg:col-span-5">
-                      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-indigo-700">
-                        <IconArrowsExchange size={16} />
-                        Pending date change
-                      </p>
-                      <p className="mt-2 text-sm font-bold text-slate-900">
-                        {formatDate(booking.reschedule_request.original_date)} → {formatDate(booking.reschedule_request.requested_date)}
-                      </p>
-                      <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-600">{booking.reschedule_request.reason}</p>
-                    </div>
-                  )}
-
-                  {(booking.reschedule_history?.length ?? 0) > 0 && (
-                    <details className="rounded-xl border border-indigo-100 bg-white px-4 py-3 lg:col-span-5">
-                      <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-indigo-700">
-                        Date change audit ({booking.reschedule_history?.length ?? 0})
-                      </summary>
-                      <div className="mt-3 space-y-3 border-t border-indigo-100 pt-3">
-                        {(booking.reschedule_history ?? []).map((request) => (
-                          <div key={request.id} className="rounded-xl bg-slate-50 px-3 py-3">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-sm font-bold text-slate-900">
-                                {formatDate(request.original_date)} → {formatDate(request.requested_date)}
-                              </p>
-                              <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-indigo-700">
-                                {request.status}
-                              </span>
-                            </div>
-                            <p className="mt-2 text-xs leading-5 text-slate-600"><span className="font-bold">Organizer:</span> {request.reason}</p>
-                            {request.decision_reason && (
-                              <p className="mt-1 text-xs leading-5 text-slate-600"><span className="font-bold">Decision:</span> {request.decision_reason}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  )}
-
-                  {(booking.timeline?.length ?? 0) > 0 && (
-                    <details className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 lg:col-span-5">
-                      <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-slate-600">
-                        Booking activity
-                      </summary>
-                      <div className="mt-4 border-t border-slate-200 pt-4">
-                        <BookingTimeline events={booking.timeline ?? []} compact />
-                      </div>
-                    </details>
-                  )}
-                </article>
+                </Link>
               ))}
             </div>
           </section>

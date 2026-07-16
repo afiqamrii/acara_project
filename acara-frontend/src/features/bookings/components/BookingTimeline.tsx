@@ -33,6 +33,22 @@ const eventStyle = (type: string) => {
     return { icon: type === "quotation_expired" ? IconClock : IconX, dot: "bg-red-500", iconClass: "bg-red-50 text-red-600" };
   }
 
+  if (["completion_submitted", "completion_auto_confirmed"].includes(type)) {
+    return { icon: IconClock, dot: "bg-amber-500", iconClass: "bg-amber-50 text-amber-700" };
+  }
+
+  if (["completion_confirmed", "completion_resolved_completed"].includes(type)) {
+    return { icon: IconCheck, dot: "bg-emerald-500", iconClass: "bg-emerald-50 text-emerald-700" };
+  }
+
+  if (type === "completion_disputed") {
+    return { icon: IconX, dot: "bg-red-500", iconClass: "bg-red-50 text-red-700" };
+  }
+
+  if (type === "completion_resolved_reopened") {
+    return { icon: IconArrowsExchange, dot: "bg-orange-500", iconClass: "bg-orange-50 text-orange-700" };
+  }
+
   if (type === "reschedule_requested") {
     return { icon: IconArrowsExchange, dot: "bg-purple-500", iconClass: "bg-purple-50 text-purple-600" };
   }

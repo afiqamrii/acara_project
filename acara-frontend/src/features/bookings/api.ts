@@ -1,7 +1,7 @@
 import api from "../../lib/Api";
 import type { BookingTimelineEvent } from "./components/BookingTimeline";
 
-export type BookingStatus = "pending" | "confirmed" | "completed" | "rejected" | "cancelled" | "expired" | string;
+export type BookingStatus = "pending" | "confirmed" | "completion_pending" | "completion_disputed" | "completed" | "rejected" | "cancelled" | "expired" | string;
 
 export type BookingRescheduleRequest = {
   id: number;
@@ -75,6 +75,23 @@ export type QuotationPayload = {
   valid_until: string;
 };
 
+export type BookingCompletion = {
+  id: number;
+  status: "pending" | "confirmed" | "disputed" | "auto_confirmed" | "resolved_completed" | "resolved_reopened" | string;
+  completion_note: string;
+  proof_url?: string | null;
+  proof_name?: string | null;
+  response_due_at: string;
+  reminder_sent_at?: string | null;
+  submitted_at: string;
+  confirmed_at?: string | null;
+  disputed_at?: string | null;
+  dispute_reason?: string | null;
+  resolution?: "complete" | "reopen" | null;
+  resolution_note?: string | null;
+  resolved_at?: string | null;
+};
+
 export type BookingItem = {
   id: number;
   booking_reference: string;
@@ -109,6 +126,8 @@ export type BookingItem = {
   expired_at?: string | null;
   confirmed_at?: string | null;
   completed_at?: string | null;
+  completion?: BookingCompletion | null;
+  completion_history?: BookingCompletion[];
   booked_at?: string | null;
   reschedule_request?: BookingRescheduleRequest | null;
   reschedule_history?: BookingRescheduleRequest[];
@@ -119,6 +138,8 @@ export type BookingStats = {
   total: number;
   pending: number;
   confirmed: number;
+  completion_pending: number;
+  completion_disputed: number;
   completed: number;
   rejected: number;
   cancelled: number;
@@ -129,6 +150,10 @@ export type BookingStats = {
 export type BookingResponse = {
   bookings: BookingItem[];
   stats?: BookingStats;
+};
+
+export type AdminBookingDetailResponse = {
+  booking: BookingItem;
 };
 
 export const fetchCustomerBookings = async (): Promise<BookingResponse> => {
@@ -209,7 +234,52 @@ export const requestQuotationRevision = async ({
   return res.data;
 };
 
+export const submitVendorCompletion = async ({
+  bookingId,
+  note,
+  proof,
+}: {
+  bookingId: number;
+  note: string;
+  proof?: File | null;
+}) => {
+  const formData = new FormData();
+  formData.append("note", note);
+  if (proof) formData.append("proof", proof);
+
+  const res = await api.post(`/vendor/bookings/${bookingId}/completion`, formData);
+  return res.data;
+};
+
+export const confirmBookingCompletion = async (bookingId: number) => {
+  const res = await api.patch(`/bookings/${bookingId}/completion/confirm`);
+  return res.data;
+};
+
+export const disputeBookingCompletion = async ({ bookingId, reason }: { bookingId: number; reason: string }) => {
+  const res = await api.patch(`/bookings/${bookingId}/completion/dispute`, { reason });
+  return res.data;
+};
+
+export const resolveBookingCompletion = async ({
+  bookingId,
+  decision,
+  reason,
+}: {
+  bookingId: number;
+  decision: "complete" | "reopen";
+  reason: string;
+}) => {
+  const res = await api.patch(`/admin/bookings/${bookingId}/completion/resolve`, { decision, reason });
+  return res.data;
+};
+
 export const fetchAdminBookings = async (): Promise<BookingResponse> => {
   const res = await api.get<BookingResponse>("/admin/bookings");
+  return res.data;
+};
+
+export const fetchAdminBooking = async (bookingId: number): Promise<AdminBookingDetailResponse> => {
+  const res = await api.get<AdminBookingDetailResponse>(`/admin/bookings/${bookingId}`);
   return res.data;
 };

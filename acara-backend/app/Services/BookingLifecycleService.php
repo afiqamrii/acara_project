@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\BookingCompletion;
 use App\Models\Quotation;
 use Illuminate\Support\Facades\DB;
 
@@ -11,14 +12,109 @@ class BookingLifecycleService
     public function __construct(private readonly NotificationService $notifications) {}
 
     /**
-     * @return array{expired: int, reminded: int}
+     * @return array{expired: int, reminded: int, completions_auto_confirmed: int, completion_reminders: int}
      */
     public function process(): array
     {
         return [
             'expired' => $this->expireDueRequests(),
             'reminded' => $this->sendDueReminders(),
+            'completions_auto_confirmed' => $this->autoConfirmDueCompletions(),
+            'completion_reminders' => $this->sendCompletionReminders(),
         ];
+    }
+
+    public function autoConfirmDueCompletions(): int
+    {
+        $confirmed = 0;
+
+        BookingCompletion::query()
+            ->where('status', 'pending')
+            ->where('response_due_at', '<=', now())
+            ->orderBy('id')
+            ->pluck('id')
+            ->each(function (int $completionId) use (&$confirmed): void {
+                $didConfirm = DB::transaction(function () use ($completionId): bool {
+                    $completion = BookingCompletion::query()->lockForUpdate()->find($completionId);
+
+                    if (! $completion
+                        || $completion->status !== 'pending'
+                        || $completion->response_due_at->isFuture()) {
+                        return false;
+                    }
+
+                    $booking = Booking::query()->lockForUpdate()->find($completion->booking_id);
+                    if (! $booking
+                        || $booking->status !== 'confirmed'
+                        || $booking->completion_status !== 'completion_pending') {
+                        return false;
+                    }
+
+                    $completion->update([
+                        'status' => 'auto_confirmed',
+                        'confirmed_at' => now(),
+                    ]);
+                    $booking->update([
+                        'status' => 'completed',
+                        'completion_status' => null,
+                        'completed_at' => now(),
+                    ]);
+                    $this->notifications->completionAutoConfirmed($booking, $completion);
+
+                    return true;
+                });
+
+                if ($didConfirm) {
+                    $confirmed++;
+                }
+            });
+
+        return $confirmed;
+    }
+
+    public function sendCompletionReminders(): int
+    {
+        $reminded = 0;
+        $reminderHours = max(1, (int) config('acara.booking_completion.reminder_hours_before_expiry', 24));
+        $reminderThreshold = now()->addHours($reminderHours);
+
+        BookingCompletion::query()
+            ->where('status', 'pending')
+            ->whereNull('reminder_sent_at')
+            ->where('response_due_at', '>', now())
+            ->where('response_due_at', '<=', $reminderThreshold)
+            ->orderBy('id')
+            ->pluck('id')
+            ->each(function (int $completionId) use (&$reminded): void {
+                $didRemind = DB::transaction(function () use ($completionId): bool {
+                    $completion = BookingCompletion::query()->lockForUpdate()->find($completionId);
+
+                    if (! $completion
+                        || $completion->status !== 'pending'
+                        || $completion->reminder_sent_at
+                        || $completion->response_due_at->isPast()) {
+                        return false;
+                    }
+
+                    $booking = Booking::query()->lockForUpdate()->find($completion->booking_id);
+                    if (! $booking
+                        || $booking->status !== 'confirmed'
+                        || $booking->completion_status !== 'completion_pending') {
+                        return false;
+                    }
+
+                    $completion->update(['reminder_sent_at' => now()]);
+                    $this->notifications->completionReminder($booking, $completion);
+
+                    return true;
+                });
+
+                if ($didRemind) {
+                    $reminded++;
+                }
+            });
+
+        return $reminded;
     }
 
     public function expireDueRequests(): int

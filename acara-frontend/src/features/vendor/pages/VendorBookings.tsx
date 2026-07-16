@@ -7,6 +7,7 @@ import api from '../../../lib/Api';
 import { fetchUnreadNotificationCount } from '../../notifications/api';
 import BookingTimeline, { type BookingTimelineEvent } from '../../bookings/components/BookingTimeline';
 import BookingBriefDisplay from '../../bookings/components/BookingBriefDisplay';
+import BookingCompletionDisplay from '../../bookings/components/BookingCompletionDisplay';
 import QuotationDisplay from '../../bookings/components/QuotationDisplay';
 import QuotationForm from '../../bookings/components/QuotationForm';
 import {
@@ -18,6 +19,8 @@ import {
 } from '../../bookings/components/quotationFormState';
 import {
     sendVendorQuotation,
+    submitVendorCompletion,
+    type BookingCompletion,
     type BookingBrief,
     type BookingRescheduleRequest,
     type Quotation,
@@ -25,8 +28,8 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Customer = { id: number; name: string; email: string; phone: string | null };
-type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled' | 'expired';
-type DisplayStatus = 'pending' | 'confirmed' | 'completed' | 'rejected' | 'cancelled' | 'expired';
+type BookingStatus = 'pending' | 'confirmed' | 'completion_pending' | 'completion_disputed' | 'completed' | 'rejected' | 'cancelled' | 'expired';
+type DisplayStatus = BookingStatus;
 type DialogType = 'reject' | 'cancel' | 'complete' | 'reschedule_approve' | 'reschedule_reject';
 
 type VendorBooking = {
@@ -55,6 +58,8 @@ type VendorBooking = {
     expired_at: string | null;
     confirmed_at: string | null;
     completed_at: string | null;
+    completion: BookingCompletion | null;
+    completion_history: BookingCompletion[];
     reschedule_request: BookingRescheduleRequest | null;
     reschedule_history: BookingRescheduleRequest[];
     timeline: BookingTimelineEvent[];
@@ -66,7 +71,7 @@ type EnrichedBooking = VendorBooking & { displayStatus: DisplayStatus; daysDiff:
 
 type BookingsResponse = {
     bookings: VendorBooking[];
-    counts: { pending: number; confirmed: number; completed: number; rejected: number; cancelled: number; expired: number };
+    counts: { pending: number; confirmed: number; completion_pending: number; completion_disputed: number; completed: number; rejected: number; cancelled: number; expired: number };
 };
 
 type SortKey = 'newest' | 'oldest' | 'nearest' | 'price' | 'pending_first' | 'completed_first';
@@ -77,7 +82,6 @@ const fetchVendorBookings = async (): Promise<BookingsResponse> => {
     return res.data;
 };
 
-const completeBooking = (id: number) => api.patch(`/vendor/bookings/${id}/complete`);
 const rejectBooking   = ({ id, reason }: { id: number; reason: string }) => api.patch(`/vendor/bookings/${id}/reject`, { reason });
 const cancelBooking   = ({ id, reason }: { id: number; reason: string }) => api.patch(`/vendor/bookings/${id}/cancel`, { reason });
 const approveReschedule = (id: number) => api.patch(`/vendor/bookings/${id}/reschedule/approve`);
@@ -114,6 +118,8 @@ function getDisplayStatus(status: BookingStatus, expiresAt: string | null): Disp
     if (status === 'rejected') return 'rejected';
     if (status === 'cancelled') return 'cancelled';
     if (status === 'completed') return 'completed';
+    if (status === 'completion_pending') return 'completion_pending';
+    if (status === 'completion_disputed') return 'completion_disputed';
     if (status === 'pending') {
         if (expiresAt && new Date(expiresAt.replace(' ', 'T')).getTime() <= Date.now()) return 'expired';
         return 'pending';
@@ -130,6 +136,8 @@ function getCountdownLabel(displayStatus: DisplayStatus, daysDiff: number): stri
         if (daysDiff < 0) return daysDiff === -1 ? 'Yesterday' : `${Math.abs(daysDiff)} days ago`;
         return 'Completed';
     }
+    if (displayStatus === 'completion_pending') return 'Awaiting organizer';
+    if (displayStatus === 'completion_disputed') return 'Admin review';
     if (daysDiff === 0) return 'Today';
     if (daysDiff === 1) return 'Tomorrow';
     if (daysDiff < 0) return `${Math.abs(daysDiff)} day${daysDiff === -1 ? '' : 's'} overdue`;
@@ -139,7 +147,7 @@ function getCountdownLabel(displayStatus: DisplayStatus, daysDiff: number): stri
 type Priority = 'today' | 'tomorrow' | 'soon' | 'future' | 'neutral';
 
 function getPriority(displayStatus: DisplayStatus, daysDiff: number): Priority {
-    if (displayStatus === 'completed' || displayStatus === 'rejected' || displayStatus === 'cancelled' || displayStatus === 'expired') return 'neutral';
+    if (displayStatus === 'completed' || displayStatus === 'completion_pending' || displayStatus === 'completion_disputed' || displayStatus === 'rejected' || displayStatus === 'cancelled' || displayStatus === 'expired') return 'neutral';
     if (daysDiff <= 0) return 'today';
     if (daysDiff === 1) return 'tomorrow';
     if (daysDiff <= 7) return 'soon';
@@ -157,6 +165,8 @@ const PRIORITY_STYLES: Record<Priority, { chip: string; dot: string; border: str
 const STATUS_CONFIG: Record<DisplayStatus, { label: string; pill: string; dot: string; accent: string }> = {
     pending:   { label: 'Pending',   pill: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',      dot: 'bg-amber-400',   accent: 'from-amber-400 to-orange-400' },
     confirmed: { label: 'Confirmed', pill: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',         dot: 'bg-blue-400',    accent: 'from-blue-400 to-indigo-400' },
+    completion_pending: { label: 'Awaiting Organizer', pill: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200', dot: 'bg-amber-400', accent: 'from-amber-400 to-yellow-500' },
+    completion_disputed: { label: 'Admin Review', pill: 'bg-red-50 text-red-700 ring-1 ring-red-200', dot: 'bg-red-400', accent: 'from-red-400 to-rose-500' },
     completed: { label: 'Completed', pill: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200', dot: 'bg-emerald-400', accent: 'from-emerald-400 to-teal-400' },
     rejected:  { label: 'Rejected',  pill: 'bg-orange-50 text-orange-700 ring-1 ring-orange-200',   dot: 'bg-orange-400',  accent: 'from-orange-300 to-amber-400' },
     cancelled: { label: 'Cancelled', pill: 'bg-red-50 text-red-600 ring-1 ring-red-200',            dot: 'bg-red-400',     accent: 'from-red-300 to-rose-300' },
@@ -309,7 +319,7 @@ const DIALOG_COPY: Record<DialogType, {
 }> = {
     reject:   { iconBg: 'bg-orange-50',  title: 'Reject booking request?',      confirmLabel: 'Reject Request', loadingLabel: 'Rejecting...',       buttonClass: 'bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md shadow-orange-100' },
     cancel:   { iconBg: 'bg-red-50',     title: 'Cancel booking?',             confirmLabel: 'Yes, Cancel',   loadingLabel: 'Cancelling...',      buttonClass: 'bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-md shadow-red-100' },
-    complete: { iconBg: 'bg-blue-50',    title: 'Mark booking as completed?',  confirmLabel: 'Yes, Complete', loadingLabel: 'Marking complete...', buttonClass: 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md shadow-blue-100' },
+    complete: { iconBg: 'bg-blue-50',    title: 'Submit service completion?',  confirmLabel: 'Submit Completion', loadingLabel: 'Submitting...', buttonClass: 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md shadow-blue-100' },
     reschedule_approve: { iconBg: 'bg-indigo-50', title: 'Approve the new event date?', confirmLabel: 'Approve Date', loadingLabel: 'Approving date...', buttonClass: 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-md shadow-indigo-100' },
     reschedule_reject: { iconBg: 'bg-orange-50', title: 'Decline the date change?', confirmLabel: 'Decline Change', loadingLabel: 'Declining...', buttonClass: 'bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 shadow-md shadow-orange-100' },
 };
@@ -319,14 +329,15 @@ const ConfirmDialog = ({
 }: {
     type: DialogType;
     booking: VendorBooking;
-    onConfirm: (reason?: string) => void;
+    onConfirm: (reason?: string, proof?: File | null) => void;
     onClose: () => void;
     loading: boolean;
     error?: string;
 }) => {
     const copy = DIALOG_COPY[type];
     const [reason, setReason] = useState('');
-    const requiresReason = type === 'reject' || type === 'cancel' || type === 'reschedule_reject';
+    const [proof, setProof] = useState<File | null>(null);
+    const requiresReason = type === 'reject' || type === 'cancel' || type === 'complete' || type === 'reschedule_reject';
     const trimmedReason = reason.trim();
     const reasonIsValid = !requiresReason || trimmedReason.length >= 10;
     return (
@@ -381,27 +392,36 @@ const ConfirmDialog = ({
                         The booking will remain confirmed on its original date.
                     </p>
                 )}
+                {type === 'complete' && (
+                    <p className="text-xs leading-5 text-blue-700 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 mb-4">
+                        Add a delivery note and optional proof. The organizer will confirm completion or report an issue before this booking closes.
+                    </p>
+                )}
 
                 {requiresReason && (
                     <label className="block mb-4">
                         <span className="mb-1.5 flex items-center justify-between text-xs font-bold text-gray-700">
                             {type === 'reject'
                                 ? 'Rejection reason'
+                                : type === 'complete'
+                                    ? 'Completion note'
                                 : type === 'reschedule_reject'
                                     ? 'Reason for declining the date'
                                     : 'Cancellation reason'}
-                            <span className={`font-medium ${trimmedReason.length > 1000 ? 'text-red-500' : 'text-gray-400'}`}>
-                                {reason.length}/1000
+                            <span className={`font-medium ${trimmedReason.length > (type === 'complete' ? 2000 : 1000) ? 'text-red-500' : 'text-gray-400'}`}>
+                                {reason.length}/{type === 'complete' ? 2000 : 1000}
                             </span>
                         </span>
                         <textarea
                             value={reason}
                             onChange={event => setReason(event.target.value)}
-                            maxLength={1000}
+                            maxLength={type === 'complete' ? 2000 : 1000}
                             rows={4}
                             autoFocus
                             placeholder={type === 'reject'
                                 ? 'Explain why you cannot accept this request...'
+                                : type === 'complete'
+                                    ? 'Summarize the service delivered and any agreed files or handover completed...'
                                 : type === 'reschedule_reject'
                                     ? 'Explain why the requested date cannot be accepted...'
                                     : 'Explain why this confirmed booking must be cancelled...'}
@@ -413,9 +433,16 @@ const ConfirmDialog = ({
                     </label>
                 )}
                 {type === 'complete' && (
-                    <p className="text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 mb-4">
-                        This confirms the event has taken place and closes out the booking.
-                    </p>
+                    <label className="block mb-4">
+                        <span className="mb-1.5 block text-xs font-bold text-gray-700">Optional completion proof</span>
+                        <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp,.pdf"
+                            onChange={event => setProof(event.target.files?.[0] ?? null)}
+                            className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-indigo-700"
+                        />
+                        <p className="mt-1 text-[11px] text-gray-400">JPG, PNG, WebP or PDF up to 5 MB.</p>
+                    </label>
                 )}
 
                 {error && (
@@ -432,7 +459,7 @@ const ConfirmDialog = ({
                         Back
                     </button>
                     <button
-                        onClick={() => onConfirm(requiresReason ? trimmedReason : undefined)}
+                        onClick={() => onConfirm(requiresReason ? trimmedReason : undefined, proof)}
                         disabled={loading || !reasonIsValid}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60 ${copy.buttonClass}`}
                     >
@@ -668,6 +695,11 @@ const BookingCard = ({
 
                 <BookingBriefDisplay brief={booking.brief} compact />
                 <QuotationDisplay quotation={booking.quotation} compact />
+                {booking.completion && (
+                    <div className="mb-4">
+                        <BookingCompletionDisplay completion={booking.completion} compact />
+                    </div>
+                )}
 
                 {booking.displayStatus === 'pending' && booking.expires_at && (
                     <div className="mb-4 px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-xl">
@@ -746,7 +778,7 @@ const BookingCard = ({
                                 onClick={() => onComplete(booking)}
                                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md shadow-blue-100 transition-all"
                             >
-                                <CheckIcon /> Mark Completed
+                                <CheckIcon /> Submit Completion
                             </motion.button>
                         )}
                     </div>
@@ -760,6 +792,10 @@ const BookingCard = ({
                                 ? 'bg-slate-100 text-slate-600'
                             : booking.displayStatus === 'rejected'
                                 ? 'bg-orange-50 text-orange-600'
+                            : booking.displayStatus === 'completion_pending'
+                                ? 'bg-amber-50 text-amber-700'
+                            : booking.displayStatus === 'completion_disputed'
+                                ? 'bg-red-50 text-red-700'
                                 : 'bg-emerald-50 text-emerald-500'
                     }`}>
                         {(booking.displayStatus === 'cancelled' || booking.displayStatus === 'rejected' || booking.displayStatus === 'expired') ? (
@@ -773,6 +809,10 @@ const BookingCard = ({
                                 ? 'Request expired automatically'
                             : booking.displayStatus === 'rejected'
                                 ? 'Request rejected'
+                            : booking.displayStatus === 'completion_pending'
+                                ? 'Awaiting organizer confirmation'
+                            : booking.displayStatus === 'completion_disputed'
+                                ? 'Completion under admin review'
                                 : 'Service completed'}
                     </div>
                 )}
@@ -876,6 +916,15 @@ const BookingDrawer = ({
 
                     <BookingBriefDisplay brief={booking.brief} notes={booking.notes} />
                     <QuotationDisplay quotation={booking.quotation} />
+                    {booking.completion && <BookingCompletionDisplay completion={booking.completion} />}
+                    {(booking.completion_history?.length ?? 0) > 1 && (
+                        <details className="rounded-2xl border border-slate-200 bg-slate-50/40 px-4 py-3">
+                            <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-slate-600">Previous completion submissions ({booking.completion_history.length - 1})</summary>
+                            <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
+                                {booking.completion_history.slice(1).map(completion => <BookingCompletionDisplay key={completion.id} completion={completion} compact />)}
+                            </div>
+                        </details>
+                    )}
 
                     {(booking.quotation_history?.length ?? 0) > 1 && (
                         <details className="rounded-2xl border border-indigo-100 bg-indigo-50/40 px-4 py-3">
@@ -963,7 +1012,7 @@ const BookingDrawer = ({
                                     onClick={() => onComplete(booking)}
                                     className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md shadow-blue-100 transition-all"
                                 >
-                                    <CheckIcon /> Mark Completed
+                                    <CheckIcon /> Submit Completion
                                 </button>
                             )}
                         </div>
@@ -1004,6 +1053,8 @@ const SkeletonCard = () => (
 const EMPTY_MESSAGES: Record<string, string> = {
     pending: "You don't have any pending booking requests right now.",
     confirmed: "No confirmed bookings yet.",
+    completion_pending: "No completion submissions are waiting for organizers.",
+    completion_disputed: "No completion submissions are under admin review.",
     completed: "No completed bookings yet.",
     expired: "No booking requests have expired.",
     rejected: "No rejected booking requests.",
@@ -1090,7 +1141,7 @@ const VendorBookings = () => {
     });
 
     const completeMutation = useMutation({
-        mutationFn: (id: number) => completeBooking(id),
+        mutationFn: submitVendorCompletion,
         onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
     });
 
@@ -1104,9 +1155,9 @@ const VendorBookings = () => {
         onSuccess: () => { setDialog(null); setDrawerBooking(null); invalidate(); },
     });
 
-    const handleDialogConfirm = (reason?: string) => {
+    const handleDialogConfirm = (reason?: string, proof?: File | null) => {
         if (!dialog) return;
-        if (dialog.type === 'complete') completeMutation.mutate(dialog.booking.id);
+        if (dialog.type === 'complete') completeMutation.mutate({ bookingId: dialog.booking.id, note: reason ?? '', proof });
         else if (dialog.type === 'reject') rejectMutation.mutate({ id: dialog.booking.id, reason: reason ?? '' });
         else if (dialog.type === 'reschedule_approve') approveRescheduleMutation.mutate(dialog.booking.id);
         else if (dialog.type === 'reschedule_reject') rejectRescheduleMutation.mutate({ id: dialog.booking.id, reason: reason ?? '' });
@@ -1164,6 +1215,8 @@ const VendorBookings = () => {
         total: enriched.length,
         pending: enriched.filter(b => b.displayStatus === 'pending').length,
         confirmed: enriched.filter(b => b.displayStatus === 'confirmed').length,
+        completionPending: enriched.filter(b => b.displayStatus === 'completion_pending').length,
+        completionDisputed: enriched.filter(b => b.displayStatus === 'completion_disputed').length,
         completed: enriched.filter(b => b.displayStatus === 'completed').length,
         rejected: enriched.filter(b => b.displayStatus === 'rejected').length,
         cancelled: enriched.filter(b => b.displayStatus === 'cancelled').length,
@@ -1183,7 +1236,7 @@ const VendorBookings = () => {
         });
         return {
             bookings: monthBookings.filter(b => !['cancelled', 'rejected', 'expired'].includes(b.status)).length,
-            revenue: monthBookings.filter(b => b.status === 'confirmed' || b.status === 'completed').reduce((sum, b) => sum + b.price_value, 0),
+            revenue: monthBookings.filter(b => ['confirmed', 'completion_pending', 'completion_disputed', 'completed'].includes(b.status)).reduce((sum, b) => sum + b.price_value, 0),
             completed: monthBookings.filter(b => b.displayStatus === 'completed').length,
             pending: monthBookings.filter(b => b.status === 'pending').length,
         };
@@ -1269,6 +1322,8 @@ const VendorBookings = () => {
         { key: 'all',       label: 'All',       count: statCounts.total },
         { key: 'pending',   label: 'Pending',   count: statCounts.pending },
         { key: 'confirmed', label: 'Confirmed', count: statCounts.confirmed },
+        { key: 'completion_pending', label: 'Awaiting Organizer', count: statCounts.completionPending },
+        { key: 'completion_disputed', label: 'Admin Review', count: statCounts.completionDisputed },
         { key: 'completed', label: 'Completed', count: statCounts.completed },
         { key: 'expired',   label: 'Expired',   count: statCounts.expired },
         { key: 'rejected',  label: 'Rejected',  count: statCounts.rejected },
@@ -1350,11 +1405,13 @@ const VendorBookings = () => {
                         </div>
 
                         {/* Expanded quick stats strip */}
-                        <div className="relative z-10 mt-5 grid grid-cols-3 sm:grid-cols-7 gap-2">
+                        <div className="relative z-10 mt-5 grid grid-cols-3 lg:grid-cols-9 gap-2">
                             {[
                                 { label: 'Total',     value: statCounts.total,     color: 'text-white' },
                                 { label: 'Pending',   value: statCounts.pending,   color: 'text-amber-300' },
                                 { label: 'Confirmed', value: statCounts.confirmed, color: 'text-blue-300' },
+                                { label: 'Awaiting', value: statCounts.completionPending, color: 'text-yellow-300' },
+                                { label: 'Disputed', value: statCounts.completionDisputed, color: 'text-red-300' },
                                 { label: 'Completed', value: statCounts.completed, color: 'text-emerald-300' },
                                 { label: 'Expired',   value: statCounts.expired,   color: 'text-slate-300' },
                                 { label: 'Rejected',  value: statCounts.rejected,  color: 'text-orange-300' },

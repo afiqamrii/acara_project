@@ -123,22 +123,35 @@ class NotificationTest extends TestCase
         ]);
 
         Sanctum::actingAs($vendor);
-        $this->patchJson("/api/vendor/bookings/{$booking->id}/complete")
-            ->assertOk()
-            ->assertJsonPath('status', 'completed');
+        $this->postJson("/api/vendor/bookings/{$booking->id}/completion", [
+            'note' => 'The wedding photography coverage has been delivered as agreed.',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('status', 'completion_pending');
 
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $customer->id,
             'booking_id' => $booking->id,
-            'type' => 'booking_completed',
+            'type' => 'completion_submitted',
         ]);
-        $this->patchJson("/api/vendor/bookings/{$booking->id}/complete")
-            ->assertNotFound();
+        $this->postJson("/api/vendor/bookings/{$booking->id}/completion", [
+            'note' => 'A duplicate completion attempt must be rejected.',
+        ])->assertNotFound();
         $this->assertSame(1, UserNotification::where([
             'user_id' => $customer->id,
             'booking_id' => $booking->id,
-            'type' => 'booking_completed',
+            'type' => 'completion_submitted',
         ])->count());
+
+        Sanctum::actingAs($customer);
+        $this->patchJson("/api/bookings/{$booking->id}/completion/confirm")
+            ->assertOk()
+            ->assertJsonPath('status', 'completed');
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $vendor->id,
+            'booking_id' => $booking->id,
+            'type' => 'completion_confirmed',
+        ]);
     }
 
     public function test_organizer_cancellation_notifies_vendor(): void
