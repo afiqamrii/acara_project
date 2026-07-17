@@ -24,6 +24,10 @@ type LoginResponse = {
   profile_completed?: boolean;
 };
 
+type LoginErrorResponse = {
+  message?: string;
+};
+
 const Login: React.FC = () => {
   usePageTitle("Login");
   const [email, setEmail] = useState("");
@@ -43,6 +47,9 @@ const Login: React.FC = () => {
     if (params.get("verified") === "1") {
       setSuccessMsg("Verification successful! You can now log in.");
       window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (params.get("password_reset") === "1") {
+      setSuccessMsg("Password changed successfully. Sign in with your new password.");
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
@@ -61,7 +68,7 @@ const Login: React.FC = () => {
       const { resendVerificationEmail } = await import("../api");
       await resendVerificationEmail();
       setResendSuccess(true);
-    } catch (err) {
+    } catch {
       alert("Failed to resend email. Please try again later.");
     } finally {
       setResendLoading(false);
@@ -115,7 +122,7 @@ const Login: React.FC = () => {
           navigate("/dashboard");
       }
     } catch (error) {
-      const err = error as AxiosError<any>;
+      const err = error as AxiosError<LoginErrorResponse>;
 
       let message = "Something went wrong.";
 

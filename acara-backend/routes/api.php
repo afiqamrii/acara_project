@@ -28,6 +28,8 @@ use Illuminate\Support\Facades\Route;
 // ─── Public Routes ───────────────────────────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1');
 Route::get('/marketplace/services', [MarketplaceController::class, 'services']);
 Route::get('/marketplace/services/{id}', [MarketplaceController::class, 'show']);
 Route::get('/marketplace/services/{id}/availability', [AvailabilityController::class, 'publicAvailability']);

@@ -38,6 +38,8 @@ const AdminUserDetail = lazy(() => import('./features/admin_users/pages/AdminUse
 const AdminAuditLogs = lazy(() => import('./features/admin_audits/pages/AdminAuditLogs'));
 const AdminAuditDetail = lazy(() => import('./features/admin_audits/pages/AdminAuditDetail'));
 const AdminOperationsReport = lazy(() => import('./features/admin_reports/pages/AdminOperationsReport'));
+const ForgotPassword = lazy(() => import('./features/auth/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./features/auth/pages/ResetPassword'));
 
 
 function App() {
@@ -49,6 +51,8 @@ function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/register" element={<Register />} />
             <Route path="/complete-profile" element={<CompleteProfile />} />
             <Route path="/admin/register" element={<Register_admin />} />

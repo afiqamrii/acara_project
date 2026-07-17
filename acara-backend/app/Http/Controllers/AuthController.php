@@ -3,12 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\RegisterRequest;
+use App\Models\User;
+use App\Notifications\PasswordChangedEmail;
 use App\Services\AdminAuditService;
 use App\Services\AuthService;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password as PasswordBroker;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 
 class AuthController extends Controller
 {
@@ -109,6 +116,62 @@ class AuthController extends Controller
             Log::error('Registration failed: '.$e->getMessage());
             throw $e;
         }
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+        ]);
+
+        PasswordBroker::sendResetLink([
+            'email' => $validated['email'],
+        ]);
+
+        return response()->json([
+            'message' => 'If an account exists for this email, a password reset link has been sent.',
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'token' => ['required', 'string'],
+            'password' => [
+                'required',
+                'confirmed',
+                PasswordRule::min(8)->mixedCase()->numbers()->symbols(),
+            ],
+        ]);
+
+        $status = PasswordBroker::reset(
+            $validated,
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                $user->tokens()->delete();
+
+                event(new PasswordReset($user));
+                $user->notify(new PasswordChangedEmail);
+            },
+        );
+
+        if ($status !== PasswordBroker::PASSWORD_RESET) {
+            return response()->json([
+                'message' => 'This password reset link is invalid or has expired.',
+                'errors' => [
+                    'token' => ['Request a new password reset link and try again.'],
+                ],
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Password reset successfully. You can now sign in with your new password.',
+        ]);
     }
 
     public function resendVerification(Request $request)

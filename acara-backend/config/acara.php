@@ -8,6 +8,12 @@ return [
         'queue' => env('BOOKING_EMAIL_QUEUE', 'emails'),
     ],
 
+    'security_email' => [
+        'mailer' => env('SECURITY_EMAIL_MAILER', env('BOOKING_EMAIL_MAILER', 'resend')),
+        'queue_connection' => env('SECURITY_EMAIL_QUEUE_CONNECTION', env('BOOKING_EMAIL_QUEUE_CONNECTION', 'database')),
+        'queue' => env('SECURITY_EMAIL_QUEUE', env('BOOKING_EMAIL_QUEUE', 'emails')),
+    ],
+
     'booking_lifecycle' => [
         'response_hours' => env('BOOKING_REQUEST_EXPIRY_HOURS', 48),
         'reminder_hours_before_expiry' => env('BOOKING_REQUEST_REMINDER_HOURS', 12),

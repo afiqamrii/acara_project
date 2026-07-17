@@ -73,6 +73,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Send the password reset notification through ACARA's security mail queue.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\PasswordResetEmail($token));
+    }
+
+    /**
      * Get the prunable model query.
      */
     public function prunable()
