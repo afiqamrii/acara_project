@@ -178,6 +178,12 @@ class BookingCompletionTest extends TestCase
 
         $this->assertSame('confirmed', $booking->refresh()->status);
         $this->assertSame('resolved_reopened', BookingCompletion::firstOrFail()->status);
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'actor_id' => $admin->id,
+            'module' => 'bookings',
+            'action' => 'completion_resolved',
+            'subject_id' => $booking->id,
+        ]);
 
         Sanctum::actingAs($this->vendor);
         $this->postJson("/api/vendor/bookings/{$booking->id}/completion", [
@@ -196,6 +202,12 @@ class BookingCompletionTest extends TestCase
 
         $this->assertSame('completed', $booking->refresh()->status);
         $this->assertNotNull($booking->completed_at);
+        $this->assertSame(2, \App\Models\AdminAuditLog::where([
+            'actor_id' => $admin->id,
+            'module' => 'bookings',
+            'action' => 'completion_resolved',
+            'subject_id' => $booking->id,
+        ])->count());
     }
 
     public function test_lifecycle_reminds_organizer_then_auto_confirms_once(): void

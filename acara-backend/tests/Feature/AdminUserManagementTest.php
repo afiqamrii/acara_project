@@ -104,6 +104,12 @@ class AdminUserManagementTest extends TestCase
             'user_id' => $user->id,
             'type' => 'account_suspended',
         ]);
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'actor_id' => $admin->id,
+            'module' => 'users',
+            'action' => 'user_suspended',
+            'subject_id' => $user->id,
+        ]);
         $this->assertDatabaseCount('personal_access_tokens', 0);
 
         Sanctum::actingAs($user->fresh());
@@ -136,6 +142,12 @@ class AdminUserManagementTest extends TestCase
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $user->id,
             'type' => 'account_reactivated',
+        ]);
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'actor_id' => $admin->id,
+            'module' => 'users',
+            'action' => 'user_reactivated',
+            'subject_id' => $user->id,
         ]);
 
         Auth::forgetGuards();

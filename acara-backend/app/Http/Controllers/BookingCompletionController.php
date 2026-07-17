@@ -6,13 +6,17 @@ use App\Models\Booking;
 use App\Models\BookingCompletion;
 use App\Models\BookingRescheduleRequest;
 use App\Models\ServiceProfile;
+use App\Services\AdminAuditService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class BookingCompletionController extends Controller
 {
-    public function __construct(private readonly NotificationService $notifications) {}
+    public function __construct(
+        private readonly NotificationService $notifications,
+        private readonly AdminAuditService $audits,
+    ) {}
 
     /** POST /vendor/bookings/{id}/completion */
     public function store(Request $request, int $id)
@@ -242,6 +246,28 @@ class BookingCompletionController extends Controller
                 'completion_status' => null,
                 'completed_at' => $complete ? now() : null,
             ]);
+            $this->audits->record(
+                request: $request,
+                module: 'bookings',
+                action: 'completion_resolved',
+                description: $complete
+                    ? 'Resolved the completion dispute and marked the booking completed.'
+                    : 'Resolved the completion dispute and returned delivery to the vendor.',
+                subjectLabel: $booking->service_name_snapshot ?: 'Booking '.$booking->id,
+                subjectReference: 'ACR-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT),
+                subject: $booking,
+                before: [
+                    'booking_status' => 'confirmed',
+                    'completion_status' => 'disputed',
+                ],
+                after: [
+                    'booking_status' => $booking->status,
+                    'completion_status' => $completion->status,
+                    'resolution' => $validated['decision'],
+                ],
+                reason: trim($validated['reason']),
+                metadata: ['completion_id' => $completion->id],
+            );
             $this->notifications->completionResolved($booking, $completion);
 
             return ['booking' => $booking, 'completion' => $completion];

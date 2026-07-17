@@ -177,6 +177,12 @@ class VendorServiceManagementTest extends TestCase
             'user_id' => $this->vendor->id,
             'type' => 'service_rejected',
         ]);
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'actor_id' => $admin->id,
+            'module' => 'services',
+            'action' => 'service_rejected',
+            'subject_id' => $this->service->id,
+        ]);
 
         Sanctum::actingAs($this->vendor);
         $this->postJson("/api/vendor/services/{$this->service->id}/resubmit")
@@ -196,6 +202,12 @@ class VendorServiceManagementTest extends TestCase
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $this->vendor->id,
             'type' => 'service_approved',
+        ]);
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'actor_id' => $admin->id,
+            'module' => 'services',
+            'action' => 'service_approved',
+            'subject_id' => $this->service->id,
         ]);
     }
 

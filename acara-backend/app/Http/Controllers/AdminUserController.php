@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\UserModerationAction;
+use App\Services\AdminAuditService;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,10 @@ use Illuminate\Validation\Rule;
 
 class AdminUserController extends Controller
 {
-    public function __construct(private readonly NotificationService $notifications) {}
+    public function __construct(
+        private readonly NotificationService $notifications,
+        private readonly AdminAuditService $audits,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -189,6 +193,23 @@ class AdminUserController extends Controller
                 'reason' => $reason,
             ]);
             $target->tokens()->delete();
+            $this->audits->record(
+                request: $request,
+                module: 'users',
+                action: 'user_suspended',
+                description: "Suspended {$target->email} and revoked all active sessions.",
+                subjectLabel: $target->name ?: $target->email,
+                subjectReference: 'USR-'.str_pad((string) $target->id, 6, '0', STR_PAD_LEFT),
+                subject: $target,
+                before: ['status' => 'active'],
+                after: [
+                    'status' => 'suspended',
+                    'suspended_at' => $target->suspended_at?->toDateTimeString(),
+                    'sessions_revoked' => true,
+                ],
+                reason: $reason,
+                metadata: ['target_role' => $target->role],
+            );
 
             return $target;
         });
@@ -236,6 +257,19 @@ class AdminUserController extends Controller
                 'new_status' => 'active',
                 'reason' => $reason,
             ]);
+            $this->audits->record(
+                request: $request,
+                module: 'users',
+                action: 'user_reactivated',
+                description: "Reactivated {$target->email} and restored sign-in eligibility.",
+                subjectLabel: $target->name ?: $target->email,
+                subjectReference: 'USR-'.str_pad((string) $target->id, 6, '0', STR_PAD_LEFT),
+                subject: $target,
+                before: ['status' => 'suspended'],
+                after: ['status' => 'active'],
+                reason: $reason,
+                metadata: ['target_role' => $target->role],
+            );
 
             return $target;
         });

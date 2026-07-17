@@ -35,6 +35,8 @@ const ReviewsPage = lazy(() => import('./features/reviews/pages/ReviewsPage'));
 const NotificationSettings = lazy(() => import('./features/settings/pages/NotificationSettings'));
 const AdminUsers = lazy(() => import('./features/admin_users/pages/AdminUsers'));
 const AdminUserDetail = lazy(() => import('./features/admin_users/pages/AdminUserDetail'));
+const AdminAuditLogs = lazy(() => import('./features/admin_audits/pages/AdminAuditLogs'));
+const AdminAuditDetail = lazy(() => import('./features/admin_audits/pages/AdminAuditDetail'));
 
 
 function App() {
@@ -85,7 +87,8 @@ function App() {
               <Route path="/admin/conflicts" element={<ComingSoon title="Conflict Monitor" description="Monitor and resolve conflicts between organizers, vendors, and crew members on the platform." />} />
               <Route path="/admin/disputes" element={<ComingSoon title="Dispute Resolution" description="Review and mediate financial disputes between organizers and service providers." />} />
               <Route path="/admin/escrow/releases" element={<ComingSoon title="Escrow Releases" description="Approve, freeze, or release escrow funds tied to completed or disputed bookings." />} />
-              <Route path="/admin/audit-logs" element={<ComingSoon title="Audit Logs" description="View a complete history of all admin actions taken on the platform for compliance and accountability." />} />
+              <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
+              <Route path="/admin/audit-logs/:auditLogId" element={<AdminAuditDetail />} />
               <Route path="/admin/settings" element={<ComingSoon title="Admin Settings" description="Configure platform-wide settings, fee structures, and notification rules." />} />
             </Route>
 

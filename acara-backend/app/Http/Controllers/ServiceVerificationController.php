@@ -3,13 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\ServiceProfile;
+use App\Services\AdminAuditService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class ServiceVerificationController extends Controller
 {
-    public function __construct(private readonly NotificationService $notifications) {}
+    public function __construct(
+        private readonly NotificationService $notifications,
+        private readonly AdminAuditService $audits,
+    ) {}
 
     public function index()
     {
@@ -41,7 +45,7 @@ class ServiceVerificationController extends Controller
         return response()->json($services);
     }
 
-    public function approve(int $id)
+    public function approve(Request $request, int $id)
     {
         $service = ServiceProfile::findOrFail($id);
 
@@ -51,6 +55,10 @@ class ServiceVerificationController extends Controller
             ], 400);
         }
 
+        $before = [
+            'status' => $service->status,
+            'rejection_reason' => $service->rejection_reason,
+        ];
         $service->update([
             'status' => 'approved',
             'rejection_reason' => null,
@@ -59,6 +67,18 @@ class ServiceVerificationController extends Controller
 
         Cache::forget('marketplace:service:'.$service->id);
         $this->notifications->serviceApproved($service);
+        $this->audits->record(
+            request: $request,
+            module: 'services',
+            action: 'service_approved',
+            description: "Approved {$service->service_name} for marketplace publication.",
+            subjectLabel: $service->service_name,
+            subjectReference: 'SVC-'.str_pad((string) $service->id, 6, '0', STR_PAD_LEFT),
+            subject: $service,
+            before: $before,
+            after: ['status' => 'approved', 'is_active' => $service->is_active],
+            metadata: ['vendor_user_id' => $service->user_id],
+        );
 
         return response()->json([
             'message' => 'Service approved successfully',
@@ -79,14 +99,32 @@ class ServiceVerificationController extends Controller
             ], 400);
         }
 
+        $before = [
+            'status' => $service->status,
+            'rejection_reason' => $service->rejection_reason,
+        ];
+        $reason = trim($validated['reason']);
         $service->update([
             'status' => 'rejected',
-            'rejection_reason' => trim($validated['reason']),
+            'rejection_reason' => $reason,
             'rejected_at' => now(),
         ]);
 
         Cache::forget('marketplace:service:'.$service->id);
         $this->notifications->serviceRejected($service);
+        $this->audits->record(
+            request: $request,
+            module: 'services',
+            action: 'service_rejected',
+            description: "Rejected marketplace verification for {$service->service_name}.",
+            subjectLabel: $service->service_name,
+            subjectReference: 'SVC-'.str_pad((string) $service->id, 6, '0', STR_PAD_LEFT),
+            subject: $service,
+            before: $before,
+            after: ['status' => 'rejected', 'rejection_reason' => $reason],
+            reason: $reason,
+            metadata: ['vendor_user_id' => $service->user_id],
+        );
 
         return response()->json([
             'message' => 'Service rejected successfully',

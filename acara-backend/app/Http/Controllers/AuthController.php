@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\RegisterRequest;
+use App\Services\AdminAuditService;
 use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +14,7 @@ class AuthController extends Controller
 {
     protected $authService;
 
-    public function __construct(AuthService $authService)
+    public function __construct(AuthService $authService, private readonly AdminAuditService $audits)
     {
         $this->authService = $authService;
     }
@@ -162,6 +163,21 @@ class AuthController extends Controller
             );
 
             Log::info('Admin invited successfully by user: '.$request->user()->id);
+            $this->audits->record(
+                request: $request,
+                module: 'administration',
+                action: 'admin_invited',
+                description: "Invited {$user->email} to join ACARA as an administrator.",
+                subjectLabel: $user->email,
+                subjectReference: 'USR-'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT),
+                subject: $user,
+                after: [
+                    'role' => $user->role,
+                    'status' => $user->status,
+                    'profile_completed' => $user->profile_completed,
+                    'email_verified' => $user->hasVerifiedEmail(),
+                ],
+            );
 
             return response()->json([
                 'message' => 'Admin invited successfully',

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminAuditController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AvailabilityController;
@@ -127,6 +128,9 @@ Route::middleware(['auth:sanctum', 'account.active', 'role:admin,super_admin'])-
     Route::get('/admin/users/{user}', [AdminUserController::class, 'show']);
     Route::patch('/admin/users/{user}/suspend', [AdminUserController::class, 'suspend']);
     Route::patch('/admin/users/{user}/reactivate', [AdminUserController::class, 'reactivate']);
+
+    Route::get('/admin/audit-logs', [AdminAuditController::class, 'index']);
+    Route::get('/admin/audit-logs/{auditLog}', [AdminAuditController::class, 'show']);
 });
 
 // ─── Super Admin Routes ───────────────────────────────────────────────────────
