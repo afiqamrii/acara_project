@@ -22,6 +22,8 @@ export type UserNotification = {
     | "review_received"
     | "service_approved"
     | "service_rejected"
+    | "account_suspended"
+    | "account_reactivated"
     | string;
   title: string;
   message: string;

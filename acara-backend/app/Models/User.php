@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Prunable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -27,6 +30,10 @@ class User extends Authenticatable implements MustVerifyEmail
         'phone_number',
         'avatar_path',
         'status',
+        'last_login_at',
+        'suspended_at',
+        'suspension_reason',
+        'suspended_by',
         'profile_completed',
         'invited_by',
     ];
@@ -48,6 +55,8 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'last_login_at' => 'datetime',
+        'suspended_at' => 'datetime',
         'profile_completed' => 'boolean',
         'password' => 'hashed',
     ];
@@ -81,6 +90,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(ServiceProfile::class);
     }
 
+    public function serviceProfiles(): HasMany
+    {
+        return $this->hasMany(ServiceProfile::class);
+    }
+
     /**
      * Get the vendor profile associated with the user.
      */
@@ -94,6 +108,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Booking::class);
     }
 
+    public function receivedBookings(): HasManyThrough
+    {
+        return $this->hasManyThrough(Booking::class, ServiceProfile::class);
+    }
+
     public function bookingMessages()
     {
         return $this->hasMany(BookingMessage::class, 'sender_id');
@@ -102,5 +121,20 @@ class User extends Authenticatable implements MustVerifyEmail
     public function notificationPreference(): HasOne
     {
         return $this->hasOne(UserNotificationPreference::class);
+    }
+
+    public function moderationActions(): HasMany
+    {
+        return $this->hasMany(UserModerationAction::class, 'target_user_id')->latest();
+    }
+
+    public function moderationActionsPerformed(): HasMany
+    {
+        return $this->hasMany(UserModerationAction::class, 'admin_id');
+    }
+
+    public function suspendedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'suspended_by');
     }
 }

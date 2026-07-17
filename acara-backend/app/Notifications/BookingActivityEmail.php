@@ -48,6 +48,10 @@ class BookingActivityEmail extends Notification implements ShouldQueue
             );
         }
 
+        if ($this->activity->type === 'account_suspended') {
+            return $message->line('If you believe this decision needs review, please contact an ACARA administrator.');
+        }
+
         return $message->line('You can also view this update in your Acara notification centre.');
     }
 
@@ -77,6 +81,7 @@ class BookingActivityEmail extends Notification implements ShouldQueue
             'booking_message' => 'Open conversation',
             'review_received' => 'View review',
             'service_approved', 'service_rejected' => 'Manage service',
+            'account_reactivated' => 'Sign in to ACARA',
             default => 'View booking',
         };
     }

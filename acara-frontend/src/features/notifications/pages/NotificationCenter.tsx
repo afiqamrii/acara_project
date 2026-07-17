@@ -53,6 +53,10 @@ const notificationStyle = (type: string) => {
       return { icon: IconCircleCheck, className: "bg-emerald-100 text-emerald-700" };
     case "service_rejected":
       return { icon: IconAlertTriangle, className: "bg-orange-100 text-orange-700" };
+    case "account_suspended":
+      return { icon: IconAlertTriangle, className: "bg-red-100 text-red-700" };
+    case "account_reactivated":
+      return { icon: IconCircleCheck, className: "bg-emerald-100 text-emerald-700" };
     default:
       return { icon: IconBell, className: "bg-gray-100 text-gray-600" };
   }
@@ -62,6 +66,7 @@ const notificationActionLabel = (type: string) => {
   if (type === "booking_message") return "Open conversation";
   if (type === "review_received") return "View review";
   if (type === "service_approved" || type === "service_rejected") return "Manage service";
+  if (type === "account_reactivated") return "View account";
   return "View booking";
 };
 

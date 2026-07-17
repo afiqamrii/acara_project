@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\BookingCompletionController;
@@ -33,7 +34,7 @@ Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verify'])
     ->name('verification.verify');
 
 // ─── Authenticated Routes ─────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth:sanctum', 'account.active'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
@@ -60,7 +61,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 });
 
 // ─── Planning Booking Routes (organizers and vendors) ────────────────────────
-Route::middleware(['auth:sanctum', 'role:user,vendor'])->group(function () {
+Route::middleware(['auth:sanctum', 'account.active', 'role:user,vendor'])->group(function () {
     Route::get('/bookings/cart', [BookingController::class, 'cartIndex']);
     Route::post('/bookings/cart', [BookingController::class, 'addToCart']);
     Route::delete('/bookings/cart/{id}', [BookingController::class, 'removeFromCart']);
@@ -83,7 +84,7 @@ Route::middleware(['auth:sanctum', 'role:user,vendor'])->group(function () {
 });
 
 // ─── Vendor Routes (authenticated + completed profile) ────────────────────────
-Route::middleware(['auth:sanctum', 'profile.completed', 'role:vendor'])->group(function () {
+Route::middleware(['auth:sanctum', 'account.active', 'profile.completed', 'role:vendor'])->group(function () {
     Route::get('/vendor/dashboard', [VendorDashboardController::class, 'show']);
     Route::post('/service/register', [ServiceController::class, 'store']);
     Route::post('/vendor/register', [VendorController::class, 'store']);
@@ -109,7 +110,7 @@ Route::middleware(['auth:sanctum', 'profile.completed', 'role:vendor'])->group(f
 });
 
 // ─── Admin Routes (authenticated + admin role) ────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:admin,super_admin'])->group(function () {
+Route::middleware(['auth:sanctum', 'account.active', 'role:admin,super_admin'])->group(function () {
     Route::get('/admin/services', [ServiceVerificationController::class, 'index']);
     Route::patch('/admin/services/{id}/approve', [ServiceVerificationController::class, 'approve']);
     Route::patch('/admin/services/{id}/reject', [ServiceVerificationController::class, 'reject']);
@@ -121,9 +122,14 @@ Route::middleware(['auth:sanctum', 'role:admin,super_admin'])->group(function ()
     Route::get('/admin/bookings', [BookingController::class, 'adminBookings']);
     Route::get('/admin/bookings/{id}', [BookingController::class, 'adminBooking']);
     Route::patch('/admin/bookings/{id}/completion/resolve', [BookingCompletionController::class, 'resolve']);
+
+    Route::get('/admin/users', [AdminUserController::class, 'index']);
+    Route::get('/admin/users/{user}', [AdminUserController::class, 'show']);
+    Route::patch('/admin/users/{user}/suspend', [AdminUserController::class, 'suspend']);
+    Route::patch('/admin/users/{user}/reactivate', [AdminUserController::class, 'reactivate']);
 });
 
 // ─── Super Admin Routes ───────────────────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
+Route::middleware(['auth:sanctum', 'account.active', 'role:super_admin'])->group(function () {
     Route::post('/admin/invite', [AuthController::class, 'inviteAdmin']);
 });

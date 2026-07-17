@@ -115,7 +115,8 @@ export function AdminSidebar() {
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
         {navItems.map(({ label, href, icon: Icon }) => {
-          const isActive = location.pathname === href;
+          const isActive = location.pathname === href
+            || (href !== "/admin/dashboard" && location.pathname.startsWith(`${href}/`));
 
           return (
             <button

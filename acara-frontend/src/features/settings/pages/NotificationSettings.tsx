@@ -237,7 +237,7 @@ const NotificationSettings = () => {
                 />
               </div>
               <div className="border-t border-purple-100 bg-purple-50/60 px-5 py-3 text-xs leading-5 text-purple-800 sm:px-6">
-                Email is an additional alert channel. Booking history, decisions and audit records are never removed from ACARA when email is paused.
+                Email is an additional alert channel. Booking history, decisions and audit records are never removed when email is paused. Critical account status notices are always emailed for security.
               </div>
             </section>
 

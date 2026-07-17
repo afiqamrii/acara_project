@@ -33,6 +33,8 @@ const AdminBookingDetail = lazy(() => import('./features/bookings/pages/AdminBoo
 const NotificationCenter = lazy(() => import('./features/notifications/pages/NotificationCenter'));
 const ReviewsPage = lazy(() => import('./features/reviews/pages/ReviewsPage'));
 const NotificationSettings = lazy(() => import('./features/settings/pages/NotificationSettings'));
+const AdminUsers = lazy(() => import('./features/admin_users/pages/AdminUsers'));
+const AdminUserDetail = lazy(() => import('./features/admin_users/pages/AdminUserDetail'));
 
 
 function App() {
@@ -78,7 +80,8 @@ function App() {
               <Route path="/admin/bookings" element={<AdminBookings />} />
               <Route path="/admin/bookings/:bookingId" element={<AdminBookingDetail />} />
               <Route path="/admin/verifications/crew" element={<ComingSoon title="Crew Verification Queue" description="Review and process IC verification documents submitted by event crew members." />} />
-              <Route path="/admin/users" element={<ComingSoon title="User Management" description="View, manage, and moderate all registered users, organizers, vendors, and crew members." />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/users/:userId" element={<AdminUserDetail />} />
               <Route path="/admin/conflicts" element={<ComingSoon title="Conflict Monitor" description="Monitor and resolve conflicts between organizers, vendors, and crew members on the platform." />} />
               <Route path="/admin/disputes" element={<ComingSoon title="Dispute Resolution" description="Review and mediate financial disputes between organizers and service providers." />} />
               <Route path="/admin/escrow/releases" element={<ComingSoon title="Escrow Releases" description="Approve, freeze, or release escrow funds tied to completed or disputed bookings." />} />

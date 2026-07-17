@@ -513,6 +513,32 @@ class NotificationService
         );
     }
 
+    public function accountSuspended(User $user, User $admin, string $reason): UserNotification
+    {
+        return $this->createAccountActivity(
+            user: $user,
+            type: 'account_suspended',
+            title: 'Account suspended',
+            message: "Your ACARA account was suspended by an administrator. Reason: {$reason}",
+            actionUrl: null,
+            admin: $admin,
+            reason: $reason,
+        );
+    }
+
+    public function accountReactivated(User $user, User $admin, string $reason): UserNotification
+    {
+        return $this->createAccountActivity(
+            user: $user,
+            type: 'account_reactivated',
+            title: 'Account reactivated',
+            message: "Your ACARA account was reactivated. Administrator note: {$reason}",
+            actionUrl: '/login',
+            admin: $admin,
+            reason: $reason,
+        );
+    }
+
     private function create(
         int $userId,
         Booking $booking,
@@ -575,6 +601,34 @@ class NotificationService
         return $notification;
     }
 
+    private function createAccountActivity(
+        User $user,
+        string $type,
+        string $title,
+        string $message,
+        ?string $actionUrl,
+        User $admin,
+        string $reason,
+    ): UserNotification {
+        $notification = UserNotification::create([
+            'user_id' => $user->id,
+            'type' => $type,
+            'title' => $title,
+            'message' => $message,
+            'action_url' => $actionUrl,
+            'data' => [
+                'admin_id' => $admin->id,
+                'admin_name' => $admin->name,
+                'reason' => $reason,
+                'account_status' => $user->status,
+            ],
+        ]);
+
+        $this->sendEmailIfEnabled($notification);
+
+        return $notification;
+    }
+
     private function sendEmailIfEnabled(UserNotification $notification): void
     {
         if (! config('acara.booking_email.enabled')) {
@@ -586,7 +640,9 @@ class NotificationService
         $preferences = $notification->user->notificationPreference
             ?? new UserNotificationPreference(UserNotificationPreference::DEFAULTS);
 
-        if (! $preferences->allowsEmailFor($notification->type)) {
+        $isMandatoryAccountNotice = in_array($notification->type, ['account_suspended', 'account_reactivated'], true);
+
+        if (! $isMandatoryAccountNotice && ! $preferences->allowsEmailFor($notification->type)) {
             return;
         }
 
