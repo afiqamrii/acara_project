@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\VendorProfile;
+use App\Services\AdminAuditService;
+use Illuminate\Http\Request;
 
 class VendorVerificationController extends Controller
 {
+    public function __construct(private readonly AdminAuditService $audits) {}
+
     public function index()
     {
         $vendors = VendorProfile::with('user')
@@ -22,7 +25,7 @@ class VendorVerificationController extends Controller
                     'status' => $vendor->status,
                     'submitted_at' => $vendor->created_at->format('Y-m-d h:i A'),
                     'ssm_document_url' => $vendor->ssm_document_path
-                        ? asset('storage/' . $vendor->ssm_document_path)
+                        ? asset('storage/'.$vendor->ssm_document_path)
                         : null,
                 ];
             });
@@ -30,36 +33,72 @@ class VendorVerificationController extends Controller
         return response()->json($vendors);
     }
 
-    public function approve($id)
+    public function approve(Request $request, $id)
     {
+        $validated = $request->validate([
+            'admin_note' => ['nullable', 'string', 'max:1000'],
+        ]);
         $vendor = VendorProfile::findOrFail($id);
 
-        if (!in_array($vendor->status, ['pending_verification', 'pending_completion'], true)) {
+        if (! in_array($vendor->status, ['pending_verification', 'pending_completion'], true)) {
             return response()->json([
                 'message' => 'Vendor already processed',
             ], 400);
         }
 
+        $previousStatus = $vendor->status;
         $vendor->status = 'approved';
         $vendor->save();
+        $note = trim($validated['admin_note'] ?? '') ?: null;
+        $this->audits->record(
+            request: $request,
+            module: 'vendors',
+            action: 'vendor_approved',
+            description: "Approved vendor verification for {$vendor->business_name}.",
+            subjectLabel: $vendor->business_name,
+            subjectReference: 'VEN-'.str_pad((string) $vendor->id, 6, '0', STR_PAD_LEFT),
+            subject: $vendor,
+            before: ['status' => $previousStatus],
+            after: ['status' => 'approved'],
+            reason: $note,
+            metadata: ['vendor_user_id' => $vendor->user_id],
+        );
 
         return response()->json([
             'message' => 'Vendor approved successfully',
         ]);
     }
 
-    public function reject($id)
+    public function reject(Request $request, $id)
     {
+        $validated = $request->validate([
+            'admin_note' => ['nullable', 'string', 'max:1000'],
+        ]);
         $vendor = VendorProfile::findOrFail($id);
 
-        if (!in_array($vendor->status, ['pending_verification', 'pending_completion'], true)) {
+        if (! in_array($vendor->status, ['pending_verification', 'pending_completion'], true)) {
             return response()->json([
                 'message' => 'Vendor already processed',
             ], 400);
         }
 
+        $previousStatus = $vendor->status;
         $vendor->status = 'rejected';
         $vendor->save();
+        $note = trim($validated['admin_note'] ?? '') ?: null;
+        $this->audits->record(
+            request: $request,
+            module: 'vendors',
+            action: 'vendor_rejected',
+            description: "Rejected vendor verification for {$vendor->business_name}.",
+            subjectLabel: $vendor->business_name,
+            subjectReference: 'VEN-'.str_pad((string) $vendor->id, 6, '0', STR_PAD_LEFT),
+            subject: $vendor,
+            before: ['status' => $previousStatus],
+            after: ['status' => 'rejected'],
+            reason: $note,
+            metadata: ['vendor_user_id' => $vendor->user_id],
+        );
 
         return response()->json([
             'message' => 'Vendor rejected successfully',

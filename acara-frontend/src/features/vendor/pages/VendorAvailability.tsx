@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../lib/Api';
 import Loader from '../../../components/common/Loader';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import type { AxiosError } from 'axios';
 
 type VendorService = {
     id: number;
@@ -315,18 +317,10 @@ const CalendarPanel: React.FC<{ service: VendorService }> = ({ service }) => {
         selectedDates.size !== originalDates.size ||
         [...selectedDates].some(d => !originalDates.has(d));
 
-    // Reset and re-initialise when switching services
-    useEffect(() => {
-        initializedRef.current = false;
-        setSelectedDates(new Set());
-        setSaveSuccess(false);
-        setUnlockTarget(null);
-        setViewYear(today.getFullYear());
-        setViewMonth(today.getMonth());
-    }, [service.id]);
-
     useEffect(() => {
         if (data && !initializedRef.current) {
+            // The query result is the initial editable calendar state for this keyed service panel.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setSelectedDates(new Set(data.dates));
             initializedRef.current = true;
         }
@@ -674,6 +668,9 @@ const CalendarPanel: React.FC<{ service: VendorService }> = ({ service }) => {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 const VendorAvailability: React.FC = () => {
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const requestedServiceId = Number(searchParams.get('service')) || null;
     const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
 
     const { data, isPending, isError, error } = useQuery({
@@ -682,15 +679,11 @@ const VendorAvailability: React.FC = () => {
         staleTime: 1000 * 60 * 10,
     });
 
-    // Auto-select first service once loaded
-    useEffect(() => {
-        if (data?.services?.length && selectedServiceId === null) {
-            setSelectedServiceId(data.services[0].id);
-        }
-    }, [data, selectedServiceId]);
-
-    const isNoService = isError && (error as any)?.response?.status === 404;
-    const selectedService = data?.services.find(s => s.id === selectedServiceId) ?? null;
+    const isNoService = isError && (error as AxiosError)?.response?.status === 404;
+    const selectedService = data?.services.find(service => service.id === selectedServiceId)
+        ?? data?.services.find(service => service.id === requestedServiceId)
+        ?? data?.services[0]
+        ?? null;
 
     if (isPending) {
         return <Loader title="ACARA" message="Loading your services..." />;
@@ -724,6 +717,29 @@ const VendorAvailability: React.FC = () => {
         );
     }
 
+    if (!data?.services.length) {
+        return (
+            <main className="flex flex-1 items-center justify-center bg-[#f8f7ff] p-6">
+                <div className="max-w-md rounded-2xl border border-gray-100 bg-white p-10 text-center shadow-sm">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-50 text-purple-600">
+                        <IconCheck />
+                    </div>
+                    <p className="mt-4 text-lg font-bold text-gray-800">No services registered</p>
+                    <p className="mt-2 text-sm leading-6 text-gray-500">
+                        Register a service before adding dates to your availability calendar.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/service/register')}
+                        className="mt-5 rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-purple-700"
+                    >
+                        Add service
+                    </button>
+                </div>
+            </main>
+        );
+    }
+
     return (
         <main className="flex-1 overflow-y-auto bg-[#f8f7ff] p-4 sm:p-6">
             <div className="max-w-5xl mx-auto">
@@ -742,7 +758,7 @@ const VendorAvailability: React.FC = () => {
                     </label>
                     <div className="relative">
                         <select
-                            value={selectedServiceId ?? ''}
+                            value={selectedService?.id ?? ''}
                             onChange={e => setSelectedServiceId(Number(e.target.value))}
                             className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3.5 pr-10 text-sm font-semibold text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-colors cursor-pointer"
                         >

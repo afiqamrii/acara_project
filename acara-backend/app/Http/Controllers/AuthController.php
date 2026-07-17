@@ -2,19 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RegisterRequest;
+use App\Models\User;
+use App\Notifications\PasswordChangedEmail;
+use App\Services\AdminAuditService;
+use App\Services\AuthService;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Services\AuthService;
-use App\Http\Requests\RegisterRequest;
-
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password as PasswordBroker;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 
 class AuthController extends Controller
 {
     protected $authService;
 
-    public function __construct(AuthService $authService)
+    public function __construct(AuthService $authService, private readonly AdminAuditService $audits)
     {
         $this->authService = $authService;
     }
@@ -23,26 +30,32 @@ class AuthController extends Controller
     {
         $credentials = $request->validate([
             'email' => 'required|email',
-            'password' => 'required'
+            'password' => 'required',
         ]);
 
-        if (!Auth::attempt($credentials)) {
-            Log::warning('Login failed for email: ' . $request->email);
+        if (! Auth::attempt($credentials)) {
+            Log::warning('Login failed for email: '.$request->email);
+
             return response()->json(['message' => 'Email or password is incorrect.'], 401);
         }
 
-        /** @var \App\Models\User $user */  // ← Add this line
+        /** @var \App\Models\User $user */ // ← Add this line
         $user = Auth::user();
 
         if ($user->status !== 'active') {
             Auth::logout();
-            Log::info('Login attempt for inactive account: ' . $user->email);
-            return response()->json(['message' => 'Account not active'], 403);
+            Log::info('Login attempt for inactive account: '.$user->email);
+
+            return response()->json([
+                'message' => 'This account is suspended. Please contact an ACARA administrator if you need assistance.',
+                'code' => 'ACCOUNT_SUSPENDED',
+            ], 403);
         }
 
+        $user->forceFill(['last_login_at' => now()])->save();
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        Log::info('User logged in successfully: ' . $user->email);
+        Log::info('User logged in successfully: '.$user->email);
 
         return response()->json([
             'message' => 'Login successful',
@@ -65,7 +78,7 @@ class AuthController extends Controller
             if ($existingUser->hasVerifiedEmail()) {
                 return response()->json([
                     'message' => 'The email has already been taken.',
-                    'errors' => ['email' => ['The email has already been taken.']]
+                    'errors' => ['email' => ['The email has already been taken.']],
                 ], 422);
             }
 
@@ -82,13 +95,13 @@ class AuthController extends Controller
         DB::beginTransaction();
 
         try {
-            Log::info('Registration attempt for email: ' . $request->email);
+            Log::info('Registration attempt for email: '.$request->email);
 
             $user = $this->authService->registerUser($request->validated());
 
             $token = $user->createToken('auth_token')->plainTextToken;
 
-            Log::info('User registered successfully: ' . $user->id);
+            Log::info('User registered successfully: '.$user->id);
 
             DB::commit();
 
@@ -96,13 +109,69 @@ class AuthController extends Controller
                 'message' => 'User registered successfully',
                 'token' => $token,
                 'role' => $user->role,
-                'user' => $user
+                'user' => $user,
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Registration failed: ' . $e->getMessage());
+            Log::error('Registration failed: '.$e->getMessage());
             throw $e;
         }
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+        ]);
+
+        PasswordBroker::sendResetLink([
+            'email' => $validated['email'],
+        ]);
+
+        return response()->json([
+            'message' => 'If an account exists for this email, a password reset link has been sent.',
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'token' => ['required', 'string'],
+            'password' => [
+                'required',
+                'confirmed',
+                PasswordRule::min(8)->mixedCase()->numbers()->symbols(),
+            ],
+        ]);
+
+        $status = PasswordBroker::reset(
+            $validated,
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                $user->tokens()->delete();
+
+                event(new PasswordReset($user));
+                $user->notify(new PasswordChangedEmail);
+            },
+        );
+
+        if ($status !== PasswordBroker::PASSWORD_RESET) {
+            return response()->json([
+                'message' => 'This password reset link is invalid or has expired.',
+                'errors' => [
+                    'token' => ['Request a new password reset link and try again.'],
+                ],
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Password reset successfully. You can now sign in with your new password.',
+        ]);
     }
 
     public function resendVerification(Request $request)
@@ -131,13 +200,13 @@ class AuthController extends Controller
     {
         $user = \App\Models\User::find($request->route('id'));
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Invalid user'], 400);
         }
 
         if ($user->hasVerifiedEmail()) {
             // Redirect to frontend login with a message
-            return redirect(env('FRONTEND_URL', 'http://localhost:5173') . '/login?verified=1');
+            return redirect(env('FRONTEND_URL', 'http://localhost:5173').'/login?verified=1');
         }
 
         if ($user->markEmailAsVerified()) {
@@ -145,7 +214,7 @@ class AuthController extends Controller
         }
 
         // Redirect to frontend login with success
-        return redirect(env('FRONTEND_URL', 'http://localhost:5173') . '/login?verified=1');
+        return redirect(env('FRONTEND_URL', 'http://localhost:5173').'/login?verified=1');
     }
 
     public function inviteAdmin(\App\Http\Requests\AdminInviteRequest $request)
@@ -156,7 +225,22 @@ class AuthController extends Controller
                 $request->user()->id
             );
 
-            Log::info('Admin invited successfully by user: ' . $request->user()->id);
+            Log::info('Admin invited successfully by user: '.$request->user()->id);
+            $this->audits->record(
+                request: $request,
+                module: 'administration',
+                action: 'admin_invited',
+                description: "Invited {$user->email} to join ACARA as an administrator.",
+                subjectLabel: $user->email,
+                subjectReference: 'USR-'.str_pad((string) $user->id, 6, '0', STR_PAD_LEFT),
+                subject: $user,
+                after: [
+                    'role' => $user->role,
+                    'status' => $user->status,
+                    'profile_completed' => $user->profile_completed,
+                    'email_verified' => $user->hasVerifiedEmail(),
+                ],
+            );
 
             return response()->json([
                 'message' => 'Admin invited successfully',
@@ -164,10 +248,11 @@ class AuthController extends Controller
                 'default_password' => env('DEFAULT_ADMIN_PASSWORD', 'Admin@123'),
             ], 201);
         } catch (\Exception $e) {
-            Log::error('Admin invitation failed: ' . $e->getMessage());
+            Log::error('Admin invitation failed: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'Failed to invite admin',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -180,17 +265,18 @@ class AuthController extends Controller
                 $request->validated()
             );
 
-            Log::info('Profile completed for user: ' . $user->id);
+            Log::info('Profile completed for user: '.$user->id);
 
             return response()->json([
                 'message' => 'Profile completed successfully',
                 'user' => $user,
             ], 200);
         } catch (\Exception $e) {
-            Log::error('Profile completion failed: ' . $e->getMessage());
+            Log::error('Profile completion failed: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'Failed to complete profile',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

@@ -23,11 +23,24 @@ import AdminLayout from './components/layouts/AdminLayout';
 const ServiceDetail = lazy(() => import('./features/marketplace/pages/ServiceDetail'));
 const VendorAvailability = lazy(() => import('./features/vendor/pages/VendorAvailability'));
 const VendorBookings = lazy(() => import('./features/vendor/pages/VendorBookings'));
+const VendorServices = lazy(() => import('./features/vendor/pages/VendorServices'));
 const ServiceVerificationQueue = lazy(() => import('./features/dashboard/pages/ServiceVerificationQueue'));
 const UserProfile = lazy(() => import('./features/profile/pages/UserProfile'));
 const VendorDashboard = lazy(() => import('./features/dashboard/pages/VendorDashboard'));
 const CustomerBookings = lazy(() => import('./features/bookings/pages/CustomerBookings'));
 const AdminBookings = lazy(() => import('./features/bookings/pages/AdminBookings'));
+const AdminBookingDetail = lazy(() => import('./features/bookings/pages/AdminBookingDetail'));
+const NotificationCenter = lazy(() => import('./features/notifications/pages/NotificationCenter'));
+const ReviewsPage = lazy(() => import('./features/reviews/pages/ReviewsPage'));
+const NotificationSettings = lazy(() => import('./features/settings/pages/NotificationSettings'));
+const AdminUsers = lazy(() => import('./features/admin_users/pages/AdminUsers'));
+const AdminUserDetail = lazy(() => import('./features/admin_users/pages/AdminUserDetail'));
+const AdminAuditLogs = lazy(() => import('./features/admin_audits/pages/AdminAuditLogs'));
+const AdminAuditDetail = lazy(() => import('./features/admin_audits/pages/AdminAuditDetail'));
+const AdminOperationsReport = lazy(() => import('./features/admin_reports/pages/AdminOperationsReport'));
+const ForgotPassword = lazy(() => import('./features/auth/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./features/auth/pages/ResetPassword'));
+const AdminSettings = lazy(() => import('./features/admin_settings/pages/AdminSettings'));
 
 
 function App() {
@@ -39,6 +52,8 @@ function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/register" element={<Register />} />
             <Route path="/complete-profile" element={<CompleteProfile />} />
             <Route path="/admin/register" element={<Register_admin />} />
@@ -53,13 +68,16 @@ function App() {
               <Route path="/vendor/register" element={<ProtectedRoute requiredRole={["vendor"]}><VendorRegister /></ProtectedRoute>} />
               <Route path="/vendor/availability" element={<ProtectedRoute requiredRole={["vendor"]}><VendorAvailability /></ProtectedRoute>} />
               <Route path="/vendor/bookings" element={<ProtectedRoute requiredRole={["vendor"]}><VendorBookings /></ProtectedRoute>} />
+              <Route path="/vendor/bookings/:bookingId" element={<ProtectedRoute requiredRole={["vendor"]}><VendorBookings /></ProtectedRoute>} />
+              <Route path="/vendor/services" element={<ProtectedRoute requiredRole={["vendor"]}><VendorServices /></ProtectedRoute>} />
               <Route path="/service/register" element={<ProtectedRoute requiredRole={["vendor"]}><ServiceRegister /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute requiredRole={["user", "vendor"]}><ComingSoon title="My Events" description="Manage all your upcoming and past events in one place. Create, edit, and track event status seamlessly." /></ProtectedRoute>} />
               <Route path="/bookings" element={<ProtectedRoute requiredRole={["user", "vendor"]}><CustomerBookings /></ProtectedRoute>} />
-              <Route path="/reviews" element={<ComingSoon title="Reviews" description="Write and read reviews for vendors. Help the community by sharing your experience." />} />
-              <Route path="/notifications" element={<ComingSoon title="Notifications" description="Stay on top of updates - booking confirmations, vendor replies, and platform announcements." />} />
+              <Route path="/bookings/:bookingId" element={<ProtectedRoute requiredRole={["user", "vendor"]}><CustomerBookings /></ProtectedRoute>} />
+              <Route path="/reviews" element={<ProtectedRoute requiredRole={["user", "vendor"]}><ReviewsPage /></ProtectedRoute>} />
+              <Route path="/notifications" element={<NotificationCenter />} />
               <Route path="/profile" element={<UserProfile />} />
-              <Route path="/settings" element={<ComingSoon title="Settings" description="Manage your account settings, notification preferences, and security options." />} />
+              <Route path="/settings" element={<NotificationSettings />} />
               <Route path="/crew/jobs" element={<ProtectedRoute requiredRole={["crew"]}><ComingSoon title="Crew Job Board" description="Browse available event crew positions, submit applications, and manage your active assignments." /></ProtectedRoute>} />
             </Route>
 
@@ -68,13 +86,17 @@ function App() {
               <Route path="/admin/verifications/services" element={<ServiceVerificationQueue />} />
               <Route path="/admin/verifications/vendors" element={<VendorVerificationQueue />} />
               <Route path="/admin/bookings" element={<AdminBookings />} />
+              <Route path="/admin/bookings/:bookingId" element={<AdminBookingDetail />} />
               <Route path="/admin/verifications/crew" element={<ComingSoon title="Crew Verification Queue" description="Review and process IC verification documents submitted by event crew members." />} />
-              <Route path="/admin/users" element={<ComingSoon title="User Management" description="View, manage, and moderate all registered users, organizers, vendors, and crew members." />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/users/:userId" element={<AdminUserDetail />} />
               <Route path="/admin/conflicts" element={<ComingSoon title="Conflict Monitor" description="Monitor and resolve conflicts between organizers, vendors, and crew members on the platform." />} />
               <Route path="/admin/disputes" element={<ComingSoon title="Dispute Resolution" description="Review and mediate financial disputes between organizers and service providers." />} />
               <Route path="/admin/escrow/releases" element={<ComingSoon title="Escrow Releases" description="Approve, freeze, or release escrow funds tied to completed or disputed bookings." />} />
-              <Route path="/admin/audit-logs" element={<ComingSoon title="Audit Logs" description="View a complete history of all admin actions taken on the platform for compliance and accountability." />} />
-              <Route path="/admin/settings" element={<ComingSoon title="Admin Settings" description="Configure platform-wide settings, fee structures, and notification rules." />} />
+              <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
+              <Route path="/admin/audit-logs/:auditLogId" element={<AdminAuditDetail />} />
+              <Route path="/admin/reports" element={<AdminOperationsReport />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
 
             <Route path="/admin/panel" element={<Navigate to="/admin/dashboard" replace />} />

@@ -6,7 +6,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import IconBell from "@tabler/icons-react/dist/esm/icons/IconBell.mjs";
 import IconBriefcase from "@tabler/icons-react/dist/esm/icons/IconBriefcase.mjs";
-import IconCalendarEvent from "@tabler/icons-react/dist/esm/icons/IconCalendarEvent.mjs";
 import IconChevronLeft from "@tabler/icons-react/dist/esm/icons/IconChevronLeft.mjs";
 import IconChevronRight from "@tabler/icons-react/dist/esm/icons/IconChevronRight.mjs";
 import IconCirclePlus from "@tabler/icons-react/dist/esm/icons/IconCirclePlus.mjs";
@@ -22,10 +21,11 @@ import IconUser from "@tabler/icons-react/dist/esm/icons/IconUser.mjs";
 import IconX from "@tabler/icons-react/dist/esm/icons/IconX.mjs";
 import IconCalendarStats from "@tabler/icons-react/dist/esm/icons/IconCalendarStats.mjs";
 import IconClipboardCheck from "@tabler/icons-react/dist/esm/icons/IconClipboardCheck.mjs";
-import { fetchCart } from "./cartdrawer";
+import { fetchCart } from "./cartApi";
 import { useCurrentUser } from "../../../hooks/useCurrentUser";
 import { performLogout } from "../../../lib/auth";
 import { LogoutConfirmationModal } from "../../../components/common/LogoutConfirmationModal";
+import { fetchUnreadNotificationCount } from "../../notifications/api";
 
 type Workspace = "planning" | "vendor";
 
@@ -39,11 +39,11 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: IconLayoutDashboard, roles: ["user", "vendor"], workspace: "planning" },
-  { label: "My Events", href: "/events", icon: IconCalendarEvent, roles: ["user", "vendor"], workspace: "planning" },
   { label: "Marketplace", href: "/marketplace", icon: IconShoppingBag, workspace: "planning" },
   { label: "Bookings", href: "/bookings", icon: IconReceipt, roles: ["user", "vendor"], workspace: "planning" },
   { label: "Reviews", href: "/reviews", icon: IconStar, workspace: "planning" },
   { label: "Vendor Dashboard", href: "/vendor/dashboard", icon: IconLayoutDashboard, roles: ["vendor"], workspace: "vendor" },
+  { label: "My Services", href: "/vendor/services", icon: IconShoppingBag, roles: ["vendor"], workspace: "vendor" },
   { label: "Service Availability", href: "/vendor/availability", icon: IconCalendarStats, roles: ["vendor"], workspace: "vendor" },
   { label: "Booking Requests", href: "/vendor/bookings", icon: IconClipboardCheck, roles: ["vendor"], workspace: "vendor" },
   { label: "Add Service", href: "/service/register", icon: IconCirclePlus, roles: ["vendor"], workspace: "vendor" },
@@ -81,6 +81,14 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
     enabled: ["user", "vendor"].includes(storedRole) && workspace === "planning",
   });
   const cartCount = cartData?.items?.length ?? 0;
+
+  const { data: notificationCountData } = useQuery({
+    queryKey: ["notification-unread-count"],
+    queryFn: fetchUnreadNotificationCount,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+  const unreadNotificationCount = notificationCountData?.unread_count ?? 0;
 
   const { data: currentUser } = useCurrentUser();
 
@@ -245,13 +253,18 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
               }`}
             >
               <div
-                className={`shrink-0 transition-colors ${
+                className={`relative shrink-0 transition-colors ${
                   isActive
                     ? "text-indigo-600"
                     : "text-gray-400 group-hover:text-gray-600"
                 }`}
               >
                 <Icon size={18} />
+                {label === "Notifications" && unreadNotificationCount > 0 && (
+                  <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black leading-none text-white ring-2 ring-white">
+                    {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                  </span>
+                )}
               </div>
 
               <AnimatePresence initial={false}>
@@ -266,6 +279,12 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
                   </motion.span>
                 )}
               </AnimatePresence>
+
+              {label === "Notifications" && unreadNotificationCount > 0 && (isMobile || !collapsed) && (
+                <span className="ml-auto rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-black text-red-600">
+                  {unreadNotificationCount}
+                </span>
+              )}
 
               {isActive && (isMobile || !collapsed) && (
                 <motion.div

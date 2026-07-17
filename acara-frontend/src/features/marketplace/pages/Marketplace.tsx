@@ -34,6 +34,8 @@ type MarketplaceService = {
     price_value: number;
     location: string;
     vendor: string;
+    rating_average: number | null;
+    review_count: number;
     thumbnail_url?: string | null;
     portfolio_url?: string | null;
 };
@@ -181,6 +183,17 @@ const VendorCard: React.FC<{ item: MarketplaceService; index: number }> = ({ ite
                     </svg>
                     <span className="line-clamp-1">By {item.vendor} · {item.location}</span>
                 </p>
+                <div className="mt-3 flex items-center gap-2 text-sm">
+                    <span className="text-lg leading-none text-amber-400">★</span>
+                    {item.review_count > 0 && item.rating_average !== null ? (
+                        <>
+                            <span className="font-black text-gray-800">{Number(item.rating_average).toFixed(1)}</span>
+                            <span className="text-gray-400">({item.review_count} review{item.review_count === 1 ? '' : 's'})</span>
+                        </>
+                    ) : (
+                        <span className="font-semibold text-gray-400">New service</span>
+                    )}
+                </div>
                 <div className="mt-auto pt-6 flex items-center justify-between">
                     <div>
                         <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Package Price</p>

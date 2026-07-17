@@ -2,8 +2,16 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { AxiosError } from 'axios';
 import Loader from '../../../components/common/Loader';
 import api from '../../../lib/Api';
+import BookingBriefForm from '../../bookings/components/BookingBriefForm';
+import {
+    bookingBriefPayload,
+    emptyBookingBrief,
+    isBookingBriefValid,
+    type BookingBriefFormValue,
+} from '../../bookings/components/bookingBriefFormState';
 
 import hero1 from '../../../img/wedimg1.jpg';
 import hero2 from '../../../img/wedimg2.jpg';
@@ -16,6 +24,14 @@ import marketplaceBgAlt from '../../../img/bg3_marketplace.jpg';
 import onlineVendor from '../../../img/onlinevendor1.jpg';
 
 const fallbackImages = [hero1, hero2, hero3, hero6, hero7, audience, marketplaceBg, marketplaceBgAlt, onlineVendor];
+
+type PublicReview = {
+    id: number;
+    rating: number;
+    comment: string;
+    reviewer_name: string;
+    created_at: string;
+};
 
 type ServiceDetailData = {
     id: number;
@@ -30,6 +46,9 @@ type ServiceDetailData = {
     location_town?: string | null;
     location_state?: string | null;
     vendor: string;
+    rating_average: number | null;
+    review_count: number;
+    reviews: PublicReview[];
     vendor_experience?: number | null;
     vendor_website?: string | null;
     portfolio_url?: string | null;
@@ -74,6 +93,12 @@ function toIso(year: number, month: number, day: number): string {
 function formatDateLong(iso: string): string {
     return new Date(iso + 'T00:00:00').toLocaleDateString('en-MY', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+}
+
+function formatReviewDate(value: string): string {
+    return new Date(value.replace(' ', 'T')).toLocaleDateString('en-MY', {
+        day: 'numeric', month: 'short', year: 'numeric',
     });
 }
 
@@ -149,19 +174,21 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
     const [viewYear, setViewYear] = useState(today.getFullYear());
     const [viewMonth, setViewMonth] = useState(today.getMonth());
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
+    const [step, setStep] = useState<'date' | 'brief'>('date');
+    const [brief, setBrief] = useState<BookingBriefFormValue>(() => emptyBookingBrief());
     const [submitted, setSubmitted] = useState(false);
     const [cartError, setCartError] = useState<string | null>(null);
 
     const addToCartMutation = useMutation({
-        mutationFn: (data: { service_id: number; date: string }) =>
+        mutationFn: (data: { service_id: number; date: string } & ReturnType<typeof bookingBriefPayload>) =>
             api.post('/bookings/cart', data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['cart'] });
             setCartError(null);
             setSubmitted(true);
         },
-        onError: (err: any) => {
-            setCartError(err?.response?.data?.message ?? 'Failed to add to cart. Please try again.');
+        onError: (error: AxiosError<{ message?: string }>) => {
+            setCartError(error.response?.data?.message ?? 'Failed to add to cart. Please try again.');
         },
     });
 
@@ -213,12 +240,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
                 exit={{ opacity: 0, scale: 0.95, y: 8 }}
                 transition={{ duration: 0.2 }}
                 onClick={e => e.stopPropagation()}
-                className="bg-white rounded-[28px] w-full max-w-sm shadow-2xl overflow-hidden"
+                className={`bg-white rounded-[28px] w-full shadow-2xl overflow-hidden ${step === 'brief' ? 'max-w-3xl' : 'max-w-sm'}`}
             >
                 {/* Header */}
                 <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-gray-100">
                     <div>
-                        <h3 className="font-bold text-gray-900 text-base">Choose a Date</h3>
+                        <h3 className="font-bold text-gray-900 text-base">{step === 'brief' ? 'Event Brief' : 'Choose a Date'}</h3>
                         <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{service.title}</p>
                     </div>
                     <button
@@ -257,7 +284,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
                                 Done
                             </button>
                         </motion.div>
-                    ) : (
+                    ) : step === 'date' ? (
                         /* ── Calendar state ── */
                         <motion.div key="calendar">
                             <div className="px-6 pt-5 pb-4">
@@ -386,15 +413,67 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
                                         </div>
                                         <motion.button
                                             whileTap={{ scale: 0.97 }}
-                                            onClick={() => addToCartMutation.mutate({ service_id: service.id, date: selectedDate })}
-                                            disabled={addToCartMutation.isPending || cartError?.includes('already in your cart')}
+                                            onClick={() => {
+                                                setCartError(null);
+                                                setStep('brief');
+                                            }}
+                                            disabled={cartError?.includes('already in your cart')}
                                             className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 rounded-2xl font-bold text-sm transition-colors shadow-lg shadow-purple-200"
                                         >
-                                            {addToCartMutation.isPending ? 'Adding...' : cartError?.includes('already in your cart') ? 'Already in Cart' : 'Add to Cart'}
+                                            {cartError?.includes('already in your cart') ? 'Already in Cart' : 'Continue to Event Details'}
                                         </motion.button>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="brief"
+                            initial={{ opacity: 0, x: 16 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="flex max-h-[78vh] flex-col"
+                        >
+                            <div className="flex-1 overflow-y-auto px-6 py-5">
+                                {selectedDate && (
+                                    <BookingBriefForm
+                                        value={brief}
+                                        onChange={setBrief}
+                                        selectedDate={selectedDate}
+                                    />
+                                )}
+                            </div>
+                            <div className="border-t border-gray-100 bg-white px-6 py-4">
+                                {cartError && (
+                                    <div className="mb-3 rounded-2xl border border-red-100 bg-red-50 p-3 text-xs text-red-600">
+                                        {cartError}
+                                    </div>
+                                )}
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep('date')}
+                                        disabled={addToCartMutation.isPending}
+                                        className="flex-1 rounded-2xl border border-gray-200 py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50 disabled:opacity-60"
+                                    >
+                                        Back to date
+                                    </button>
+                                    <motion.button
+                                        whileTap={{ scale: 0.97 }}
+                                        onClick={() => selectedDate && addToCartMutation.mutate({
+                                            service_id: service.id,
+                                            date: selectedDate,
+                                            ...bookingBriefPayload(brief),
+                                        })}
+                                        disabled={addToCartMutation.isPending || !isBookingBriefValid(brief)}
+                                        className="flex-1 rounded-2xl bg-purple-600 py-3 text-sm font-bold text-white shadow-lg shadow-purple-200 transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {addToCartMutation.isPending ? 'Adding...' : 'Add Complete Request'}
+                                    </motion.button>
+                                </div>
+                                {!isBookingBriefValid(brief) && (
+                                    <p className="mt-2 text-center text-[10px] text-gray-400">Complete all required fields before adding this service.</p>
+                                )}
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -463,6 +542,7 @@ const ServiceDetail: React.FC = () => {
     }
 
     const imageUrl = getImageUrl(service);
+    const reviews = service.reviews ?? [];
 
     return (
         <div className="flex-1 overflow-y-auto bg-[#fcfaff]">
@@ -576,6 +656,64 @@ const ServiceDetail: React.FC = () => {
                                 )}
                             </div>
                         </div>
+                    </motion.div>
+
+                    {/* Reviews */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.2 }}
+                        className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100"
+                    >
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h2 className="text-base font-bold text-gray-900">Verified Reviews</h2>
+                                <p className="mt-1 text-sm text-gray-400">Feedback from completed Acara bookings.</p>
+                            </div>
+                            {service.review_count > 0 && service.rating_average !== null && (
+                                <div className="rounded-2xl bg-amber-50 px-4 py-3 text-right ring-1 ring-amber-100">
+                                    <p className="text-2xl font-black text-gray-900">{Number(service.rating_average).toFixed(1)}</p>
+                                    <div className="mt-1 flex items-center gap-0.5 text-amber-400">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <span key={star} className={star <= Math.round(service.rating_average ?? 0) ? 'text-amber-400' : 'text-gray-200'}>
+                                                <IconStar />
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <p className="mt-1 text-[11px] font-semibold text-amber-700">
+                                        {service.review_count} review{service.review_count === 1 ? '' : 's'}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {reviews.length === 0 ? (
+                            <div className="mt-6 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center">
+                                <p className="font-bold text-gray-700">No reviews yet</p>
+                                <p className="mt-1 text-sm text-gray-400">Completed customers can publish the first verified review.</p>
+                            </div>
+                        ) : (
+                            <div className="mt-6 space-y-3">
+                                {reviews.map((review) => (
+                                    <article key={review.id} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-black text-gray-900">{review.reviewer_name}</p>
+                                                <p className="mt-0.5 text-xs text-gray-400">{formatReviewDate(review.created_at)}</p>
+                                            </div>
+                                            <div className="flex items-center gap-0.5">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <span key={star} className={star <= review.rating ? 'text-amber-400' : 'text-gray-200'}>
+                                                        <IconStar />
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-600">{review.comment}</p>
+                                    </article>
+                                ))}
+                            </div>
+                        )}
                     </motion.div>
                 </div>
 

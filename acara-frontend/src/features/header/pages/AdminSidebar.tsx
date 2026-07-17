@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   IconChevronLeft,
   IconChevronRight,
+  IconChartBar,
+  IconHistory,
   IconLayoutDashboard,
   IconLogout,
   IconMenu2,
@@ -24,6 +26,8 @@ const navItems = [
   { label: "Vendor Verifications", href: "/admin/verifications/vendors", icon: IconUserCheck },
   { label: "Bookings", href: "/admin/bookings", icon: IconReceipt },
   { label: "Users", href: "/admin/users", icon: IconUsers },
+  { label: "Reports", href: "/admin/reports", icon: IconChartBar },
+  { label: "Audit Logs", href: "/admin/audit-logs", icon: IconHistory },
   { label: "Settings", href: "/admin/settings", icon: IconSettings },
 ];
 
@@ -115,7 +119,8 @@ export function AdminSidebar() {
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
         {navItems.map(({ label, href, icon: Icon }) => {
-          const isActive = location.pathname === href;
+          const isActive = location.pathname === href
+            || (href !== "/admin/dashboard" && location.pathname.startsWith(`${href}/`));
 
           return (
             <button
