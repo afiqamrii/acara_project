@@ -11,6 +11,7 @@ use App\Models\Review;
 use App\Models\ServiceProfile;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Models\UserNotificationPreference;
 use App\Notifications\BookingActivityEmail;
 
 class NotificationService
@@ -580,7 +581,15 @@ class NotificationService
             return;
         }
 
-        $notification->loadMissing('user');
+        $notification->loadMissing('user.notificationPreference');
+
+        $preferences = $notification->user->notificationPreference
+            ?? new UserNotificationPreference(UserNotificationPreference::DEFAULTS);
+
+        if (! $preferences->allowsEmailFor($notification->type)) {
+            return;
+        }
+
         $notification->user->notify(new BookingActivityEmail($notification));
     }
 

@@ -63,6 +63,21 @@ export type NotificationsResponse = {
   unread_count: number;
 };
 
+export type NotificationPreferences = {
+  email_enabled: boolean;
+  email_booking_updates: boolean;
+  email_quotation_updates: boolean;
+  email_booking_messages: boolean;
+  email_completion_updates: boolean;
+  email_review_updates: boolean;
+  email_service_updates: boolean;
+};
+
+type NotificationPreferencesResponse = {
+  message?: string;
+  preferences: NotificationPreferences;
+};
+
 export const fetchNotifications = async (
   filter: NotificationFilter,
 ): Promise<NotificationsResponse> => {
@@ -83,4 +98,19 @@ export const markNotificationAsRead = async (id: number): Promise<void> => {
 
 export const markAllNotificationsAsRead = async (): Promise<void> => {
   await api.patch("/notifications/read-all");
+};
+
+export const fetchNotificationPreferences = async (): Promise<NotificationPreferences> => {
+  const response = await api.get<NotificationPreferencesResponse>("/notification-preferences");
+  return response.data.preferences;
+};
+
+export const updateNotificationPreferences = async (
+  preferences: NotificationPreferences,
+): Promise<NotificationPreferences> => {
+  const response = await api.put<NotificationPreferencesResponse>(
+    "/notification-preferences",
+    preferences,
+  );
+  return response.data.preferences;
 };

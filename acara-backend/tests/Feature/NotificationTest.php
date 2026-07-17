@@ -6,7 +6,9 @@ use App\Models\Booking;
 use App\Models\ServiceProfile;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Models\UserNotificationPreference;
 use App\Notifications\BookingActivityEmail;
+use App\Services\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -16,6 +18,144 @@ use Tests\TestCase;
 class NotificationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_user_can_view_and_update_their_notification_preferences(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        UserNotificationPreference::create([
+            'user_id' => $otherUser->id,
+            ...UserNotificationPreference::DEFAULTS,
+            'email_enabled' => false,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/notification-preferences')
+            ->assertOk()
+            ->assertJsonPath('preferences.email_enabled', true)
+            ->assertJsonPath('preferences.email_booking_updates', true)
+            ->assertJsonPath('preferences.email_quotation_updates', true)
+            ->assertJsonPath('preferences.email_booking_messages', true)
+            ->assertJsonPath('preferences.email_completion_updates', true)
+            ->assertJsonPath('preferences.email_review_updates', true)
+            ->assertJsonPath('preferences.email_service_updates', true);
+
+        $updated = [
+            'email_enabled' => true,
+            'email_booking_updates' => false,
+            'email_quotation_updates' => true,
+            'email_booking_messages' => false,
+            'email_completion_updates' => true,
+            'email_review_updates' => false,
+            'email_service_updates' => true,
+        ];
+
+        $this->putJson('/api/notification-preferences', $updated)
+            ->assertOk()
+            ->assertJsonPath('message', 'Notification preferences saved.')
+            ->assertJsonPath('preferences.email_booking_updates', false)
+            ->assertJsonPath('preferences.email_booking_messages', false)
+            ->assertJsonPath('preferences.email_review_updates', false);
+
+        $this->assertDatabaseHas('user_notification_preferences', [
+            'user_id' => $user->id,
+            'email_enabled' => true,
+            'email_booking_updates' => false,
+            'email_booking_messages' => false,
+        ]);
+        $this->assertDatabaseHas('user_notification_preferences', [
+            'user_id' => $otherUser->id,
+            'email_enabled' => false,
+        ]);
+    }
+
+    public function test_notification_preference_update_requires_every_boolean_choice(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->putJson('/api/notification-preferences', [
+            'email_enabled' => 'yes',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'email_enabled',
+                'email_booking_updates',
+                'email_quotation_updates',
+                'email_booking_messages',
+                'email_completion_updates',
+                'email_review_updates',
+                'email_service_updates',
+            ]);
+    }
+
+    public function test_disabled_booking_email_still_creates_the_in_app_notification(): void
+    {
+        config()->set('acara.booking_email.enabled', true);
+        Notification::fake();
+
+        $customer = User::factory()->create(['name' => 'Aina Organizer', 'role' => 'user']);
+        $vendor = User::factory()->create(['name' => 'Farah Vendor', 'role' => 'vendor']);
+        $service = ServiceProfile::create([
+            'user_id' => $vendor->id,
+            'service_name' => 'Event Photography',
+            'service_category' => 'Photography',
+            'service_details' => 'Full-day event photography.',
+            'pricing_starting_from' => 1500,
+            'pricing_unit' => 'event',
+            'status' => 'approved',
+        ]);
+        $booking = Booking::create([
+            'user_id' => $customer->id,
+            'service_profile_id' => $service->id,
+            'selected_date' => now()->addDays(7)->toDateString(),
+            'status' => 'pending',
+            'expires_at' => now()->addDay(),
+        ]);
+        $this->attachBrief($booking);
+        UserNotificationPreference::create([
+            'user_id' => $vendor->id,
+            ...UserNotificationPreference::DEFAULTS,
+            'email_booking_updates' => false,
+        ]);
+
+        app(NotificationService::class)->bookingSubmitted($booking);
+
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $vendor->id,
+            'booking_id' => $booking->id,
+            'type' => 'booking_request',
+        ]);
+        Notification::assertNotSentTo($vendor, BookingActivityEmail::class);
+    }
+
+    public function test_email_preferences_map_each_notification_category_independently(): void
+    {
+        $categories = [
+            'email_booking_updates' => 'booking_reschedule_requested',
+            'email_quotation_updates' => 'quotation_revision_requested',
+            'email_booking_messages' => 'booking_message',
+            'email_completion_updates' => 'completion_disputed',
+            'email_review_updates' => 'review_received',
+            'email_service_updates' => 'service_rejected',
+        ];
+
+        foreach ($categories as $preference => $notificationType) {
+            $settings = new UserNotificationPreference([
+                ...UserNotificationPreference::DEFAULTS,
+                $preference => false,
+            ]);
+
+            $this->assertFalse($settings->allowsEmailFor($notificationType));
+            $this->assertTrue($settings->allowsEmailFor('system_announcement'));
+        }
+
+        $paused = new UserNotificationPreference([
+            ...UserNotificationPreference::DEFAULTS,
+            'email_enabled' => false,
+        ]);
+        $this->assertFalse($paused->allowsEmailFor('quotation_sent'));
+    }
 
     public function test_user_can_list_and_read_only_their_own_notifications(): void
     {

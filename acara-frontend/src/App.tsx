@@ -32,6 +32,7 @@ const AdminBookings = lazy(() => import('./features/bookings/pages/AdminBookings
 const AdminBookingDetail = lazy(() => import('./features/bookings/pages/AdminBookingDetail'));
 const NotificationCenter = lazy(() => import('./features/notifications/pages/NotificationCenter'));
 const ReviewsPage = lazy(() => import('./features/reviews/pages/ReviewsPage'));
+const NotificationSettings = lazy(() => import('./features/settings/pages/NotificationSettings'));
 
 
 function App() {
@@ -66,7 +67,7 @@ function App() {
               <Route path="/reviews" element={<ProtectedRoute requiredRole={["user", "vendor"]}><ReviewsPage /></ProtectedRoute>} />
               <Route path="/notifications" element={<NotificationCenter />} />
               <Route path="/profile" element={<UserProfile />} />
-              <Route path="/settings" element={<ComingSoon title="Settings" description="Manage your account settings, notification preferences, and security options." />} />
+              <Route path="/settings" element={<NotificationSettings />} />
               <Route path="/crew/jobs" element={<ProtectedRoute requiredRole={["crew"]}><ComingSoon title="Crew Job Board" description="Browse available event crew positions, submit applications, and manage your active assignments." /></ProtectedRoute>} />
             </Route>
 
