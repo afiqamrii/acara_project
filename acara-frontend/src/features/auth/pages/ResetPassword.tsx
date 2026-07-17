@@ -105,7 +105,7 @@ const ResetPassword = () => {
       description={
         complete
           ? "Your account is secured with the new password and all previous sessions have been signed out."
-          : `Choose a strong password for ${email}. This reset link can only be used once.`
+          : `Set a strong, unique password for ${email}. The link will close after this reset is completed.`
       }
     >
       {complete ? (
@@ -145,7 +145,8 @@ const ResetPassword = () => {
                 autoComplete="new-password"
                 required
                 autoFocus
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 pl-11 pr-12 text-sm text-slate-950 outline-none transition focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+                placeholder="Enter a new password"
+                className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-12 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
               />
               <button
                 type="button"
@@ -158,7 +159,7 @@ const ResetPassword = () => {
             </span>
           </label>
 
-          <div className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
+          <div className="grid gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-2">
             {requirements.map((requirement, index) => (
               <div
                 key={requirement.label}
@@ -184,7 +185,8 @@ const ResetPassword = () => {
                 onChange={(event) => setConfirmation(event.target.value)}
                 autoComplete="new-password"
                 required
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 pl-11 pr-12 text-sm text-slate-950 outline-none transition focus:border-purple-400 focus:bg-white focus:ring-4 focus:ring-purple-100"
+                placeholder="Re-enter the new password"
+                className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-12 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-purple-400 focus:ring-4 focus:ring-purple-100"
               />
               <button
                 type="button"
@@ -203,7 +205,7 @@ const ResetPassword = () => {
           <button
             type="submit"
             disabled={!canSubmit}
-            className="w-full rounded-xl bg-purple-600 px-5 py-3.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(126,87,194,0.28)] transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-xl bg-linear-to-r from-purple-700 to-purple-600 px-5 py-3.5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(109,40,217,0.24)] transition hover:from-purple-800 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "Securing your account..." : "Reset password"}
           </button>
