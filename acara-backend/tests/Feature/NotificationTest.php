@@ -94,6 +94,7 @@ class NotificationTest extends TestCase
             'user_id' => $vendor->id,
             'booking_id' => $booking->id,
             'type' => 'booking_request',
+            'action_url' => "/vendor/bookings/{$booking->id}",
         ]);
 
         Sanctum::actingAs($vendor);
@@ -110,6 +111,7 @@ class NotificationTest extends TestCase
             'user_id' => $customer->id,
             'booking_id' => $booking->id,
             'type' => 'quotation_sent',
+            'action_url' => "/bookings/{$booking->id}",
         ]);
         Sanctum::actingAs($customer);
         $this->patchJson("/api/bookings/{$booking->id}/quotations/{$quotationId}/accept")
@@ -120,6 +122,7 @@ class NotificationTest extends TestCase
             'user_id' => $vendor->id,
             'booking_id' => $booking->id,
             'type' => 'quotation_accepted',
+            'action_url' => "/vendor/bookings/{$booking->id}",
         ]);
 
         Sanctum::actingAs($vendor);
@@ -133,6 +136,7 @@ class NotificationTest extends TestCase
             'user_id' => $customer->id,
             'booking_id' => $booking->id,
             'type' => 'completion_submitted',
+            'action_url' => "/bookings/{$booking->id}",
         ]);
         $this->postJson("/api/vendor/bookings/{$booking->id}/completion", [
             'note' => 'A duplicate completion attempt must be rejected.',
@@ -151,6 +155,7 @@ class NotificationTest extends TestCase
             'user_id' => $vendor->id,
             'booking_id' => $booking->id,
             'type' => 'completion_confirmed',
+            'action_url' => "/vendor/bookings/{$booking->id}",
         ]);
     }
 
@@ -182,6 +187,7 @@ class NotificationTest extends TestCase
             'user_id' => $vendor->id,
             'booking_id' => $booking->id,
             'type' => 'booking_cancelled',
+            'action_url' => "/vendor/bookings/{$booking->id}",
         ]);
         $this->patchJson("/api/bookings/{$booking->id}/cancel")
             ->assertNotFound();
@@ -254,7 +260,7 @@ class NotificationTest extends TestCase
                     && $notification->afterCommit === true
                     && $mail->mailer === 'resend'
                     && $mail->subject === 'ACARA: New booking request'
-                    && $mail->actionUrl === 'http://localhost:5173/vendor/bookings'
+                    && $mail->actionUrl === "http://localhost:5173/vendor/bookings/{$booking->id}"
                     && in_array('Booking reference: ACR-'.str_pad((string) $booking->id, 6, '0', STR_PAD_LEFT), $mail->introLines, true);
             },
         );

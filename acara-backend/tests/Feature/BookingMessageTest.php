@@ -98,7 +98,7 @@ class BookingMessageTest extends TestCase
             'user_id' => $this->vendor->id,
             'booking_id' => $this->booking->id,
             'type' => 'booking_message',
-            'action_url' => "/vendor/bookings?conversation={$this->booking->id}",
+            'action_url' => "/vendor/bookings/{$this->booking->id}?conversation=1",
         ]);
 
         Sanctum::actingAs($this->vendor);
@@ -146,6 +146,17 @@ class BookingMessageTest extends TestCase
             ->assertOk()
             ->assertJsonPath('bookings.0.message_count', 2)
             ->assertJsonPath('bookings.0.unread_message_count', 1);
+
+        $this->getJson("/api/bookings/{$this->booking->id}")
+            ->assertOk()
+            ->assertJsonPath('booking.message_count', 2)
+            ->assertJsonPath('booking.unread_message_count', 1);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $this->organizer->id,
+            'booking_id' => $this->booking->id,
+            'type' => 'booking_message',
+            'action_url' => "/bookings/{$this->booking->id}?conversation=1",
+        ]);
 
         Sanctum::actingAs($this->vendor);
         $this->getJson('/api/vendor/bookings')
@@ -237,7 +248,7 @@ class BookingMessageTest extends TestCase
                     && $notification->afterCommit === true
                     && $mail->mailer === 'resend'
                     && $mail->subject === 'ACARA: New booking message'
-                    && $mail->actionUrl === "http://localhost:5173/vendor/bookings?conversation={$this->booking->id}";
+                    && $mail->actionUrl === "http://localhost:5173/vendor/bookings/{$this->booking->id}?conversation=1";
             },
         );
     }

@@ -210,8 +210,17 @@ export type AdminBookingDetailResponse = {
   booking: BookingItem;
 };
 
+export type CustomerBookingDetailResponse = {
+  booking: BookingItem;
+};
+
 export const fetchCustomerBookings = async (): Promise<BookingResponse> => {
   const res = await api.get<BookingResponse>("/bookings");
+  return res.data;
+};
+
+export const fetchCustomerBooking = async (bookingId: number): Promise<CustomerBookingDetailResponse> => {
+  const res = await api.get<CustomerBookingDetailResponse>(`/bookings/${bookingId}`);
   return res.data;
 };
 

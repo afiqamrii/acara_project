@@ -190,6 +190,56 @@ class BookingController extends Controller
         ];
     }
 
+    private function customerBookingsQuery(int $userId): Builder
+    {
+        return Booking::query()
+            ->with(['brief', 'quotations.items', 'completions', 'rescheduleRequests', 'pendingRescheduleRequest'])
+            ->where('bookings.user_id', $userId)
+            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
+            ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
+            ->join(
+                DB::raw('(SELECT user_id, MAX(id) as id FROM vendor_profiles GROUP BY user_id) as vp_latest'),
+                'service_profiles.user_id', '=', 'vp_latest.user_id'
+            )
+            ->join('vendor_profiles', 'vp_latest.id', '=', 'vendor_profiles.id')
+            ->select([
+                'bookings.id',
+                'bookings.selected_date',
+                'bookings.status',
+                'bookings.completion_status',
+                'bookings.created_at',
+                'bookings.notes',
+                'bookings.rejection_reason',
+                'bookings.cancellation_reason',
+                'bookings.cancelled_by',
+                'bookings.rejected_at',
+                'bookings.cancelled_at',
+                'bookings.expires_at',
+                'bookings.reminder_sent_at',
+                'bookings.expired_at',
+                'bookings.confirmed_at',
+                'bookings.completed_at',
+                'bookings.service_name_snapshot',
+                'bookings.vendor_name_snapshot',
+                'bookings.price_snapshot',
+                'bookings.pricing_unit_snapshot',
+                'service_profiles.id as service_id',
+                'service_profiles.service_name',
+                'service_profiles.service_category',
+                'service_profiles.pricing_starting_from',
+                'service_profiles.pricing_unit',
+                'vendor_profiles.business_name',
+                'vendor_profiles.service_area_state',
+                'vendor_profiles.service_area_town',
+            ])
+            ->withCount([
+                'messages as message_count',
+                'messages as unread_message_count' => fn ($query) => $query
+                    ->where('sender_id', '!=', $userId)
+                    ->whereNull('read_at'),
+            ]);
+    }
+
     // GET /bookings/cart
     public function cartIndex(Request $request)
     {
@@ -487,52 +537,7 @@ class BookingController extends Controller
     {
         $userId = $request->user()->id;
 
-        $bookings = Booking::query()
-            ->with(['brief', 'quotations.items', 'completions', 'rescheduleRequests', 'pendingRescheduleRequest'])
-            ->where('bookings.user_id', $userId)
-            ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
-            ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
-            ->join(
-                DB::raw('(SELECT user_id, MAX(id) as id FROM vendor_profiles GROUP BY user_id) as vp_latest'),
-                'service_profiles.user_id', '=', 'vp_latest.user_id'
-            )
-            ->join('vendor_profiles', 'vp_latest.id', '=', 'vendor_profiles.id')
-            ->select([
-                'bookings.id',
-                'bookings.selected_date',
-                'bookings.status',
-                'bookings.completion_status',
-                'bookings.created_at',
-                'bookings.notes',
-                'bookings.rejection_reason',
-                'bookings.cancellation_reason',
-                'bookings.cancelled_by',
-                'bookings.rejected_at',
-                'bookings.cancelled_at',
-                'bookings.expires_at',
-                'bookings.reminder_sent_at',
-                'bookings.expired_at',
-                'bookings.confirmed_at',
-                'bookings.completed_at',
-                'bookings.service_name_snapshot',
-                'bookings.vendor_name_snapshot',
-                'bookings.price_snapshot',
-                'bookings.pricing_unit_snapshot',
-                'service_profiles.id as service_id',
-                'service_profiles.service_name',
-                'service_profiles.service_category',
-                'service_profiles.pricing_starting_from',
-                'service_profiles.pricing_unit',
-                'vendor_profiles.business_name',
-                'vendor_profiles.service_area_state',
-                'vendor_profiles.service_area_town',
-            ])
-            ->withCount([
-                'messages as message_count',
-                'messages as unread_message_count' => fn ($query) => $query
-                    ->where('sender_id', '!=', $userId)
-                    ->whereNull('read_at'),
-            ])
+        $bookings = $this->customerBookingsQuery($userId)
             ->orderBy('bookings.created_at', 'desc')
             ->get()
             ->map(fn ($item) => $this->mapCustomerBooking($item));
@@ -540,6 +545,22 @@ class BookingController extends Controller
         return response()->json([
             'bookings' => $bookings,
             'stats' => $this->bookingSummary($bookings),
+        ]);
+    }
+
+    // GET /bookings/{id} - organizer booking action center record
+    public function booking(Request $request, int $id)
+    {
+        $item = $this->customerBookingsQuery($request->user()->id)
+            ->where('bookings.id', $id)
+            ->first();
+
+        if (! $item) {
+            return response()->json(['message' => 'Booking record not found.'], 404);
+        }
+
+        return response()->json([
+            'booking' => $this->mapCustomerBooking($item),
         ]);
     }
 

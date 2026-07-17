@@ -521,6 +521,14 @@ class NotificationService
         string $actionUrl,
         array $extraData = [],
     ): UserNotification {
+        $actionUrl = match ($actionUrl) {
+            '/bookings' => "/bookings/{$booking->id}",
+            '/vendor/bookings' => "/vendor/bookings/{$booking->id}",
+            "/bookings?conversation={$booking->id}" => "/bookings/{$booking->id}?conversation=1",
+            "/vendor/bookings?conversation={$booking->id}" => "/vendor/bookings/{$booking->id}?conversation=1",
+            default => $actionUrl,
+        };
+
         $notification = UserNotification::create([
             'user_id' => $userId,
             'booking_id' => $booking->id,

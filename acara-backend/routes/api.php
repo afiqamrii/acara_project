@@ -62,6 +62,7 @@ Route::middleware(['auth:sanctum', 'role:user,vendor'])->group(function () {
     Route::put('/bookings/cart/{id}/brief', [BookingController::class, 'updateCartBrief']);
     Route::post('/bookings/confirm', [BookingController::class, 'confirmCart']);
     Route::get('/bookings', [BookingController::class, 'myBookings']);
+    Route::get('/bookings/{id}', [BookingController::class, 'booking']);
     Route::patch('/bookings/{id}/cancel', [BookingController::class, 'cancelBooking']);
     Route::patch('/bookings/{bookingId}/quotations/{quotationId}/accept', [QuotationController::class, 'accept']);
     Route::patch('/bookings/{bookingId}/quotations/{quotationId}/decline', [QuotationController::class, 'decline']);

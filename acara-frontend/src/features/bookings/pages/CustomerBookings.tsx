@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import type { AxiosError } from "axios";
@@ -10,10 +10,12 @@ import {
   IconCheck,
   IconClock,
   IconCurrencyDollar,
+  IconChevronRight,
   IconArrowsExchange,
   IconMapPin,
   IconSearch,
   IconShoppingBag,
+  IconMessageCircle,
   IconStar,
   IconX,
 } from "@tabler/icons-react";
@@ -30,6 +32,7 @@ import {
   confirmBookingCompletion,
   declineQuotation,
   disputeBookingCompletion,
+  fetchCustomerBooking,
   fetchRescheduleAvailability,
   fetchCustomerBookings,
   requestBookingReschedule,
@@ -167,6 +170,52 @@ const StatCard = ({
     </div>
     <p className="mt-3 text-2xl font-black text-gray-900">{value}</p>
   </div>
+);
+
+const DetailSummaryCard = ({
+  label,
+  value,
+  caption,
+  icon,
+}: {
+  label: string;
+  value: string;
+  caption: string;
+  icon: ReactNode;
+}) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <div className="flex items-start gap-3">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-indigo-700">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{label}</p>
+        <p className="mt-1 truncate text-base font-bold text-slate-900">{value}</p>
+        <p className="mt-1 truncate text-xs text-slate-500">{caption}</p>
+      </div>
+    </div>
+  </div>
+);
+
+const RecordSection = ({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) => (
+  <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
+      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-600">{eyebrow}</p>
+      <h2 className="mt-1 text-lg font-bold text-slate-900">{title}</h2>
+      <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
+    </div>
+    <div className="p-4 sm:p-6">{children}</div>
+  </section>
 );
 
 const apiErrorMessage = (error: unknown, fallback: string) =>
@@ -454,7 +503,55 @@ const CompletionResponseDialog = ({
   );
 };
 
-const BookingCard = ({
+const BookingSummaryCard = ({ booking, onOpen }: { booking: BookingItem; onOpen: () => void }) => (
+  <motion.button
+    type="button"
+    layout
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    onClick={onOpen}
+    className="group w-full rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+  >
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={booking.status} />
+          <span className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700">{booking.booking_reference}</span>
+          <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-500">{booking.category}</span>
+          {(booking.unread_message_count ?? 0) > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600">
+              <IconMessageCircle size={13} /> {booking.unread_message_count} new
+            </span>
+          )}
+        </div>
+
+        <h2 className="mt-3 truncate text-lg font-black text-gray-900">{booking.brief?.event_title || booking.service_name}</h2>
+        <p className="mt-1 truncate text-sm text-gray-500">{booking.service_name} · {booking.vendor_name || booking.vendor || "Vendor"}</p>
+
+        <div className="mt-4 grid gap-2 text-sm text-gray-600 sm:grid-cols-3">
+          <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2.5">
+            <IconCalendarEvent size={17} className="shrink-0 text-purple-500" />
+            <span className="truncate">{formatDate(booking.selected_date)}</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2.5">
+            <IconMapPin size={17} className="shrink-0 text-red-400" />
+            <span className="truncate">{booking.location || "Malaysia"}</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2.5">
+            <IconCurrencyDollar size={17} className="shrink-0 text-emerald-500" />
+            <span className="truncate font-bold text-slate-700">{booking.quotation ? formatRM(booking.quotation.total_amount) : booking.price}</span>
+          </div>
+        </div>
+      </div>
+
+      <span className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition group-hover:bg-indigo-600 group-hover:text-white">
+        Open record <IconChevronRight size={17} />
+      </span>
+    </div>
+  </motion.button>
+);
+
+const BookingDetailRecord = ({
   booking,
   onCancel,
   onReschedule,
@@ -488,226 +585,251 @@ const BookingCard = ({
     booking.selected_date > todayIso() &&
     !booking.reschedule_request;
   const latestReschedule = booking.reschedule_history?.[0];
+  const requiresQuotationDecision = booking.status === "pending" && booking.quotation?.status === "sent";
+  const requiresCompletionDecision = booking.status === "completion_pending";
+  const vendorName = booking.vendor_name || booking.vendor || "Vendor";
 
   return (
     <motion.article
       layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm"
+      className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]"
     >
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={booking.status} />
-            <span className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700">
-              {booking.booking_reference}
-            </span>
-            <span className="rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-500">
-              {booking.category}
-            </span>
+      <div className="min-w-0 space-y-5">
+        {booking.status === "expired" && (
+          <div className="rounded-2xl border border-slate-200 bg-slate-100/70 px-5 py-4">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">Booking closed automatically</p>
+            <p className="mt-1 text-sm leading-6 text-slate-700">
+              {booking.quotation?.status === "expired"
+                ? "The quotation expired without a response. No cancellation reason is required, and the date can be requested again."
+                : "The vendor did not respond before the deadline. No cancellation reason is required, and the date can be requested again."}
+            </p>
           </div>
+        )}
 
-          <h2 className="mt-3 truncate text-lg font-black text-gray-900">{booking.service_name}</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            {booking.vendor_name || booking.vendor || "Vendor"} - {booking.price}
-            {booking.pricing_unit ? ` / ${booking.pricing_unit}` : ""}
-          </p>
-
-          <div className="mt-4 grid gap-3 text-sm text-gray-600 sm:grid-cols-2">
-            <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
-              <IconCalendarEvent size={17} className="text-purple-500" />
-              <span>{formatDate(booking.selected_date)}</span>
-            </div>
-            <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
-              <IconMapPin size={17} className="text-red-400" />
-              <span className="truncate">{booking.location || "Malaysia"}</span>
-            </div>
+        {booking.status === "rejected" && booking.rejection_reason && (
+          <div className="rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-orange-700">Vendor rejection reason</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-orange-950">{booking.rejection_reason}</p>
           </div>
+        )}
 
-          {booking.brief && (
-            <details className="mt-4 rounded-xl border border-purple-100 bg-white px-4 py-3 open:bg-purple-50/30">
-              <summary className="cursor-pointer text-sm font-bold text-purple-700">
-                {booking.brief.event_title} · Event brief
-              </summary>
-              <div className="mt-4 border-t border-purple-100 pt-4">
-                <BookingBriefDisplay brief={booking.brief} notes={booking.notes} />
-              </div>
-            </details>
+        {booking.status === "cancelled" && booking.cancelled_by === "vendor" && booking.cancellation_reason && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-red-700">Vendor cancellation reason</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-red-950">{booking.cancellation_reason}</p>
+          </div>
+        )}
+
+        <RecordSection
+          eyebrow="Event scope"
+          title="Event brief and delivery requirements"
+          description="The event information submitted to the vendor with this booking request."
+        >
+          {booking.brief ? (
+            <BookingBriefDisplay brief={booking.brief} notes={booking.notes} />
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+              <p className="text-sm font-semibold text-slate-600">No structured event brief was submitted.</p>
+              {booking.notes && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-500">{booking.notes}</p>}
+            </div>
           )}
+        </RecordSection>
 
-          {booking.quotation && (
-            <div className="mt-4 space-y-3">
+        <RecordSection
+          eyebrow="Commercial agreement"
+          title="Quotation and pricing"
+          description="Review the latest commercial terms and all earlier quotation versions."
+        >
+          {booking.quotation ? (
+            <div className="space-y-3">
               <QuotationDisplay quotation={booking.quotation} />
-
-              {booking.status === "pending" && booking.quotation.status === "sent" && (
-                <div className="flex flex-col gap-2 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3 sm:flex-row sm:justify-end">
-                  <button type="button" onClick={() => onQuotationAction(booking, "decline")} disabled={quotationActionPending} className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50">Decline</button>
-                  <button type="button" onClick={() => onQuotationAction(booking, "revision")} disabled={quotationActionPending} className="rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-bold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50">Request Revision</button>
-                  <button type="button" onClick={() => onQuotationAction(booking, "accept")} disabled={quotationActionPending} className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50">Accept Quotation</button>
-                </div>
-              )}
-
               {(booking.quotation_history?.length ?? 0) > 1 && (
-                <details className="rounded-xl border border-indigo-100 bg-white px-4 py-3">
-                  <summary className="cursor-pointer text-sm font-bold text-indigo-700">Previous quotation versions ({(booking.quotation_history?.length ?? 1) - 1})</summary>
-                  <div className="mt-3 space-y-3 border-t border-indigo-100 pt-3">
-                    {(booking.quotation_history ?? []).slice(1).map((quotation) => <QuotationDisplay key={quotation.id} quotation={quotation} compact />)}
-                  </div>
-                </details>
-              )}
-            </div>
-          )}
-
-          {booking.completion && (
-            <div className="mt-4 space-y-3">
-              <BookingCompletionDisplay completion={booking.completion} />
-              {booking.status === "completion_pending" && (
-                <div className="flex flex-col gap-2 rounded-2xl border border-amber-100 bg-amber-50/60 p-3 sm:flex-row sm:justify-end">
-                  <button type="button" onClick={() => onCompletionAction(booking, "dispute")} disabled={completionActionPending} className="rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 disabled:opacity-50">Report Issue</button>
-                  <button type="button" onClick={() => onCompletionAction(booking, "confirm")} disabled={completionActionPending} className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50">Confirm Completion</button>
-                </div>
-              )}
-              {(booking.completion_history?.length ?? 0) > 1 && (
-                <details className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-                  <summary className="cursor-pointer text-sm font-bold text-slate-700">Previous completion submissions ({(booking.completion_history?.length ?? 1) - 1})</summary>
+                <details className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                  <summary className="cursor-pointer text-sm font-bold text-slate-700">
+                    Previous quotation versions ({(booking.quotation_history?.length ?? 1) - 1})
+                  </summary>
                   <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
-                    {(booking.completion_history ?? []).slice(1).map((completion) => <BookingCompletionDisplay key={completion.id} completion={completion} compact />)}
+                    {(booking.quotation_history ?? []).slice(1).map((quotation) => (
+                      <QuotationDisplay key={quotation.id} quotation={quotation} compact />
+                    ))}
                   </div>
                 </details>
               )}
             </div>
-          )}
-
-          {booking.status === "pending" && booking.expires_at && (
-            <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5">
-              <IconClock size={18} className="mt-0.5 shrink-0 text-amber-600" />
+          ) : (
+            <div className="flex items-start gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5">
+              <IconClock size={20} className="mt-0.5 shrink-0 text-slate-400" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-amber-700">
-                  {booking.quotation?.status === "sent"
-                    ? "Quotation response deadline"
-                    : booking.quotation?.status === "revision_requested"
-                      ? "Vendor revision deadline"
-                      : "Vendor response deadline"}
-                </p>
-                <p className="mt-1 text-sm text-amber-900">{formatDateTime(booking.expires_at)}</p>
+                <p className="text-sm font-bold text-slate-700">Quotation not issued yet</p>
+                <p className="mt-1 text-sm leading-6 text-slate-500">The vendor is reviewing the event brief and service requirements.</p>
               </div>
             </div>
           )}
+        </RecordSection>
 
-          {booking.status === "expired" && (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Closed automatically</p>
-              <p className="mt-1 text-sm leading-6 text-slate-700">
-                {booking.quotation?.status === "expired"
-                  ? "The quotation expired without a response. No cancellation reason is required, and this date is available to request again."
-                  : "The vendor did not respond before the deadline. No cancellation reason is required, and this date is available to request again."}
-              </p>
+        <RecordSection
+          eyebrow="Service delivery"
+          title="Completion record"
+          description="Delivery evidence and completion submissions provided by the vendor."
+        >
+          {booking.completion ? (
+            <div className="space-y-3">
+              <BookingCompletionDisplay completion={booking.completion} />
+              {(booking.completion_history?.length ?? 0) > 1 && (
+                <details className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                  <summary className="cursor-pointer text-sm font-bold text-slate-700">
+                    Previous completion submissions ({(booking.completion_history?.length ?? 1) - 1})
+                  </summary>
+                  <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+                    {(booking.completion_history ?? []).slice(1).map((completion) => (
+                      <BookingCompletionDisplay key={completion.id} completion={completion} compact />
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+              <p className="text-sm font-semibold text-slate-600">No completion record has been submitted.</p>
+              <p className="mt-1 text-xs text-slate-500">This section will update after the vendor records the service delivery.</p>
             </div>
           )}
+        </RecordSection>
 
-          {booking.status === "rejected" && booking.rejection_reason && (
-            <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2.5">
-              <p className="text-xs font-bold uppercase tracking-wide text-orange-600">Vendor rejection reason</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-orange-900">{booking.rejection_reason}</p>
-            </div>
-          )}
-
-          {booking.status === "cancelled" && booking.cancelled_by === "vendor" && booking.cancellation_reason && (
-            <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5">
-              <p className="text-xs font-bold uppercase tracking-wide text-red-600">Vendor cancellation reason</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-red-900">{booking.cancellation_reason}</p>
-            </div>
-          )}
-
-          {booking.reschedule_request && (
-            <div className="mt-4 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-indigo-700">
-                    <IconArrowsExchange size={16} />
-                    Date change awaiting vendor
-                  </p>
-                  <p className="mt-2 text-sm font-bold text-slate-900">
-                    {formatDate(booking.reschedule_request.original_date)} → {formatDate(booking.reschedule_request.requested_date)}
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-600">{booking.reschedule_request.reason}</p>
-                  <p className="mt-2 text-[11px] text-indigo-600">Your original date remains reserved until a decision is made.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onWithdrawReschedule(booking.id)}
-                  disabled={withdrawing}
-                  className="shrink-0 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"
-                >
-                  {withdrawing ? "Withdrawing..." : "Withdraw request"}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!booking.reschedule_request && latestReschedule?.status === "rejected" && (
-            <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50 px-4 py-3">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-orange-700">
-                <IconArrowsExchange size={16} />
-                Latest date change declined
-              </p>
-              <p className="mt-2 text-sm font-bold text-slate-900">
-                Requested {formatDate(latestReschedule.requested_date)} · Current date remains {formatDate(booking.selected_date)}
-              </p>
-              <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-orange-800">
-                {latestReschedule.decision_reason || "The vendor could not accept the requested date."}
-              </p>
-            </div>
-          )}
-
-          <div className="mt-4">
+        <RecordSection
+          eyebrow="Communication"
+          title={`Conversation with ${vendorName}`}
+          description="Keep booking decisions and service discussions attached to this record."
+        >
+          <div>
             <BookingConversation
               bookingId={booking.id}
               defaultOpen={openConversation}
               messageCount={booking.message_count}
               unreadCount={booking.unread_message_count}
-              title={`Conversation with ${booking.vendor_name || booking.vendor || "vendor"}`}
+              title={`Conversation with ${vendorName}`}
             />
           </div>
+        </RecordSection>
+      </div>
 
-          {(booking.timeline?.length ?? 0) > 0 && (
-            <details className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 open:bg-slate-50/60">
-              <summary className="cursor-pointer text-sm font-bold text-slate-700">Booking activity</summary>
-              <div className="mt-4 border-t border-slate-200 pt-4">
-                <BookingTimeline events={booking.timeline ?? []} />
+      <aside className="space-y-5 xl:sticky xl:top-6">
+        <section className={`rounded-2xl border bg-white p-5 shadow-sm ${requiresQuotationDecision || requiresCompletionDecision ? "border-amber-200" : "border-slate-200"}`}>
+          <div className="flex items-start gap-3">
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${requiresQuotationDecision || requiresCompletionDecision ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
+              {requiresQuotationDecision || requiresCompletionDecision ? <IconAlertCircle size={20} /> : <IconCheck size={20} />}
+            </span>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Organizer decision</p>
+              <h2 className="mt-1 text-base font-bold text-slate-900">
+                {requiresQuotationDecision || requiresCompletionDecision ? "Action required" : "No action required"}
+              </h2>
+            </div>
+          </div>
+
+          {requiresQuotationDecision && (
+            <div className="mt-4">
+              <p className="text-sm leading-6 text-slate-600">Review the vendor quotation before accepting, requesting changes, or declining it.</p>
+              <div className="mt-4 space-y-2">
+                <button type="button" onClick={() => onQuotationAction(booking, "accept")} disabled={quotationActionPending} className="w-full rounded-xl bg-indigo-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-indigo-800 disabled:opacity-50">Accept Quotation</button>
+                <button type="button" onClick={() => onQuotationAction(booking, "revision")} disabled={quotationActionPending} className="w-full rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-50">Request Revision</button>
+                <button type="button" onClick={() => onQuotationAction(booking, "decline")} disabled={quotationActionPending} className="w-full rounded-xl px-4 py-2.5 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-50">Decline Quotation</button>
               </div>
-            </details>
+            </div>
           )}
-        </div>
 
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col lg:items-end">
+          {requiresCompletionDecision && (
+            <div className="mt-4">
+              <p className="text-sm leading-6 text-slate-600">Check the vendor's completion evidence and confirm whether the agreed service was delivered.</p>
+              <div className="mt-4 space-y-2">
+                <button type="button" onClick={() => onCompletionAction(booking, "confirm")} disabled={completionActionPending} className="w-full rounded-xl bg-indigo-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-indigo-800 disabled:opacity-50">Confirm Completion</button>
+                <button type="button" onClick={() => onCompletionAction(booking, "dispute")} disabled={completionActionPending} className="w-full rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-50">Report an Issue</button>
+              </div>
+            </div>
+          )}
+
+          {!requiresQuotationDecision && !requiresCompletionDecision && (
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              {booking.status === "pending"
+                ? "The booking is currently with the vendor. You will be notified when a response is available."
+                : booking.status === "completion_disputed"
+                  ? "An administrator is reviewing the reported completion issue."
+                  : "This record is up to date. Continue to monitor messages and booking activity."}
+            </p>
+          )}
+
+          {booking.status === "pending" && booking.expires_at && (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                {booking.quotation?.status === "sent"
+                  ? "Quotation response deadline"
+                  : booking.quotation?.status === "revision_requested"
+                    ? "Vendor revision deadline"
+                    : "Vendor response deadline"}
+              </p>
+              <p className="mt-1 text-sm font-bold text-slate-800">{formatDateTime(booking.expires_at)}</p>
+            </div>
+          )}
+        </section>
+
+        {(booking.reschedule_request || (!booking.reschedule_request && latestReschedule?.status === "rejected")) && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-2 text-indigo-700">
+              <IconArrowsExchange size={18} />
+              <h2 className="text-sm font-bold">Date change request</h2>
+            </div>
+            {booking.reschedule_request ? (
+              <div className="mt-3">
+                <p className="text-sm font-bold text-slate-900">
+                  {formatDate(booking.reschedule_request.original_date)} → {formatDate(booking.reschedule_request.requested_date)}
+                </p>
+                <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-600">{booking.reschedule_request.reason}</p>
+                <p className="mt-2 text-xs text-indigo-600">The original date remains reserved while the vendor decides.</p>
+                <button type="button" onClick={() => onWithdrawReschedule(booking.id)} disabled={withdrawing} className="mt-4 w-full rounded-xl border border-indigo-200 px-3 py-2.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-60">
+                  {withdrawing ? "Withdrawing..." : "Withdraw request"}
+                </button>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <p className="text-sm font-bold text-slate-900">Request declined</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">Requested {formatDate(latestReschedule?.requested_date)}. The event remains on {formatDate(booking.selected_date)}.</p>
+                <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-orange-700">{latestReschedule?.decision_reason || "The vendor could not accept the requested date."}</p>
+              </div>
+            )}
+          </section>
+        )}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Booking controls</p>
+          <div className="mt-4 space-y-2">
           <button
             type="button"
             onClick={() => navigate(`/marketplace/${booking.service_id}`)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
           >
             <IconShoppingBag size={17} />
-            Service
+            View service listing
           </button>
           {booking.status === "completed" && (
             <button
               type="button"
               onClick={() => navigate("/reviews")}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-100"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
             >
               <IconStar size={17} />
-              Review
+              Write a review
             </button>
           )}
           {canReschedule && (
             <button
               type="button"
               onClick={() => onReschedule(booking)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-2.5 text-sm font-semibold text-indigo-700 transition-colors hover:bg-indigo-100"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
             >
               <IconArrowsExchange size={17} />
-              Change date
+              Request date change
             </button>
           )}
           {canCancel && (
@@ -715,21 +837,32 @@ const BookingCard = ({
               type="button"
               onClick={() => onCancel(booking.id)}
               disabled={cancelling}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
             >
               <IconX size={17} />
-              {cancelling ? "Cancelling..." : "Cancel"}
+              {cancelling ? "Cancelling..." : "Cancel booking"}
             </button>
           )}
-        </div>
-      </div>
+          </div>
+        </section>
+
+        {(booking.timeline?.length ?? 0) > 0 && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">Audit trail</p>
+            <h2 className="mt-1 text-base font-bold text-slate-900">Booking activity</h2>
+            <div className="mt-5 border-t border-slate-100 pt-5">
+              <BookingTimeline events={booking.timeline ?? []} />
+            </div>
+          </section>
+        )}
+      </aside>
     </motion.article>
   );
 };
 
 const CustomerBookings = () => {
-  usePageTitle("My Bookings");
   const navigate = useNavigate();
+  const { bookingId: bookingIdParam } = useParams();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("all");
@@ -738,20 +871,45 @@ const CustomerBookings = () => {
   const [quotationResponse, setQuotationResponse] = useState<{ booking: BookingItem; action: QuotationAction } | null>(null);
   const [completionResponse, setCompletionResponse] = useState<{ booking: BookingItem; action: CompletionAction } | null>(null);
 
-  const { data, isPending, isError } = useQuery({
+  const bookingId = Number(bookingIdParam);
+  const isDetailRoute = bookingIdParam !== undefined;
+  const validBookingId = Number.isInteger(bookingId) && bookingId > 0;
+
+  const bookingListQuery = useQuery({
     queryKey: ["bookings"],
     queryFn: fetchCustomerBookings,
     staleTime: 1000 * 30,
+    enabled: !isDetailRoute,
   });
 
-  const bookings = useMemo(() => data?.bookings ?? [], [data?.bookings]);
-  const conversationBookingId = Number(searchParams.get("conversation"));
-  const stats = data?.stats ?? buildStats(bookings);
+  const bookingDetailQuery = useQuery({
+    queryKey: ["booking", bookingId],
+    queryFn: () => fetchCustomerBooking(bookingId),
+    staleTime: 1000 * 30,
+    enabled: isDetailRoute && validBookingId,
+  });
+
+  const bookings = useMemo(() => bookingListQuery.data?.bookings ?? [], [bookingListQuery.data?.bookings]);
+  const detailBooking = bookingDetailQuery.data?.booking;
+  const stats = bookingListQuery.data?.stats ?? buildStats(bookings);
+  usePageTitle(detailBooking ? `${detailBooking.booking_reference} · Booking Detail` : isDetailRoute ? "Booking Detail" : "My Bookings");
+
+  useEffect(() => {
+    const legacyConversationId = Number(searchParams.get("conversation"));
+    if (!isDetailRoute && Number.isInteger(legacyConversationId) && legacyConversationId > 0) {
+      navigate(`/bookings/${legacyConversationId}?conversation=1`, { replace: true });
+    }
+  }, [isDetailRoute, navigate, searchParams]);
+
+  const invalidateBookingQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["bookings"] });
+    if (validBookingId) queryClient.invalidateQueries({ queryKey: ["booking", bookingId] });
+  };
 
   const cancelMutation = useMutation({
     mutationFn: cancelCustomerBooking,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      invalidateBookingQueries();
       queryClient.invalidateQueries({ queryKey: ["cart"] });
     },
   });
@@ -760,7 +918,7 @@ const CustomerBookings = () => {
     mutationFn: requestBookingReschedule,
     onSuccess: () => {
       setRescheduleBooking(null);
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      invalidateBookingQueries();
       queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
     },
   });
@@ -768,7 +926,7 @@ const CustomerBookings = () => {
   const withdrawMutation = useMutation({
     mutationFn: withdrawBookingReschedule,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      invalidateBookingQueries();
       queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
     },
   });
@@ -783,7 +941,7 @@ const CustomerBookings = () => {
     },
     onSuccess: () => {
       setQuotationResponse(null);
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      invalidateBookingQueries();
       queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
     },
   });
@@ -795,7 +953,7 @@ const CustomerBookings = () => {
         : disputeBookingCompletion({ bookingId: booking.id, reason }),
     onSuccess: () => {
       setCompletionResponse(null);
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      invalidateBookingQueries();
       queryClient.invalidateQueries({ queryKey: ["notification-unread-count"] });
     },
   });
@@ -827,7 +985,176 @@ const CustomerBookings = () => {
     }
   };
 
-  if (isPending) {
+  const openReschedule = (booking: BookingItem) => {
+    rescheduleMutation.reset();
+    setRescheduleBooking(booking);
+  };
+
+  const openQuotationAction = (booking: BookingItem, action: QuotationAction) => {
+    quotationMutation.reset();
+    setQuotationResponse({ booking, action });
+  };
+
+  const openCompletionAction = (booking: BookingItem, action: CompletionAction) => {
+    completionMutation.reset();
+    setCompletionResponse({ booking, action });
+  };
+
+  const bookingDialogs = (
+    <>
+      {rescheduleBooking && (
+        <RescheduleDialog
+          booking={rescheduleBooking}
+          onClose={() => !rescheduleMutation.isPending && setRescheduleBooking(null)}
+          onSubmit={(requestedDate, reason) => rescheduleMutation.mutate({
+            id: rescheduleBooking.id,
+            requestedDate,
+            reason,
+          })}
+          submitting={rescheduleMutation.isPending}
+          error={rescheduleMutation.isError
+            ? apiErrorMessage(rescheduleMutation.error, "The date change request could not be sent.")
+            : undefined}
+        />
+      )}
+
+      {quotationResponse && (
+        <QuotationResponseDialog
+          booking={quotationResponse.booking}
+          action={quotationResponse.action}
+          onClose={() => !quotationMutation.isPending && setQuotationResponse(null)}
+          onSubmit={(reason) => quotationMutation.mutate({
+            booking: quotationResponse.booking,
+            action: quotationResponse.action,
+            reason,
+          })}
+          submitting={quotationMutation.isPending}
+          error={quotationMutation.isError
+            ? apiErrorMessage(quotationMutation.error, "The quotation response could not be completed.")
+            : undefined}
+        />
+      )}
+
+      {completionResponse && (
+        <CompletionResponseDialog
+          booking={completionResponse.booking}
+          action={completionResponse.action}
+          onClose={() => !completionMutation.isPending && setCompletionResponse(null)}
+          onSubmit={(reason) => completionMutation.mutate({
+            booking: completionResponse.booking,
+            action: completionResponse.action,
+            reason,
+          })}
+          submitting={completionMutation.isPending}
+          error={completionMutation.isError
+            ? apiErrorMessage(completionMutation.error, "The completion response could not be saved.")
+            : undefined}
+        />
+      )}
+    </>
+  );
+
+  if (isDetailRoute) {
+    if (validBookingId && bookingDetailQuery.isPending) {
+      return <Loader title="Booking Detail" message="Loading your complete booking record..." />;
+    }
+
+    if (!validBookingId || bookingDetailQuery.isError || !detailBooking) {
+      return (
+        <main className="flex flex-1 items-center justify-center bg-[#f7f8fc] p-6">
+          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600"><IconAlertCircle size={28} /></div>
+            <h1 className="mt-4 text-xl font-black text-slate-900">Booking record not found</h1>
+            <p className="mt-2 text-sm leading-6 text-slate-500">This booking does not exist or does not belong to your organizer account.</p>
+            <button type="button" onClick={() => navigate("/bookings")} className="mt-5 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700">Back to My Bookings</button>
+          </div>
+        </main>
+      );
+    }
+
+    const displayAmount = detailBooking.quotation?.total_amount ?? detailBooking.price_value;
+
+    return (
+      <main className="flex-1 overflow-y-auto bg-[#f7f8fc]">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 md:px-8">
+          <button type="button" onClick={() => navigate("/bookings")} className="inline-flex w-fit items-center gap-2 text-sm font-bold text-slate-500 transition hover:text-indigo-700">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4"><path d="M19 12H5" /><path d="m12 19-7-7 7-7" /></svg>
+            Back to My Bookings
+          </button>
+
+          <header className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="h-1.5 bg-indigo-700" />
+            <div className="flex flex-col gap-6 p-6 sm:p-7 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Organizer booking record</p>
+                <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+                  {detailBooking.brief?.event_title || detailBooking.service_name}
+                </h1>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  {detailBooking.service_name} supplied by <span className="font-semibold text-slate-700">{detailBooking.vendor_name || detailBooking.vendor || "Vendor"}</span>
+                </p>
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">{detailBooking.booking_reference}</span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">{detailBooking.category}</span>
+                </div>
+              </div>
+              <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 lg:text-right">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Current status</p>
+                <StatusBadge status={detailBooking.status} />
+              </div>
+            </div>
+          </header>
+
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <DetailSummaryCard
+              label="Vendor"
+              value={detailBooking.vendor_name || detailBooking.vendor || "Vendor"}
+              caption={detailBooking.location || "Malaysia"}
+              icon={<IconShoppingBag size={20} />}
+            />
+            <DetailSummaryCard
+              label="Event date"
+              value={formatDate(detailBooking.selected_date)}
+              caption={detailBooking.brief?.venue_name || "Scheduled service date"}
+              icon={<IconCalendarEvent size={20} />}
+            />
+            <DetailSummaryCard
+              label={detailBooking.quotation ? "Quoted value" : "Estimated value"}
+              value={formatRM(displayAmount)}
+              caption={detailBooking.quotation?.reference || detailBooking.pricing_unit || "Service estimate"}
+              icon={<IconCurrencyDollar size={20} />}
+            />
+            <DetailSummaryCard
+              label="Request submitted"
+              value={formatDateTime(detailBooking.booked_at)}
+              caption="Original booking request"
+              icon={<IconClock size={20} />}
+            />
+          </section>
+
+          {cancelMutation.isError && <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{apiErrorMessage(cancelMutation.error, "The booking could not be cancelled.")}</div>}
+          {withdrawMutation.isError && <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{apiErrorMessage(withdrawMutation.error, "The date change request could not be withdrawn.")}</div>}
+
+          <BookingDetailRecord
+            booking={detailBooking}
+            onCancel={handleCancel}
+            onReschedule={openReschedule}
+            onWithdrawReschedule={handleWithdrawReschedule}
+            onQuotationAction={openQuotationAction}
+            onCompletionAction={openCompletionAction}
+            cancelling={cancelMutation.isPending && cancelMutation.variables === detailBooking.id}
+            withdrawing={withdrawMutation.isPending && withdrawMutation.variables === detailBooking.id}
+            quotationActionPending={quotationMutation.isPending && quotationMutation.variables?.booking.id === detailBooking.id}
+            completionActionPending={completionMutation.isPending && completionMutation.variables?.booking.id === detailBooking.id}
+            openConversation={searchParams.get("conversation") === "1"}
+          />
+        </div>
+        {bookingDialogs}
+      </main>
+    );
+  }
+
+  if (bookingListQuery.isPending) {
     return <Loader title="My Bookings" message="Loading your booking timeline..." />;
   }
 
@@ -898,7 +1225,7 @@ const CustomerBookings = () => {
           </div>
         )}
 
-        {isError ? (
+        {bookingListQuery.isError ? (
           <div className="rounded-2xl border border-red-100 bg-white p-8 text-center shadow-sm">
             <p className="font-bold text-gray-900">Bookings could not be loaded.</p>
             <p className="mt-1 text-sm text-gray-500">Please check your connection and try again.</p>
@@ -914,28 +1241,10 @@ const CustomerBookings = () => {
         ) : (
           <section className="space-y-3">
             {filteredBookings.map((booking) => (
-              <BookingCard
+              <BookingSummaryCard
                 key={booking.id}
                 booking={booking}
-                onCancel={handleCancel}
-                onReschedule={(booking) => {
-                  rescheduleMutation.reset();
-                  setRescheduleBooking(booking);
-                }}
-                onWithdrawReschedule={handleWithdrawReschedule}
-                onQuotationAction={(booking, action) => {
-                  quotationMutation.reset();
-                  setQuotationResponse({ booking, action });
-                }}
-                onCompletionAction={(booking, action) => {
-                  completionMutation.reset();
-                  setCompletionResponse({ booking, action });
-                }}
-                cancelling={cancelMutation.isPending && cancelMutation.variables === booking.id}
-                withdrawing={withdrawMutation.isPending && withdrawMutation.variables === booking.id}
-                quotationActionPending={quotationMutation.isPending && quotationMutation.variables?.booking.id === booking.id}
-                completionActionPending={completionMutation.isPending && completionMutation.variables?.booking.id === booking.id}
-                openConversation={conversationBookingId === booking.id}
+                onOpen={() => navigate(`/bookings/${booking.id}`)}
               />
             ))}
           </section>
@@ -948,55 +1257,7 @@ const CustomerBookings = () => {
         )}
       </div>
 
-      {rescheduleBooking && (
-        <RescheduleDialog
-          booking={rescheduleBooking}
-          onClose={() => !rescheduleMutation.isPending && setRescheduleBooking(null)}
-          onSubmit={(requestedDate, reason) => rescheduleMutation.mutate({
-            id: rescheduleBooking.id,
-            requestedDate,
-            reason,
-          })}
-          submitting={rescheduleMutation.isPending}
-          error={rescheduleMutation.isError
-            ? apiErrorMessage(rescheduleMutation.error, "The date change request could not be sent.")
-            : undefined}
-        />
-      )}
-
-      {quotationResponse && (
-        <QuotationResponseDialog
-          booking={quotationResponse.booking}
-          action={quotationResponse.action}
-          onClose={() => !quotationMutation.isPending && setQuotationResponse(null)}
-          onSubmit={(reason) => quotationMutation.mutate({
-            booking: quotationResponse.booking,
-            action: quotationResponse.action,
-            reason,
-          })}
-          submitting={quotationMutation.isPending}
-          error={quotationMutation.isError
-            ? apiErrorMessage(quotationMutation.error, "The quotation response could not be completed.")
-            : undefined}
-        />
-      )}
-
-      {completionResponse && (
-        <CompletionResponseDialog
-          booking={completionResponse.booking}
-          action={completionResponse.action}
-          onClose={() => !completionMutation.isPending && setCompletionResponse(null)}
-          onSubmit={(reason) => completionMutation.mutate({
-            booking: completionResponse.booking,
-            action: completionResponse.action,
-            reason,
-          })}
-          submitting={completionMutation.isPending}
-          error={completionMutation.isError
-            ? apiErrorMessage(completionMutation.error, "The completion response could not be saved.")
-            : undefined}
-        />
-      )}
+      {bookingDialogs}
     </main>
   );
 };

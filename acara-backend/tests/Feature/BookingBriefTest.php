@@ -175,7 +175,20 @@ class BookingBriefTest extends TestCase
             ->assertJsonPath('bookings.0.brief.event_title', 'Acara Annual Dinner')
             ->assertJsonPath('bookings.0.brief.is_locked', true);
 
+        $this->getJson("/api/bookings/{$bookingId}")
+            ->assertOk()
+            ->assertJsonPath('booking.id', $bookingId)
+            ->assertJsonPath('booking.booking_reference', 'ACR-'.str_pad((string) $bookingId, 6, '0', STR_PAD_LEFT))
+            ->assertJsonPath('booking.brief.event_title', 'Acara Annual Dinner')
+            ->assertJsonPath('booking.vendor_name', 'Aisyah Events')
+            ->assertJsonPath('booking.status', 'pending');
+
+        $otherOrganizer = User::factory()->create(['role' => 'user']);
+        Sanctum::actingAs($otherOrganizer);
+        $this->getJson("/api/bookings/{$bookingId}")->assertNotFound();
+
         Sanctum::actingAs($this->vendor);
+        $this->getJson("/api/bookings/{$bookingId}")->assertNotFound();
         $this->getJson('/api/vendor/bookings')
             ->assertOk()
             ->assertJsonPath('bookings.0.brief.venue_name', 'Grand Acara Ballroom')

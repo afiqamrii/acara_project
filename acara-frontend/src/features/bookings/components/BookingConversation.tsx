@@ -56,6 +56,7 @@ const BookingConversation = ({
   const refreshConversationState = () => {
     queryClient.invalidateQueries({ queryKey: ["booking-conversation", bookingId] });
     queryClient.invalidateQueries({ queryKey: ["bookings"] });
+    queryClient.invalidateQueries({ queryKey: ["booking", bookingId] });
     queryClient.invalidateQueries({ queryKey: ["vendor-bookings"] });
     queryClient.invalidateQueries({ queryKey: ["vendor-booking-conversations"] });
     queryClient.invalidateQueries({ queryKey: ["admin-booking", bookingId] });
