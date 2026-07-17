@@ -1,0 +1,9 @@
+{
+    "$schema": "https://railway.com/railway.schema.json",
+    "deploy": {
+        "startCommand": "php artisan queue:work database --queue=emails --sleep=3 --tries=3 --timeout=60",
+        "healthcheckPath": null,
+        "healthcheckTimeout": null,
+        "restartPolicyType": "ALWAYS"
+    }
+}
