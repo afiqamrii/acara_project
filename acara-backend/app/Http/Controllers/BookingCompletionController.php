@@ -8,6 +8,7 @@ use App\Models\BookingRescheduleRequest;
 use App\Models\ServiceProfile;
 use App\Services\AdminAuditService;
 use App\Services\NotificationService;
+use App\Services\PlatformSettingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -16,6 +17,7 @@ class BookingCompletionController extends Controller
     public function __construct(
         private readonly NotificationService $notifications,
         private readonly AdminAuditService $audits,
+        private readonly PlatformSettingService $settings,
     ) {}
 
     /** POST /vendor/bookings/{id}/completion */
@@ -64,7 +66,7 @@ class BookingCompletionController extends Controller
                 'completion_note' => trim($validated['note']),
                 'proof_path' => $proof?->store('booking-completion-proofs', 'public'),
                 'proof_original_name' => $proof?->getClientOriginalName(),
-                'response_due_at' => now()->addHours(max(1, (int) config('acara.booking_completion.response_hours', 72))),
+                'response_due_at' => now()->addHours($this->settings->completionResponseHours()),
                 'submitted_at' => now(),
             ]);
 

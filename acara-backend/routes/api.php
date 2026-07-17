@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminAuditController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminReportController;
+use App\Http\Controllers\AdminSettingController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AvailabilityController;
@@ -119,6 +120,8 @@ Route::middleware(['auth:sanctum', 'account.active', 'role:admin,super_admin'])-
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'show']);
     Route::get('/admin/reports/operations', [AdminReportController::class, 'show']);
     Route::get('/admin/reports/operations/export', [AdminReportController::class, 'export']);
+    Route::get('/admin/settings', [AdminSettingController::class, 'show']);
+    Route::put('/admin/settings', [AdminSettingController::class, 'update']);
 
     Route::get('/admin/services', [ServiceVerificationController::class, 'index']);
     Route::patch('/admin/services/{id}/approve', [ServiceVerificationController::class, 'approve']);

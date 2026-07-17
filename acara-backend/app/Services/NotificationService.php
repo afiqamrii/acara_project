@@ -16,6 +16,8 @@ use App\Notifications\BookingActivityEmail;
 
 class NotificationService
 {
+    public function __construct(private readonly PlatformSettingService $settings) {}
+
     public function bookingMessage(Booking $booking, BookingMessage $bookingMessage, User $sender, User $recipient): UserNotification
     {
         $booking->loadMissing('serviceProfile');
@@ -631,7 +633,9 @@ class NotificationService
 
     private function sendEmailIfEnabled(UserNotification $notification): void
     {
-        if (! config('acara.booking_email.enabled')) {
+        $isMandatoryAccountNotice = in_array($notification->type, ['account_suspended', 'account_reactivated'], true);
+
+        if (! $isMandatoryAccountNotice && ! $this->settings->bookingEmailsEnabled()) {
             return;
         }
 
@@ -639,8 +643,6 @@ class NotificationService
 
         $preferences = $notification->user->notificationPreference
             ?? new UserNotificationPreference(UserNotificationPreference::DEFAULTS);
-
-        $isMandatoryAccountNotice = in_array($notification->type, ['account_suspended', 'account_reactivated'], true);
 
         if (! $isMandatoryAccountNotice && ! $preferences->allowsEmailFor($notification->type)) {
             return;

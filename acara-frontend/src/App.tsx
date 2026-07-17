@@ -40,6 +40,7 @@ const AdminAuditDetail = lazy(() => import('./features/admin_audits/pages/AdminA
 const AdminOperationsReport = lazy(() => import('./features/admin_reports/pages/AdminOperationsReport'));
 const ForgotPassword = lazy(() => import('./features/auth/pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./features/auth/pages/ResetPassword'));
+const AdminSettings = lazy(() => import('./features/admin_settings/pages/AdminSettings'));
 
 
 function App() {
@@ -95,7 +96,7 @@ function App() {
               <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
               <Route path="/admin/audit-logs/:auditLogId" element={<AdminAuditDetail />} />
               <Route path="/admin/reports" element={<AdminOperationsReport />} />
-              <Route path="/admin/settings" element={<ComingSoon title="Admin Settings" description="Configure platform-wide settings, fee structures, and notification rules." />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
             </Route>
 
             <Route path="/admin/panel" element={<Navigate to="/admin/dashboard" replace />} />

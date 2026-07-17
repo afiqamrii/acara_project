@@ -7,6 +7,7 @@ use App\Models\Quotation;
 use App\Models\ServiceProfile;
 use App\Services\BookingLifecycleService;
 use App\Services\NotificationService;
+use App\Services\PlatformSettingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,7 @@ class QuotationController extends Controller
     public function __construct(
         private readonly NotificationService $notifications,
         private readonly BookingLifecycleService $lifecycle,
+        private readonly PlatformSettingService $settings,
     ) {}
 
     public function store(Request $request, int $bookingId)
@@ -267,7 +269,7 @@ class QuotationController extends Controller
                 $this->notifications->quotationDeclined($booking, $quotation);
             } else {
                 $booking->update([
-                    'expires_at' => now()->addHours(max(1, (int) config('acara.booking_lifecycle.response_hours', 48))),
+                    'expires_at' => now()->addHours($this->settings->bookingResponseHours()),
                     'reminder_sent_at' => null,
                 ]);
                 $this->notifications->quotationRevisionRequested($booking, $quotation);

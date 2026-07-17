@@ -10,6 +10,7 @@ use App\Models\ServiceAvailability;
 use App\Models\ServiceProfile;
 use App\Services\BookingLifecycleService;
 use App\Services\NotificationService;
+use App\Services\PlatformSettingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,7 @@ class BookingController extends Controller
     public function __construct(
         private readonly NotificationService $notifications,
         private readonly BookingLifecycleService $lifecycle,
+        private readonly PlatformSettingService $settings,
     ) {}
 
     private function referenceFor(int $id): string
@@ -499,7 +501,7 @@ class BookingController extends Controller
                 $brief->update(['locked_at' => now()]);
                 $item->update(array_merge($snapshot, [
                     'status' => 'pending',
-                    'expires_at' => now()->addHours(max(1, (int) config('acara.booking_lifecycle.response_hours', 48))),
+                    'expires_at' => now()->addHours($this->settings->bookingResponseHours()),
                     'reminder_sent_at' => null,
                     'expired_at' => null,
                     'confirmed_at' => null,

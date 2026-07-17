@@ -9,7 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 class BookingLifecycleService
 {
-    public function __construct(private readonly NotificationService $notifications) {}
+    public function __construct(
+        private readonly NotificationService $notifications,
+        private readonly PlatformSettingService $settings,
+    ) {}
 
     /**
      * @return array{expired: int, reminded: int, completions_auto_confirmed: int, completion_reminders: int}
@@ -75,7 +78,7 @@ class BookingLifecycleService
     public function sendCompletionReminders(): int
     {
         $reminded = 0;
-        $reminderHours = max(1, (int) config('acara.booking_completion.reminder_hours_before_expiry', 24));
+        $reminderHours = $this->settings->completionReminderHours();
         $reminderThreshold = now()->addHours($reminderHours);
 
         BookingCompletion::query()
@@ -145,7 +148,7 @@ class BookingLifecycleService
     public function sendDueReminders(): int
     {
         $reminded = 0;
-        $reminderHours = max(1, (int) config('acara.booking_lifecycle.reminder_hours_before_expiry', 12));
+        $reminderHours = $this->settings->bookingReminderHours();
         $reminderThreshold = now()->addHours($reminderHours);
 
         Booking::query()

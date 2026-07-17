@@ -14,7 +14,7 @@ class AdminAuditController extends Controller
     {
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
-            'module' => ['nullable', Rule::in(['all', 'users', 'vendors', 'services', 'bookings', 'administration'])],
+            'module' => ['nullable', Rule::in(['all', 'users', 'vendors', 'services', 'bookings', 'administration', 'settings'])],
             'action' => ['nullable', 'string', 'max:80'],
             'actor_id' => ['nullable', 'integer', 'exists:users,id'],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
@@ -78,6 +78,7 @@ class AdminAuditController extends Controller
                     'service_rejected',
                     'vendor_rejected',
                     'completion_resolved',
+                    'platform_settings_updated',
                 ])->count(),
             ],
             'filters' => [

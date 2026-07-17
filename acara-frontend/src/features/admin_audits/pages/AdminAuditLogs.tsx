@@ -20,7 +20,7 @@ import Loader from "../../../components/common/Loader";
 import { usePageTitle } from "../../../utils/usePageTitle";
 import { fetchAdminAuditLogs, type AdminAuditLog } from "../api";
 
-const MODULES = ["users", "vendors", "services", "bookings", "administration"];
+const MODULES = ["users", "vendors", "services", "bookings", "administration", "settings"];
 
 const titleCase = (value: string) => value
   .split("_")
@@ -40,6 +40,7 @@ const moduleStyle = (module: string) => {
   if (module === "services") return "border-blue-200 bg-blue-50 text-blue-700";
   if (module === "vendors") return "border-indigo-200 bg-indigo-50 text-indigo-700";
   if (module === "bookings") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (module === "settings") return "border-amber-200 bg-amber-50 text-amber-700";
   return "border-slate-200 bg-slate-50 text-slate-700";
 };
 
