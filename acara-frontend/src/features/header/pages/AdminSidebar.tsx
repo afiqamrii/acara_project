@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   IconChevronLeft,
   IconChevronRight,
+  IconChartBar,
   IconHistory,
   IconLayoutDashboard,
   IconLogout,
@@ -25,6 +26,7 @@ const navItems = [
   { label: "Vendor Verifications", href: "/admin/verifications/vendors", icon: IconUserCheck },
   { label: "Bookings", href: "/admin/bookings", icon: IconReceipt },
   { label: "Users", href: "/admin/users", icon: IconUsers },
+  { label: "Reports", href: "/admin/reports", icon: IconChartBar },
   { label: "Audit Logs", href: "/admin/audit-logs", icon: IconHistory },
   { label: "Settings", href: "/admin/settings", icon: IconSettings },
 ];

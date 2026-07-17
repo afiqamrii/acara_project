@@ -37,6 +37,7 @@ const AdminUsers = lazy(() => import('./features/admin_users/pages/AdminUsers'))
 const AdminUserDetail = lazy(() => import('./features/admin_users/pages/AdminUserDetail'));
 const AdminAuditLogs = lazy(() => import('./features/admin_audits/pages/AdminAuditLogs'));
 const AdminAuditDetail = lazy(() => import('./features/admin_audits/pages/AdminAuditDetail'));
+const AdminOperationsReport = lazy(() => import('./features/admin_reports/pages/AdminOperationsReport'));
 
 
 function App() {
@@ -89,6 +90,7 @@ function App() {
               <Route path="/admin/escrow/releases" element={<ComingSoon title="Escrow Releases" description="Approve, freeze, or release escrow funds tied to completed or disputed bookings." />} />
               <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
               <Route path="/admin/audit-logs/:auditLogId" element={<AdminAuditDetail />} />
+              <Route path="/admin/reports" element={<AdminOperationsReport />} />
               <Route path="/admin/settings" element={<ComingSoon title="Admin Settings" description="Configure platform-wide settings, fee structures, and notification rules." />} />
             </Route>
 
