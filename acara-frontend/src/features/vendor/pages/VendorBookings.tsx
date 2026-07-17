@@ -697,7 +697,7 @@ const BookingCard = ({
                 </div>
 
                 <BookingBriefDisplay brief={booking.brief} compact />
-                <QuotationDisplay quotation={booking.quotation} compact />
+                <QuotationDisplay quotation={booking.quotation} bookingId={booking.id} compact />
                 {booking.completion && (
                     <div className="mb-4">
                         <BookingCompletionDisplay completion={booking.completion} compact />
@@ -921,7 +921,7 @@ const BookingDetailPage = ({
                     </div>
 
                     <BookingBriefDisplay brief={booking.brief} notes={booking.notes} />
-                    <QuotationDisplay quotation={booking.quotation} />
+                    <QuotationDisplay quotation={booking.quotation} bookingId={booking.id} />
                     {booking.completion && <BookingCompletionDisplay completion={booking.completion} />}
                     {(booking.completion_history?.length ?? 0) > 1 && (
                         <details className="rounded-2xl border border-slate-200 bg-slate-50/40 px-4 py-3">
@@ -936,7 +936,7 @@ const BookingDetailPage = ({
                         <details className="rounded-2xl border border-indigo-100 bg-indigo-50/40 px-4 py-3">
                             <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-indigo-700">Previous quotation versions ({booking.quotation_history.length - 1})</summary>
                             <div className="mt-4 space-y-3 border-t border-indigo-100 pt-4">
-                                {booking.quotation_history.slice(1).map(quotation => <QuotationDisplay key={quotation.id} quotation={quotation} compact />)}
+                                {booking.quotation_history.slice(1).map(quotation => <QuotationDisplay key={quotation.id} quotation={quotation} bookingId={booking.id} compact />)}
                             </div>
                         </details>
                     )}

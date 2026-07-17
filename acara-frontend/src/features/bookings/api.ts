@@ -297,6 +297,13 @@ export const requestQuotationRevision = async ({
   return res.data;
 };
 
+export const fetchQuotationPdf = async (bookingId: number, quotationId: number): Promise<Blob> => {
+  const res = await api.get<Blob>(`/bookings/${bookingId}/quotations/${quotationId}/pdf`, {
+    responseType: "blob",
+  });
+  return res.data;
+};
+
 export const submitVendorCompletion = async ({
   bookingId,
   note,

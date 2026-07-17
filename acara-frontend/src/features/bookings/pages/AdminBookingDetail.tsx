@@ -256,12 +256,12 @@ const AdminBookingDetail = () => {
             <Section eyebrow="Commercial agreement" title="Quotation record">
               {quotation ? (
                 <div className="space-y-4">
-                  <QuotationDisplay quotation={quotation} />
+                  <QuotationDisplay quotation={quotation} bookingId={booking.id} />
                   {(booking.quotation_history?.length ?? 0) > 1 && (
                     <details className="rounded-xl border border-indigo-100 bg-indigo-50/30 px-4 py-3">
                       <summary className="cursor-pointer text-xs font-black uppercase tracking-wide text-indigo-700">Previous quotation versions ({(booking.quotation_history?.length ?? 1) - 1})</summary>
                       <div className="mt-3 space-y-3 border-t border-indigo-100 pt-3">
-                        {(booking.quotation_history ?? []).slice(1).map((item) => <QuotationDisplay key={item.id} quotation={item} compact />)}
+                        {(booking.quotation_history ?? []).slice(1).map((item) => <QuotationDisplay key={item.id} quotation={item} bookingId={booking.id} compact />)}
                       </div>
                     </details>
                   )}

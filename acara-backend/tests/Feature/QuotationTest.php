@@ -326,6 +326,38 @@ class QuotationTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_related_parties_and_administrators_can_download_versioned_quotation_pdf(): void
+    {
+        $booking = $this->booking();
+        $quotation = $this->sendQuotation($booking);
+        $url = "/api/bookings/{$booking->id}/quotations/{$quotation->id}/pdf";
+        $filename = $quotation->reference().'.pdf';
+
+        foreach ([
+            $this->customer,
+            $this->vendor,
+            User::factory()->create(['role' => 'admin']),
+            User::factory()->create(['role' => 'super_admin']),
+        ] as $user) {
+            Sanctum::actingAs($user);
+            $response = $this->get($url)
+                ->assertOk()
+                ->assertHeader('content-type', 'application/pdf')
+                ->assertDownload($filename);
+
+            $this->assertStringStartsWith('%PDF-', (string) $response->getContent());
+        }
+
+        Sanctum::actingAs(User::factory()->create(['role' => 'user']));
+        $this->get($url)->assertNotFound();
+
+        Sanctum::actingAs(User::factory()->create([
+            'role' => 'vendor',
+            'profile_completed' => true,
+        ]));
+        $this->get($url)->assertNotFound();
+    }
+
     public function test_quotation_activity_queues_resend_email_when_enabled(): void
     {
         config()->set([

@@ -644,7 +644,7 @@ const BookingDetailRecord = ({
         >
           {booking.quotation ? (
             <div className="space-y-3">
-              <QuotationDisplay quotation={booking.quotation} />
+              <QuotationDisplay quotation={booking.quotation} bookingId={booking.id} />
               {(booking.quotation_history?.length ?? 0) > 1 && (
                 <details className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3">
                   <summary className="cursor-pointer text-sm font-bold text-slate-700">
@@ -652,7 +652,7 @@ const BookingDetailRecord = ({
                   </summary>
                   <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
                     {(booking.quotation_history ?? []).slice(1).map((quotation) => (
-                      <QuotationDisplay key={quotation.id} quotation={quotation} compact />
+                      <QuotationDisplay key={quotation.id} quotation={quotation} bookingId={booking.id} compact />
                     ))}
                   </div>
                 </details>

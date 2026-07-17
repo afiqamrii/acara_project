@@ -1,4 +1,6 @@
-import type { Quotation } from "../api";
+import { useState } from "react";
+import { IconDownload } from "@tabler/icons-react";
+import { fetchQuotationPdf, type Quotation } from "../api";
 
 const statusMeta: Record<string, { label: string; className: string }> = {
   sent: { label: "Awaiting organizer", className: "border-amber-200 bg-amber-50 text-amber-700" },
@@ -15,9 +17,42 @@ const formatDateTime = (value?: string | null) => value
   ? new Date(value.replace(" ", "T")).toLocaleString("en-MY", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })
   : "-";
 
-const QuotationDisplay = ({ quotation, compact = false }: { quotation?: Quotation | null; compact?: boolean }) => {
+const QuotationDisplay = ({
+  quotation,
+  bookingId,
+  compact = false,
+}: {
+  quotation?: Quotation | null;
+  bookingId?: number;
+  compact?: boolean;
+}) => {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState(false);
+
   if (!quotation) return null;
   const meta = statusMeta[quotation.status] ?? { label: quotation.status, className: "border-slate-200 bg-slate-50 text-slate-600" };
+
+  const downloadPdf = async () => {
+    if (!bookingId || downloading) return;
+
+    setDownloading(true);
+    setDownloadError(false);
+    try {
+      const blob = await fetchQuotationPdf(bookingId, quotation.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${quotation.reference}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setDownloadError(true);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (compact) {
     return (
@@ -28,9 +63,17 @@ const QuotationDisplay = ({ quotation, compact = false }: { quotation?: Quotatio
             <p className="mt-1 text-base font-black text-indigo-950">{money(quotation.total_amount)}</p>
             <p className="mt-0.5 text-xs text-indigo-600">Valid until {formatDateTime(quotation.valid_until)}</p>
           </div>
-          <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-bold ${meta.className}`}>{meta.label}</span>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${meta.className}`}>{meta.label}</span>
+            {bookingId && (
+              <button type="button" onClick={downloadPdf} disabled={downloading} className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-indigo-700 transition hover:bg-indigo-50 disabled:opacity-60">
+                <IconDownload size={13} /> {downloading ? "Preparing..." : "PDF"}
+              </button>
+            )}
+          </div>
         </div>
         {quotation.response_note && <p className="mt-2 line-clamp-2 text-xs leading-5 text-indigo-800">{quotation.response_note}</p>}
+        {downloadError && <p className="mt-2 text-[10px] font-semibold text-red-600">PDF download failed. Please try again.</p>}
       </div>
     );
   }
@@ -46,10 +89,16 @@ const QuotationDisplay = ({ quotation, compact = false }: { quotation?: Quotatio
         <div className="text-right">
           <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-bold ${meta.className}`}>{meta.label}</span>
           <p className="mt-2 text-xl font-black">{money(quotation.total_amount)}</p>
+          {bookingId && (
+            <button type="button" onClick={downloadPdf} disabled={downloading} className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-white/25 bg-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/20 disabled:opacity-60">
+              <IconDownload size={15} /> {downloading ? "Preparing PDF..." : "Download PDF"}
+            </button>
+          )}
         </div>
       </div>
 
       <div className="p-4">
+        {downloadError && <p className="mb-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">The quotation PDF could not be downloaded. Please try again.</p>}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] text-left text-sm">
             <thead className="text-[10px] font-bold uppercase tracking-wider text-slate-400">

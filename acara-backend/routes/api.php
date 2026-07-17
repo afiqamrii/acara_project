@@ -9,6 +9,7 @@ use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\QuotationDocumentController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ServiceVerificationController;
@@ -52,6 +53,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/bookings/{id}/messages', [BookingMessageController::class, 'index']);
     Route::post('/bookings/{id}/messages', [BookingMessageController::class, 'store']);
     Route::patch('/bookings/{id}/messages/read', [BookingMessageController::class, 'markRead']);
+    Route::get('/bookings/{bookingId}/quotations/{quotationId}/pdf', [QuotationDocumentController::class, 'download']);
 });
 
 // ─── Planning Booking Routes (organizers and vendors) ────────────────────────
