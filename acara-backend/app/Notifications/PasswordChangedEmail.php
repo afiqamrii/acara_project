@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\AcaraEmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -30,10 +31,12 @@ class PasswordChangedEmail extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        $message = (new MailMessage)
             ->mailer(config('acara.security_email.mailer', 'resend'))
             ->subject('Your ACARA password was changed')
-            ->greeting('Hello '.$notifiable->name.',')
+            ->greeting('Hello '.$notifiable->name.',');
+
+        return AcaraEmailBranding::addLogo($message)
             ->line('The password for your ACARA account was changed successfully.')
             ->line('For your security, all existing sessions have been signed out.')
             ->action('Sign in to ACARA', rtrim(config('app.frontend_url'), '/').'/login')

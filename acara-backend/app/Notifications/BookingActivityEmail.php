@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\UserNotification;
+use App\Support\AcaraEmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -31,11 +32,12 @@ class BookingActivityEmail extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $message = (new MailMessage)
+        $message = AcaraEmailBranding::addLogo((new MailMessage)
             ->mailer(config('acara.booking_email.mailer', 'resend'))
             ->subject(config('app.name').': '.$this->activity->title)
-            ->greeting('Hello '.$notifiable->name.',')
-            ->line($this->activity->message);
+            ->greeting('Hello '.$notifiable->name.','));
+
+        $message->line($this->activity->message);
 
         if ($bookingReference = data_get($this->activity->data, 'booking_reference')) {
             $message->line('Booking reference: '.$bookingReference);
