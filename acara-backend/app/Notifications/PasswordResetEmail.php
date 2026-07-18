@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\AcaraEmailBranding;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -35,10 +36,12 @@ class PasswordResetEmail extends Notification implements ShouldQueue
             'email' => $notifiable->getEmailForPasswordReset(),
         ]);
 
-        return (new MailMessage)
+        $message = (new MailMessage)
             ->mailer(config('acara.security_email.mailer', 'resend'))
             ->subject('Reset your ACARA password')
-            ->greeting('Hello '.$notifiable->name.',')
+            ->greeting('Hello '.$notifiable->name.',');
+
+        return AcaraEmailBranding::addLogo($message)
             ->line('We received a request to reset the password for your ACARA account.')
             ->action('Reset password', $resetUrl)
             ->line('This secure link expires in '.config('auth.passwords.users.expire', 60).' minutes and can only be used once.')

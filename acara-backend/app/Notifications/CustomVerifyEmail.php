@@ -2,9 +2,9 @@
 
 namespace App\Notifications;
 
+use App\Support\AcaraEmailBranding;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Support\HtmlString;
 
 class CustomVerifyEmail extends VerifyEmail
 {
@@ -18,12 +18,11 @@ class CustomVerifyEmail extends VerifyEmail
     {
         $verificationUrl = $this->verificationUrl($notifiable);
 
-        return (new MailMessage)
+        $message = (new MailMessage)
             ->subject('Welcome to Acara! Verify your email')
-            ->greeting('Hello, ' . $notifiable->name . '!')
-            ->line(new HtmlString('<div style="text-align: center; margin-bottom: 20px;">
-                <img src="' . env('URL_PICTURE') . '" alt="ACARA" style="max-width: 150px; height: auto;">
-            </div>'))
+            ->greeting('Hello, '.$notifiable->name.'!');
+
+        return AcaraEmailBranding::addLogo($message)
             ->line('We are excited to have you on board. Please verify your email address to get access to all features.')
             ->action('Verify Email Address', $verificationUrl)
             ->line('This link will expire in 60 minutes.')
