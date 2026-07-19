@@ -21,11 +21,20 @@ import {
 import {
     sendVendorQuotation,
     submitVendorCompletion,
+    updateBookingTrackingStage,
     type BookingCompletion,
     type BookingBrief,
     type BookingRescheduleRequest,
     type Quotation,
+    type TrackingUpdate,
 } from '../../bookings/api';
+import OrderProgressStepper from '../../bookings/components/tracking/OrderProgressStepper';
+import OrderTrackingTimeline from '../../bookings/components/tracking/OrderTrackingTimeline';
+import VendorCommitmentPanel from '../../bookings/components/tracking/VendorCommitmentPanel';
+import ProofMediaSection from '../../bookings/components/tracking/ProofMediaSection';
+import MainActionButton from '../../bookings/components/tracking/MainActionButton';
+import ArrivalVerificationDialog from '../../bookings/components/tracking/ArrivalVerificationDialog';
+import { computeOrderTracking, resolveMainAction } from '../../bookings/utils/orderTracking';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Customer = { id: number; name: string; email: string; phone: string | null };
@@ -35,6 +44,7 @@ type DialogType = 'reject' | 'cancel' | 'complete' | 'reschedule_approve' | 'res
 
 type VendorBooking = {
     id: number;
+    booking_reference: string;
     service_id: number;
     service_name: string;
     category: string;
@@ -64,6 +74,7 @@ type VendorBooking = {
     reschedule_request: BookingRescheduleRequest | null;
     reschedule_history: BookingRescheduleRequest[];
     timeline: BookingTimelineEvent[];
+    tracking_updates?: TrackingUpdate[];
     portfolio_url: string | null;
     customer: Customer;
     message_count: number;
@@ -826,7 +837,7 @@ const BookingCard = ({
 
 // ── Dedicated booking detail page ────────────────────────────────────────────
 const BookingDetailPage = ({
-    booking, onBack, onQuote, onReject, onCancel, onComplete, onRescheduleApprove, onRescheduleReject, openConversation,
+    booking, onBack, onQuote, onReject, onCancel, onComplete, onRescheduleApprove, onRescheduleReject, onAdvanceStage, advancingStage, trackingStageError, openConversation,
 }: {
     booking: EnrichedBooking;
     onBack: () => void;
@@ -836,6 +847,12 @@ const BookingDetailPage = ({
     onComplete: (b: VendorBooking) => void;
     onRescheduleApprove: (b: VendorBooking) => void;
     onRescheduleReject: (b: VendorBooking) => void;
+    onAdvanceStage: (
+        stage: NonNullable<ReturnType<typeof computeOrderTracking>['nextVendorStage']>,
+        payload?: { latitude: number; longitude: number; accuracy: number; photo: File },
+    ) => Promise<unknown>;
+    advancingStage: boolean;
+    trackingStageError?: string;
     openConversation: boolean;
 }) => {
     const cfg = STATUS_CONFIG[booking.displayStatus];
@@ -844,6 +861,15 @@ const BookingDetailPage = ({
     const awaitingQuotationResponse = booking.displayStatus === 'pending' && booking.quotation?.status === 'sent';
     const canCancel = booking.displayStatus === 'confirmed';
     const canComplete = booking.displayStatus === 'confirmed' && booking.daysDiff <= 0 && !booking.reschedule_request;
+    const tracking = computeOrderTracking(booking);
+    const mainAction = resolveMainAction(booking, 'vendor', tracking);
+    const [showArrivalDialog, setShowArrivalDialog] = useState(false);
+    const handleMainAction = () => {
+        if (!mainAction) return;
+        if (mainAction.kind === 'advance_stage' && mainAction.stage === 'arrived') setShowArrivalDialog(true);
+        else if (mainAction.kind === 'advance_stage' && mainAction.stage) onAdvanceStage(mainAction.stage);
+        else if (mainAction.kind === 'submit_completion') onComplete(booking);
+    };
 
     return (
         <main className="min-w-0 flex-1 overflow-y-auto bg-[#f5f4fb]">
@@ -875,14 +901,36 @@ const BookingDetailPage = ({
                         <p className="mt-5 text-[10px] font-black uppercase tracking-[0.2em] text-purple-200">Vendor booking record</p>
                         <h1 className="mt-2 text-2xl font-black leading-tight text-white drop-shadow sm:text-3xl">{booking.brief?.event_title || booking.service_name}</h1>
                         <p className="mt-2 text-sm font-medium text-purple-100">{booking.service_name} · {booking.customer.name}</p>
+                        {mainAction && (
+                            <div className="mt-5">
+                                <MainActionButton action={mainAction} pending={advancingStage} onClick={handleMainAction} />
+                            </div>
+                        )}
                     </div>
                 </header>
+
+                {tracking.active && <OrderProgressStepper tracking={tracking} />}
+
+                {trackingStageError && (
+                    <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{trackingStageError}</div>
+                )}
 
                 <div className="space-y-5 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
                     <div className="flex items-center justify-between">
                         <p className="text-sm font-bold text-gray-800">{formatDate(booking.selected_date)}</p>
                         <CountdownChip booking={booking} />
                     </div>
+
+                    {tracking.active && (
+                        <>
+                            <VendorCommitmentPanel
+                                booking={booking}
+                                role="vendor"
+                                counterpartLabel={booking.customer.name}
+                            />
+                            <ProofMediaSection booking={booking} />
+                        </>
+                    )}
 
                     {/* Customer */}
                     <div className="bg-gray-50 rounded-2xl p-4">
@@ -984,6 +1032,13 @@ const BookingDetailPage = ({
                         title={`Conversation with ${booking.customer.name}`}
                     />
 
+                    {tracking.active && (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                            <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-purple-600">Order Tracking Timeline</p>
+                            <OrderTrackingTimeline booking={booking} />
+                        </div>
+                    )}
+
                     {booking.timeline.length > 0 && (
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                             <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-500">Booking Activity</p>
@@ -1033,6 +1088,24 @@ const BookingDetailPage = ({
                     )}
                 </div>
             </motion.div>
+
+            <AnimatePresence>
+                {showArrivalDialog && (
+                    <ArrivalVerificationDialog
+                        onClose={() => setShowArrivalDialog(false)}
+                        onSubmit={async (payload) => {
+                            try {
+                                await onAdvanceStage('arrived', payload);
+                                setShowArrivalDialog(false);
+                            } catch {
+                                // keep the dialog open — trackingStageError renders the failure reason above
+                            }
+                        }}
+                        submitting={advancingStage}
+                        error={trackingStageError}
+                    />
+                )}
+            </AnimatePresence>
         </main>
     );
 };
@@ -1164,6 +1237,11 @@ const VendorBookings = () => {
     const completeMutation = useMutation({
         mutationFn: submitVendorCompletion,
         onSuccess: () => { setDialog(null); invalidate(); },
+    });
+
+    const trackingStageMutation = useMutation({
+        mutationFn: updateBookingTrackingStage,
+        onSuccess: () => { invalidate(); },
     });
 
     const approveRescheduleMutation = useMutation({
@@ -1378,6 +1456,9 @@ const VendorBookings = () => {
                         onComplete={b => openDialog('complete', b)}
                         onRescheduleApprove={b => openDialog('reschedule_approve', b)}
                         onRescheduleReject={b => openDialog('reschedule_reject', b)}
+                        onAdvanceStage={(stage, payload) => trackingStageMutation.mutateAsync({ bookingId: detailBooking.id, stage, ...payload })}
+                        advancingStage={trackingStageMutation.isPending}
+                        trackingStageError={trackingStageMutation.isError ? apiErrorMessage(trackingStageMutation.error) : undefined}
                         openConversation={searchParams.get('conversation') === '1'}
                     />
                 ) : (

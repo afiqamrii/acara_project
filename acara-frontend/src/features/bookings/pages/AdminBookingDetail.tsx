@@ -24,6 +24,12 @@ import BookingCompletionDisplay from "../components/BookingCompletionDisplay";
 import BookingConversation from "../components/BookingConversation";
 import BookingTimeline from "../components/BookingTimeline";
 import QuotationDisplay from "../components/QuotationDisplay";
+import OrderProgressStepper from "../components/tracking/OrderProgressStepper";
+import OrderTrackingTimeline from "../components/tracking/OrderTrackingTimeline";
+import VendorCommitmentPanel from "../components/tracking/VendorCommitmentPanel";
+import ProofMediaSection from "../components/tracking/ProofMediaSection";
+import AdminRiskFlags from "../components/tracking/AdminRiskFlags";
+import { computeOrderTracking } from "../utils/orderTracking";
 import { fetchAdminBooking, resolveBookingCompletion, type BookingItem } from "../api";
 
 const statusMeta: Record<string, { label: string; className: string; icon: ReactNode }> = {
@@ -173,6 +179,7 @@ const AdminBookingDetail = () => {
   const completion = booking.completion;
   const quotation = booking.quotation;
   const displayAmount = quotation?.total_amount ?? booking.price_value;
+  const tracking = computeOrderTracking(booking);
 
   return (
     <main className="min-w-0 flex-1 overflow-y-auto bg-slate-100">
@@ -211,6 +218,10 @@ const AdminBookingDetail = () => {
           <SummaryCard label="Booking value" value={formatRM(displayAmount)} caption={quotation?.reference || booking.pricing_unit || "Recorded amount"} icon={<IconCurrencyDollar size={20} />} />
         </section>
 
+        <AdminRiskFlags booking={booking} />
+
+        {tracking.active && <OrderProgressStepper tracking={tracking} />}
+
         <LifecycleNotice booking={booking} />
 
         {booking.status === "completion_disputed" && (
@@ -239,6 +250,15 @@ const AdminBookingDetail = () => {
 
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
           <div className="space-y-5">
+            {tracking.active && (
+              <Section eyebrow="Order tracking" title="Live tracking">
+                <div className="space-y-4">
+                  <ProofMediaSection booking={booking} />
+                  <OrderTrackingTimeline booking={booking} />
+                </div>
+              </Section>
+            )}
+
             <Section eyebrow="Communication evidence" title="Organizer and vendor transcript">
               <BookingConversation
                 bookingId={booking.id}
@@ -304,6 +324,14 @@ const AdminBookingDetail = () => {
           </div>
 
           <aside className="space-y-5 xl:sticky xl:top-6">
+            {tracking.active && (
+              <VendorCommitmentPanel
+                booking={booking}
+                role="admin"
+                counterpartLabel={booking.vendor_name || booking.vendor || "Vendor"}
+              />
+            )}
+
             <Section eyebrow="Audit trail" title="Booking activity">
               {(booking.timeline?.length ?? 0) > 0 ? <BookingTimeline events={booking.timeline ?? []} /> : <p className="text-sm text-slate-500">No activity is available.</p>}
             </Section>

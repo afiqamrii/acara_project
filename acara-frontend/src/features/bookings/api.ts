@@ -144,6 +144,26 @@ export type VendorConversationSummariesResponse = {
   unread_count: number;
 };
 
+export type TrackingStage = "vendor_preparing" | "ready_for_event" | "on_the_way" | "arrived";
+
+export type TrackingUpdate = {
+  id: number;
+  stage: TrackingStage;
+  label: string;
+  note?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  location_accuracy?: number | null;
+  photo_url?: string | null;
+  photo_name?: string | null;
+  actor: {
+    id: number;
+    name: string;
+    role: string;
+  } | null;
+  created_at: string;
+};
+
 export type BookingItem = {
   id: number;
   booking_reference: string;
@@ -186,6 +206,8 @@ export type BookingItem = {
   reschedule_request?: BookingRescheduleRequest | null;
   reschedule_history?: BookingRescheduleRequest[];
   timeline?: BookingTimelineEvent[];
+  tracking_updates?: TrackingUpdate[];
+  portfolio_url?: string | null;
 };
 
 export type BookingStats = {
@@ -371,5 +393,34 @@ export const markBookingConversationRead = async (bookingId: number) => {
 
 export const fetchVendorConversationSummaries = async (): Promise<VendorConversationSummariesResponse> => {
   const res = await api.get<VendorConversationSummariesResponse>("/vendor/booking-conversations");
+  return res.data;
+};
+
+export const updateBookingTrackingStage = async ({
+  bookingId,
+  stage,
+  note,
+  latitude,
+  longitude,
+  accuracy,
+  photo,
+}: {
+  bookingId: number;
+  stage: TrackingStage;
+  note?: string;
+  latitude?: number;
+  longitude?: number;
+  accuracy?: number;
+  photo?: File | null;
+}) => {
+  const formData = new FormData();
+  formData.append("stage", stage);
+  if (note) formData.append("note", note);
+  if (latitude !== undefined) formData.append("latitude", String(latitude));
+  if (longitude !== undefined) formData.append("longitude", String(longitude));
+  if (accuracy !== undefined) formData.append("accuracy", String(accuracy));
+  if (photo) formData.append("photo", photo);
+
+  const res = await api.post(`/vendor/bookings/${bookingId}/tracking-stage`, formData);
   return res.data;
 };

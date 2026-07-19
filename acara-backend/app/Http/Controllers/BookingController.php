@@ -173,6 +173,10 @@ class BookingController extends Controller
                 ->map(fn (BookingRescheduleRequest $request) => $request->toApiArray())
                 ->values(),
             'timeline' => $item->activityTimeline(),
+            'tracking_updates' => $item->trackingUpdates->map(fn ($update) => $update->toApiArray())->values(),
+            'portfolio_url' => $item->portfolio_path
+                ? asset('storage/'.ltrim($item->portfolio_path, '/'))
+                : null,
         ];
     }
 
@@ -195,7 +199,7 @@ class BookingController extends Controller
     private function customerBookingsQuery(int $userId): Builder
     {
         return Booking::query()
-            ->with(['brief', 'quotations.items', 'completions', 'rescheduleRequests', 'pendingRescheduleRequest'])
+            ->with(['brief', 'quotations.items', 'completions', 'rescheduleRequests', 'pendingRescheduleRequest', 'trackingUpdates'])
             ->where('bookings.user_id', $userId)
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -230,6 +234,7 @@ class BookingController extends Controller
                 'service_profiles.service_category',
                 'service_profiles.pricing_starting_from',
                 'service_profiles.pricing_unit',
+                'service_profiles.portfolio_path',
                 'vendor_profiles.business_name',
                 'vendor_profiles.service_area_state',
                 'vendor_profiles.service_area_town',
@@ -781,7 +786,7 @@ class BookingController extends Controller
     private function adminBookingsQuery(): Builder
     {
         return Booking::query()
-            ->with(['brief', 'quotations.items', 'completions', 'rescheduleRequests', 'pendingRescheduleRequest'])
+            ->with(['brief', 'quotations.items', 'completions', 'rescheduleRequests', 'pendingRescheduleRequest', 'trackingUpdates'])
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
             ->join('users as customers', 'bookings.user_id', '=', 'customers.id')
@@ -817,6 +822,7 @@ class BookingController extends Controller
                 'service_profiles.service_category',
                 'service_profiles.pricing_starting_from',
                 'service_profiles.pricing_unit',
+                'service_profiles.portfolio_path',
                 'customers.name as customer_name',
                 'customers.email as customer_email',
                 DB::raw('COALESCE(vendor_profiles.business_name, vendors.name) as business_name'),

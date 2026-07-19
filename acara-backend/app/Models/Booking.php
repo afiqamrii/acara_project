@@ -106,6 +106,16 @@ class Booking extends Model
             ->latestOfMany();
     }
 
+    public function trackingUpdates(): HasMany
+    {
+        return $this->hasMany(BookingTrackingUpdate::class)->orderBy('id');
+    }
+
+    public function latestTrackingUpdate(): HasOne
+    {
+        return $this->hasOne(BookingTrackingUpdate::class)->latestOfMany('id');
+    }
+
     /**
      * @return array<int, array{type: string, label: string, description: string, occurred_at: string}>
      */

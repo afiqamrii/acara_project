@@ -10,6 +10,7 @@ use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\BookingCompletionController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingMessageController;
+use App\Http\Controllers\BookingTrackingController;
 use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationPreferenceController;
@@ -110,6 +111,7 @@ Route::middleware(['auth:sanctum', 'account.active', 'profile.completed', 'role:
     Route::post('/vendor/bookings/{bookingId}/quotations', [QuotationController::class, 'store']);
     Route::patch('/vendor/bookings/{id}/reject', [VendorBookingController::class, 'reject']);
     Route::post('/vendor/bookings/{id}/completion', [BookingCompletionController::class, 'store']);
+    Route::post('/vendor/bookings/{id}/tracking-stage', [BookingTrackingController::class, 'store']);
     Route::patch('/vendor/bookings/{id}/cancel', [VendorBookingController::class, 'cancel']);
     Route::patch('/vendor/bookings/{id}/reschedule/approve', [VendorBookingController::class, 'approveReschedule']);
     Route::patch('/vendor/bookings/{id}/reschedule/reject', [VendorBookingController::class, 'rejectReschedule']);

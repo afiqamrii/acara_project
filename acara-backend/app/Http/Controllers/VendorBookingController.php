@@ -50,7 +50,7 @@ class VendorBookingController extends Controller
         $status = $request->query('status');
 
         $query = Booking::query()
-            ->with(['brief', 'quotations.items', 'completions', 'rescheduleRequests', 'pendingRescheduleRequest'])
+            ->with(['brief', 'quotations.items', 'completions', 'rescheduleRequests', 'pendingRescheduleRequest', 'trackingUpdates'])
             ->whereIn('bookings.service_profile_id', $serviceIds)
             ->whereIn('bookings.status', ['pending', 'confirmed', 'completed', 'rejected', 'cancelled', 'expired'])
             ->join('service_profiles', 'bookings.service_profile_id', '=', 'service_profiles.id')
@@ -118,6 +118,7 @@ class VendorBookingController extends Controller
 
             return [
                 'id' => $item->id,
+                'booking_reference' => 'ACR-'.str_pad((string) $item->id, 6, '0', STR_PAD_LEFT),
                 'service_id' => $item->service_id,
                 'service_name' => $serviceName,
                 'category' => $item->service_category,
@@ -153,6 +154,7 @@ class VendorBookingController extends Controller
                     ->map(fn (BookingRescheduleRequest $request) => $request->toApiArray())
                     ->values(),
                 'timeline' => $item->activityTimeline(),
+                'tracking_updates' => $item->trackingUpdates->map(fn ($update) => $update->toApiArray())->values(),
                 'portfolio_url' => $item->portfolio_path
                     ? $storageUrl.'/'.ltrim($item->portfolio_path, '/')
                     : null,

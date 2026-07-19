@@ -26,6 +26,12 @@ import BookingBriefDisplay from "../components/BookingBriefDisplay";
 import BookingCompletionDisplay from "../components/BookingCompletionDisplay";
 import BookingConversation from "../components/BookingConversation";
 import QuotationDisplay from "../components/QuotationDisplay";
+import OrderProgressStepper from "../components/tracking/OrderProgressStepper";
+import TrackingSummaryCard from "../components/tracking/TrackingSummaryCard";
+import TrackingDetailsModal from "../components/tracking/TrackingDetailsModal";
+import VendorCommitmentPanel from "../components/tracking/VendorCommitmentPanel";
+import MainActionButton from "../components/tracking/MainActionButton";
+import { computeOrderTracking, resolveMainAction } from "../utils/orderTracking";
 import {
   acceptQuotation,
   cancelCustomerBooking,
@@ -588,8 +594,11 @@ const BookingDetailRecord = ({
   const requiresQuotationDecision = booking.status === "pending" && booking.quotation?.status === "sent";
   const requiresCompletionDecision = booking.status === "completion_pending";
   const vendorName = booking.vendor_name || booking.vendor || "Vendor";
+  const tracking = computeOrderTracking(booking);
+  const [showTrackingDetails, setShowTrackingDetails] = useState(false);
 
   return (
+    <>
     <motion.article
       layout
       initial={{ opacity: 0, y: 8 }}
@@ -597,6 +606,10 @@ const BookingDetailRecord = ({
       className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]"
     >
       <div className="min-w-0 space-y-5">
+        {tracking.active && (
+          <TrackingSummaryCard booking={booking} onViewDetails={() => setShowTrackingDetails(true)} />
+        )}
+
         {booking.status === "expired" && (
           <div className="rounded-2xl border border-slate-200 bg-slate-100/70 px-5 py-4">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-600">Booking closed automatically</p>
@@ -716,6 +729,15 @@ const BookingDetailRecord = ({
       </div>
 
       <aside className="space-y-5 xl:sticky xl:top-6">
+        {tracking.active && (
+          <VendorCommitmentPanel
+            booking={booking}
+            role="customer"
+            counterpartLabel={vendorName}
+            onMessage={() => navigate(`/bookings/${booking.id}?conversation=1`)}
+          />
+        )}
+
         <section className={`rounded-2xl border bg-white p-5 shadow-sm ${requiresQuotationDecision || requiresCompletionDecision ? "border-amber-200" : "border-slate-200"}`}>
           <div className="flex items-start gap-3">
             <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${requiresQuotationDecision || requiresCompletionDecision ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
@@ -857,6 +879,11 @@ const BookingDetailRecord = ({
         )}
       </aside>
     </motion.article>
+
+    {showTrackingDetails && (
+      <TrackingDetailsModal booking={booking} onClose={() => setShowTrackingDetails(false)} />
+    )}
+    </>
   );
 };
 
@@ -1073,6 +1100,17 @@ const CustomerBookings = () => {
     }
 
     const displayAmount = detailBooking.quotation?.total_amount ?? detailBooking.price_value;
+    const tracking = computeOrderTracking(detailBooking);
+    const mainAction = resolveMainAction(detailBooking, "customer", tracking);
+    const completionPending = completionMutation.isPending && completionMutation.variables?.booking.id === detailBooking.id;
+
+    const handleMainAction = () => {
+      if (!mainAction) return;
+      if (mainAction.kind === "message") navigate(`/bookings/${detailBooking.id}?conversation=1`);
+      else if (mainAction.kind === "confirm_completion") openCompletionAction(detailBooking, "confirm");
+      else if (mainAction.kind === "review") navigate("/reviews");
+      else if (mainAction.kind === "browse") navigate("/marketplace");
+    };
 
     return (
       <main className="flex-1 overflow-y-auto bg-[#f7f8fc]">
@@ -1101,9 +1139,16 @@ const CustomerBookings = () => {
               <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 lg:text-right">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Current status</p>
                 <StatusBadge status={detailBooking.status} />
+                {mainAction && (
+                  <div className="mt-3 lg:flex lg:justify-end">
+                    <MainActionButton action={mainAction} pending={completionPending} onClick={handleMainAction} />
+                  </div>
+                )}
               </div>
             </div>
           </header>
+
+          {tracking.active && <OrderProgressStepper tracking={tracking} />}
 
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <DetailSummaryCard
@@ -1145,7 +1190,7 @@ const CustomerBookings = () => {
             cancelling={cancelMutation.isPending && cancelMutation.variables === detailBooking.id}
             withdrawing={withdrawMutation.isPending && withdrawMutation.variables === detailBooking.id}
             quotationActionPending={quotationMutation.isPending && quotationMutation.variables?.booking.id === detailBooking.id}
-            completionActionPending={completionMutation.isPending && completionMutation.variables?.booking.id === detailBooking.id}
+            completionActionPending={completionPending}
             openConversation={searchParams.get("conversation") === "1"}
           />
         </div>
@@ -1165,7 +1210,7 @@ const CustomerBookings = () => {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-indigo-100">Booking Center</p>
-              <h1 className="mt-2 text-2xl font-black md:text-3xl">My Bookings</h1>
+              <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-white">My Bookings</h1>
               <p className="mt-2 max-w-2xl text-sm text-indigo-100">
                 Track every vendor request, response deadline, confirmation, and closure from one organized workspace.
               </p>
