@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\VendorProfile;
+use App\Services\VendorSsmDocumentStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Storage;
 
 class VendorController extends Controller
 {
+    public function __construct(
+        private readonly VendorSsmDocumentStorage $ssmDocuments,
+    ) {}
+
     public function show(Request $request)
     {
         $vendorProfile = VendorProfile::where('user_id', $request->user()->id)
@@ -33,12 +36,19 @@ class VendorController extends Controller
                 'bank_account_number' => $vendorProfile->bank_account_number,
                 'bank_holder_name' => $vendorProfile->bank_holder_name,
                 'status' => $vendorProfile->status,
-                'ssm_document_url' => $vendorProfile->ssm_document_path
-                    ? asset('storage/' . ltrim($vendorProfile->ssm_document_path, '/'))
-                    : null,
+                'ssm_document_available' => (bool) $vendorProfile->ssm_document_path,
                 'updated_at' => $vendorProfile->updated_at?->toDateTimeString(),
             ],
         ]);
+    }
+
+    public function ssmDocument(Request $request)
+    {
+        $vendorProfile = VendorProfile::where('user_id', $request->user()->id)
+            ->latest('id')
+            ->firstOrFail();
+
+        return $this->ssmDocuments->response($vendorProfile);
     }
 
     public function status(Request $request)
@@ -83,17 +93,15 @@ class VendorController extends Controller
             ], 422);
         }
 
-        try {
-            $timestamp = now()->format('Ymd_His');
-            $slugName = Str::slug($request->business_name);
+        $newSsmDocumentPath = null;
 
+        try {
             $oldSsmDocumentPath = $existingProfile?->ssm_document_path;
             $ssmDocumentPath = $oldSsmDocumentPath;
-            if ($request->hasFile('ssm_document')) {
-                $extension = $request->file('ssm_document')->getClientOriginalExtension();
-                $filename = "{$slugName}_ssm_{$timestamp}.{$extension}";
-                $ssmDocumentPath = $request->file('ssm_document')->storeAs('vendor_ssm_documents', $filename, 'public');
 
+            if ($request->hasFile('ssm_document')) {
+                $newSsmDocumentPath = $this->ssmDocuments->store($request->file('ssm_document'));
+                $ssmDocumentPath = $newSsmDocumentPath;
             }
 
             $vendorProfile = VendorProfile::updateOrCreate(
@@ -114,7 +122,7 @@ class VendorController extends Controller
             );
 
             if ($oldSsmDocumentPath && $oldSsmDocumentPath !== $ssmDocumentPath) {
-                Storage::disk('public')->delete($oldSsmDocumentPath);
+                $this->ssmDocuments->delete($oldSsmDocumentPath);
             }
 
             return response()->json([
@@ -124,9 +132,14 @@ class VendorController extends Controller
                 'data' => $vendorProfile,
             ], $existingProfile ? 200 : 201);
         } catch (\Exception $e) {
+            if ($newSsmDocumentPath) {
+                $this->ssmDocuments->delete($newSsmDocumentPath);
+            }
+
+            report($e);
+
             return response()->json([
                 'message' => 'Failed to create vendor profile',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }

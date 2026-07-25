@@ -95,6 +95,7 @@ Route::middleware(['auth:sanctum', 'account.active', 'profile.completed', 'role:
     Route::post('/service/register', [ServiceController::class, 'store']);
     Route::post('/vendor/register', [VendorController::class, 'store']);
     Route::get('/vendor/profile', [VendorController::class, 'show']);
+    Route::get('/vendor/profile/ssm-document', [VendorController::class, 'ssmDocument']);
     Route::get('/vendor/profile/status', [VendorController::class, 'status']);
     Route::get('/vendor/services', [ServiceController::class, 'index']);
     Route::get('/vendor/services/{id}', [ServiceController::class, 'show']);
@@ -128,6 +129,7 @@ Route::middleware(['auth:sanctum', 'account.active', 'role:admin,super_admin'])-
     Route::patch('/admin/services/{id}/reject', [ServiceVerificationController::class, 'reject']);
 
     Route::get('/admin/vendors', [VendorVerificationController::class, 'index']);
+    Route::get('/admin/vendors/{vendor}/ssm-document', [VendorVerificationController::class, 'ssmDocument']);
     Route::patch('/admin/vendors/{id}/approve', [VendorVerificationController::class, 'approve']);
     Route::patch('/admin/vendors/{id}/reject', [VendorVerificationController::class, 'reject']);
 

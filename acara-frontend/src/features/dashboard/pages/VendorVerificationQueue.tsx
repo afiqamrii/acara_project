@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { useEffect, useMemo, useState } from "react";
+import type { AxiosError } from "axios";
 import { usePageTitle } from "../../../utils/usePageTitle";
 import api from "../../../lib/Api";
 
@@ -11,6 +12,7 @@ import {
     FiArrowLeft,
 } from "react-icons/fi";
 import { logoutClient } from "../../../lib/auth";
+import { openProtectedDocument } from "../../../lib/protectedDocument";
 
 type Vendor = {
     id: number;
@@ -20,10 +22,14 @@ type Vendor = {
     years_of_experience: number | null;
     status: "pending_completion" | "pending_verification" | "approved" | "rejected";
     submitted_at: string;
-    ssm_document_url?: string | null;
+    ssm_document_available: boolean;
 };
 
 type ActionType = "approve" | "reject";
+type ApiErrorData = { message?: string };
+
+const responseStatus = (error: unknown) =>
+    (error as AxiosError<ApiErrorData>).response?.status;
 
 const VendorVerificationQueue = () => {
     usePageTitle("Vendor Verification");
@@ -40,15 +46,16 @@ const VendorVerificationQueue = () => {
     const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
     const [adminNote, setAdminNote] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [documentLoadingId, setDocumentLoadingId] = useState<number | null>(null);
 
     const fetchVendors = async () => {
         try {
             const res = await api.get("/admin/vendors");
             setVendors(res.data);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Failed to fetch vendors:", err);
 
-            if (err.response?.status === 401) {
+            if (responseStatus(err) === 401) {
                 setError("Session expired. Please login again.");
             } else {
                 setError("Something went wrong while fetching vendors.");
@@ -76,6 +83,25 @@ const VendorVerificationQueue = () => {
         await api.patch(`/admin/vendors/${id}/reject`, {
             admin_note: adminNote,
         });
+    };
+
+    const handleViewDocument = async (vendor: Vendor) => {
+        if (documentLoadingId !== null) return;
+
+        setDocumentLoadingId(vendor.id);
+        setError(null);
+
+        try {
+            await openProtectedDocument(`/admin/vendors/${vendor.id}/ssm-document`);
+        } catch (err: unknown) {
+            setError(
+                responseStatus(err) === 404
+                    ? "This SSM document is no longer available in storage. Ask the vendor to upload it again."
+                    : "The secure SSM document could not be opened. Please try again.",
+            );
+        } finally {
+            setDocumentLoadingId(null);
+        }
     };
 
     const openConfirm = (type: ActionType, vendor: Vendor) => {
@@ -234,15 +260,15 @@ const VendorVerificationQueue = () => {
                                         </td>
 
                                         <td className="px-6 py-4 flex flex-grid gap-5">
-                                            {v.ssm_document_url ? (
-                                                <a
-                                                    href={v.ssm_document_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
+                                            {v.ssm_document_available ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleViewDocument(v)}
+                                                    disabled={documentLoadingId !== null}
                                                     className="text-indigo-600 text-xs font-semibold hover:underline"
                                                 >
-                                                    View SSM Document
-                                                </a>
+                                                    {documentLoadingId === v.id ? "Opening securely..." : "View SSM Document"}
+                                                </button>
                                             ) : (
                                                 "-"
                                             )}
@@ -315,4 +341,3 @@ const VendorVerificationQueue = () => {
 };
 
 export default VendorVerificationQueue;
-

@@ -19,7 +19,7 @@ export type CompanyProfile = {
     bank_account_number: string;
     bank_holder_name: string;
     status: "pending_completion" | "pending_verification" | "approved" | "rejected";
-    ssm_document_url: string | null;
+    ssm_document_available: boolean;
     updated_at: string | null;
 };
 
