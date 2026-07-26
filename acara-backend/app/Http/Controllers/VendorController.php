@@ -117,11 +117,18 @@ class VendorController extends Controller
                 Storage::disk('public')->delete($oldSsmDocumentPath);
             }
 
+            // An organizer completing their first company profile becomes a vendor.
+            // Never touches other roles (e.g. 'crew') or accounts already vendor.
+            if ($request->user()->role === 'user') {
+                $request->user()->update(['role' => 'vendor']);
+            }
+
             return response()->json([
                 'message' => $existingProfile
                     ? 'Company profile updated and submitted for verification.'
                     : 'Company profile submitted successfully.',
                 'data' => $vendorProfile,
+                'role' => $request->user()->role,
             ], $existingProfile ? 200 : 201);
         } catch (\Exception $e) {
             return response()->json([

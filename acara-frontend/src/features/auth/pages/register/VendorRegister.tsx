@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import type { AxiosError } from "axios";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     IconBuildingStore,
     IconCalendar,
@@ -19,6 +19,8 @@ import { fetchCompanyProfile, registerVendor, type CompanyProfile } from "../../
 import { malaysiaBanks, malaysiaLocations, toTitleCase } from "../../../../utils/formHelpers";
 import Stepper from "../../../../components/common/Stepper";
 import { usePageTitle } from "../../../../utils/usePageTitle";
+import { updateStoredUser } from "../../../../lib/auth";
+import { ME_QUERY_KEY } from "../../../../hooks/useCurrentUser";
 
 type ApiErrorData = { message?: string };
 
@@ -211,6 +213,8 @@ const CompanyProfileOverview = ({
 const VendorRegister: React.FC = () => {
     usePageTitle("Company Profile");
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
+    const [justBecameVendor, setJustBecameVendor] = useState(false);
     const {
         data: existingProfile,
         isPending: profileLoading,
@@ -358,7 +362,17 @@ const VendorRegister: React.FC = () => {
                 data.append("ssm_document", files.ssm_document);
             }
 
-            await registerVendor(data);
+            const response = await registerVendor(data);
+            const nextRole = (response as { role?: string } | undefined)?.role;
+
+            if (nextRole && nextRole !== localStorage.getItem("role")) {
+                const storedUserRaw = localStorage.getItem("user");
+                const storedUser = storedUserRaw ? JSON.parse(storedUserRaw) : {};
+                updateStoredUser({ ...storedUser, role: nextRole });
+                queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY });
+                setJustBecameVendor(true);
+            }
+
             setSuccess(true);
         } catch (error: unknown) {
             console.error("Vendor registration failed:", error);
@@ -433,22 +447,42 @@ const VendorRegister: React.FC = () => {
                             </svg>
                         </motion.div>
                         <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                            {existingProfile ? "Company Profile Updated" : "Company Profile Submitted"}
+                            {justBecameVendor
+                                ? "You're a Vendor Now"
+                                : existingProfile
+                                    ? "Company Profile Updated"
+                                    : "Company Profile Submitted"}
                         </h2>
                         <p className="text-gray-600 mb-8">
-                            Your company details are pending admin verification. You can continue using the vendor workspace while the review is in progress.
+                            {justBecameVendor
+                                ? "Your organizer account can now also list services and receive bookings. Your company details are pending admin verification in the meantime."
+                                : "Your company details are pending admin verification. You can continue using the vendor workspace while the review is in progress."}
                         </p>
-                        <button
-                            onClick={async () => {
-                                await refetchProfile();
-                                setSuccess(false);
-                                setIsEditing(false);
-                                setIsLoading(false);
-                            }}
-                            className="w-full bg-[#7E57C2] text-white py-3.5 rounded-xl hover:bg-[#6C4AB8] transition-colors font-medium shadow-md"
-                        >
-                            View Company Profile
-                        </button>
+                        <div className="space-y-3">
+                            {justBecameVendor && (
+                                <button
+                                    onClick={() => navigate("/vendor/dashboard")}
+                                    className="w-full bg-[#7E57C2] text-white py-3.5 rounded-xl hover:bg-[#6C4AB8] transition-colors font-medium shadow-md"
+                                >
+                                    Go to Vendor Dashboard
+                                </button>
+                            )}
+                            <button
+                                onClick={async () => {
+                                    await refetchProfile();
+                                    setSuccess(false);
+                                    setIsEditing(false);
+                                    setIsLoading(false);
+                                }}
+                                className={
+                                    justBecameVendor
+                                        ? "w-full border border-[#7E57C2] text-[#7E57C2] py-3.5 rounded-xl hover:bg-purple-50 transition-colors font-medium"
+                                        : "w-full bg-[#7E57C2] text-white py-3.5 rounded-xl hover:bg-[#6C4AB8] transition-colors font-medium shadow-md"
+                                }
+                            >
+                                View Company Profile
+                            </button>
+                        </div>
                     </motion.div>
                 </div>
             </div>

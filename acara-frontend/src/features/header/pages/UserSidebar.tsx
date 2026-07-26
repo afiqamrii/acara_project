@@ -42,6 +42,7 @@ const navItems: NavItem[] = [
   { label: "Marketplace", href: "/marketplace", icon: IconShoppingBag, workspace: "planning" },
   { label: "Bookings", href: "/bookings", icon: IconReceipt, roles: ["user", "vendor"], workspace: "planning" },
   { label: "Reviews", href: "/reviews", icon: IconStar, workspace: "planning" },
+  { label: "Become a Vendor", href: "/vendor/register", icon: IconBriefcase, roles: ["user"], workspace: "planning" },
   { label: "Vendor Dashboard", href: "/vendor/dashboard", icon: IconLayoutDashboard, roles: ["vendor"], workspace: "vendor" },
   { label: "My Services", href: "/vendor/services", icon: IconShoppingBag, roles: ["vendor"], workspace: "vendor" },
   { label: "Service Availability", href: "/vendor/availability", icon: IconCalendarStats, roles: ["vendor"], workspace: "vendor" },

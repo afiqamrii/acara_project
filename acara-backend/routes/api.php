@@ -89,13 +89,20 @@ Route::middleware(['auth:sanctum', 'account.active', 'role:user,vendor'])->group
     Route::patch('/reviews/{id}', [ReviewController::class, 'update']);
 });
 
+// ─── Vendor Onboarding Routes (authenticated organizers or vendors) ───────────
+// Reachable by organizers too, so an existing account can become a vendor in-app
+// instead of registering a new one. VendorController::store flips role to
+// 'vendor' on first submission; every other vendor route below stays vendor-only.
+Route::middleware(['auth:sanctum', 'account.active', 'profile.completed', 'role:user,vendor'])->group(function () {
+    Route::post('/vendor/register', [VendorController::class, 'store']);
+    Route::get('/vendor/profile', [VendorController::class, 'show']);
+    Route::get('/vendor/profile/status', [VendorController::class, 'status']);
+});
+
 // ─── Vendor Routes (authenticated + completed profile) ────────────────────────
 Route::middleware(['auth:sanctum', 'account.active', 'profile.completed', 'role:vendor'])->group(function () {
     Route::get('/vendor/dashboard', [VendorDashboardController::class, 'show']);
     Route::post('/service/register', [ServiceController::class, 'store']);
-    Route::post('/vendor/register', [VendorController::class, 'store']);
-    Route::get('/vendor/profile', [VendorController::class, 'show']);
-    Route::get('/vendor/profile/status', [VendorController::class, 'status']);
     Route::get('/vendor/services', [ServiceController::class, 'index']);
     Route::get('/vendor/services/{id}', [ServiceController::class, 'show']);
     Route::patch('/vendor/services/{id}', [ServiceController::class, 'update']);

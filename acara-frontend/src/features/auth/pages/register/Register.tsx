@@ -19,21 +19,7 @@ const Register: React.FC = () => {
         email: "",
         password: "",
         confirmPassword: "",
-        role: "user",
     });
-
-    const accountTypes = [
-        {
-            value: "user",
-            label: "Organizer",
-            description: "Book vendors and manage events",
-        },
-        {
-            value: "vendor",
-            label: "Vendor",
-            description: "List services and receive bookings",
-        },
-    ];
 
     // Error state for validation
     const [errors, setErrors] = React.useState({
@@ -153,14 +139,15 @@ const Register: React.FC = () => {
             return;
         }
 
-        // Prepare data for the hook
+        // Prepare data for the hook — every account starts as an organizer;
+        // vendor capability is granted later via "Become a Vendor" in-app.
         const payload = {
             name: formData.name,
             phone_number: formData.phone,
             email: formData.email,
             password: formData.password,
             password_confirmation: formData.confirmPassword,
-            role: formData.role
+            role: "user",
         };
 
         // Use the custom hook
@@ -239,34 +226,6 @@ const Register: React.FC = () => {
                     </div>
 
                     <form onSubmit={handleRegister} className="space-y-3" noValidate>
-                        <div>
-                            <p className="mb-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
-                                Account type
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                                {accountTypes.map((type) => {
-                                    const selected = formData.role === type.value;
-
-                                    return (
-                                        <button
-                                            key={type.value}
-                                            type="button"
-                                            onClick={() => setFormData((prev) => ({ ...prev, role: type.value }))}
-                                            className={`rounded-xl border px-3 py-3 text-left transition-all ${
-                                                selected
-                                                    ? "border-[#7E57C2] bg-[#7E57C2]/10 text-[#5B3AA3] ring-2 ring-[#7E57C2]/10"
-                                                    : "border-gray-200 bg-gray-50 text-gray-500 hover:border-[#7E57C2]/40 hover:bg-white"
-                                            }`}
-                                            aria-pressed={selected}
-                                        >
-                                            <span className="block text-sm font-bold">{type.label}</span>
-                                            <span className="mt-0.5 block text-[11px] leading-snug">{type.description}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
                         <div>
                             <input
                                 className={`w-full px-4 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 focus:bg-white transition-all text-sm text-gray-900 placeholder:text-gray-400 ${errors.name
