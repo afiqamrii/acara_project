@@ -1,273 +1,269 @@
-import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { performLogout } from "../../../lib/auth";
-import { LogoutConfirmationModal } from "../../../components/common/LogoutConfirmationModal";
+import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  BadgeCheck,
+  BriefcaseBusiness,
+  HelpCircle,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Search,
+  ShoppingBag,
+  UserRound,
+  X,
+} from 'lucide-react';
+import { performLogout } from '../../../lib/auth';
+import { LogoutConfirmationModal } from '../../../components/common/LogoutConfirmationModal';
+import CartDrawer from './cartdrawer';
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
   const [logoutConfirmationOpen, setLogoutConfirmationOpen] = useState(false);
+  const [search, setSearch] = useState(() => new URLSearchParams(location.search).get('search') ?? '');
 
-  const token = localStorage.getItem("token");
-  const userName = localStorage.getItem("user_name");
-  const role = localStorage.getItem("role") || "user";
+  const token = localStorage.getItem('token');
+  const userName = localStorage.getItem('user_name');
+  const role = localStorage.getItem('role') || 'user';
+  const canUseCart = Boolean(token && ['user', 'vendor'].includes(role));
+
+  useEffect(() => {
+    setSearch(new URLSearchParams(location.search).get('search') ?? '');
+  }, [location.search]);
+
+  useEffect(() => {
+    const closeMenu = () => {
+      if (window.innerWidth >= 1024) setMobileOpen(false);
+    };
+    window.addEventListener('resize', closeMenu);
+    return () => window.removeEventListener('resize', closeMenu);
+  }, []);
 
   const getDashboardPath = () => {
     switch (role) {
-      case "admin":
-      case "super_admin":
-        return "/admin/dashboard";
-      case "vendor":
-        return "/vendor/dashboard";
-      case "crew":
-        return "/crew/jobs";
+      case 'admin':
+      case 'super_admin':
+        return '/admin/dashboard';
+      case 'vendor':
+        return '/vendor/dashboard';
+      case 'crew':
+        return '/crew/jobs';
       default:
-        return "/dashboard";
+        return '/dashboard';
     }
   };
 
-  const requestLogout = () => {
+  const submitSearch = (event: FormEvent) => {
+    event.preventDefault();
+    const query = search.trim();
+    navigate(query ? `/?search=${encodeURIComponent(query)}#services` : '/#services');
     setMobileOpen(false);
-    setLogoutConfirmationOpen(true);
   };
 
-  const handleLogout = async () => {
-    await performLogout();
+  const goTo = (path: string) => {
+    navigate(path);
+    setMobileOpen(false);
   };
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const handleResize = () => { if (window.innerWidth >= 768) setMobileOpen(false); };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  /* ── Shared link items ─────────────────────────────── */
-  const navLinks = [
-    { label: "How It Works", path: "/#how-it-works" },
-    { label: "About", path: "/about" },
-    { label: "Contact", path: "/contact" },
-  ];
 
   return (
     <>
-      <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled
-          ? "bg-white/85 backdrop-blur-xl shadow-[0_1px_0_0_rgba(0,0,0,0.04),0_4px_24px_-2px_rgba(0,0,0,0.06)] py-3"
-          : "bg-transparent py-5"
-          }`}
-      >
-        <div className="relative max-w-7xl mx-auto px-6 flex items-center justify-between h-[52px]">
-          {/* ── Logo ──────────────────────────── */}
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-[0_4px_18px_rgba(36,28,58,0.05)]">
+        <div className="hidden bg-[#251d31] text-slate-300 lg:block">
+          <div className="mx-auto flex h-8 max-w-7xl items-center justify-between px-10 text-[11px] font-medium">
+            <div className="flex items-center gap-5">
+              <button onClick={() => goTo('/register')} className="flex items-center gap-1.5 transition hover:text-white">
+                <BriefcaseBusiness className="h-3.5 w-3.5" />
+                List your event service
+              </button>
+              <button onClick={() => goTo('/contact')} className="flex items-center gap-1.5 transition hover:text-white">
+                <HelpCircle className="h-3.5 w-3.5" />
+                Help & support
+              </button>
+            </div>
+            <span className="flex items-center gap-1.5">
+              <BadgeCheck className="h-3.5 w-3.5 text-emerald-300" />
+              Malaysia&apos;s verified event service marketplace
+            </span>
+          </div>
+        </div>
+
+        <div className="mx-auto flex min-h-[72px] max-w-7xl items-center gap-4 px-5 sm:px-8 lg:px-10">
           <button
-            onClick={() => navigate("/")}
-            className="flex items-center group cursor-pointer"
+            onClick={() => goTo('/')}
+            className="group flex shrink-0 items-center gap-2"
+            aria-label="Acara home"
           >
-            <span className="text-3xl font-black tracking-tight text-gray-900 transition-colors duration-300 group-hover:text-gray-800">
-              Acara<span className="text-[#7E57C2]">.</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#65478d] text-lg font-black text-white shadow-sm transition group-hover:bg-[#543875]">
+              A
+            </span>
+            <span className="hidden text-2xl font-black tracking-[-0.04em] text-[#261e31] sm:block">
+              acara<span className="text-[#76539f]">.</span>
             </span>
           </button>
 
-          {/* ── Desktop Nav Links (Perfectly Centered) ── */}
-          <div className="hidden md:flex items-center gap-1 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            {navLinks.map(({ label, path }) => (
-              <button
-                key={label}
-                onClick={() => {
-                  if (path.startsWith("/#")) {
-                    if (window.location.pathname !== "/") {
-                      navigate(path);
-                    } else {
-                      document.querySelector(path.replace("/", ""))?.scrollIntoView({ behavior: "smooth" });
-                    }
-                  } else {
-                    navigate(path);
-                  }
-                }}
-                className="relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer text-gray-700 hover:text-[#7E57C2] hover:bg-purple-100 hover:scale-105 active:scale-95"
-              >
-                {label}
+          <form onSubmit={submitSearch} className="mx-auto hidden max-w-2xl flex-1 md:flex">
+            <label className="flex h-11 w-full items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 transition focus-within:border-[#8062ad] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#8062ad]/10">
+              <Search className="h-4 w-4 shrink-0 text-slate-400" />
+              <span className="sr-only">Search services</span>
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search venues, catering, photography…"
+                className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+              />
+              <button type="submit" className="rounded-lg bg-[#2a2139] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#65478d]">
+                Search
               </button>
-            ))}
-          </div>
+            </label>
+          </form>
 
-          {/* ── Desktop Right Actions ─────────── */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="ml-auto hidden shrink-0 items-center gap-2 lg:flex">
+            <button
+              onClick={() => goTo('/#services')}
+              className="rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-100 hover:text-[#62458f]"
+            >
+              Browse
+            </button>
+
             {token ? (
               <>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-gray-600 bg-gray-100/70">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-white">
-                      {(userName || "U").charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <span className="max-w-[120px] truncate">{userName}</span>
-                </div>
-
+                {canUseCart && (
+                  <button
+                    onClick={() => setCartOpen(true)}
+                    className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-[#f1ecf8] hover:text-[#62458f]"
+                    aria-label="Open booking cart"
+                  >
+                    <ShoppingBag className="h-5 w-5" />
+                  </button>
+                )}
                 <button
-                  onClick={() => navigate(getDashboardPath())}
-                  className="px-5 py-2 text-sm font-semibold rounded-xl transition-all duration-200 cursor-pointer text-[#7E57C2] bg-purple-50 hover:bg-purple-100 ring-1 ring-purple-100"
+                  onClick={() => goTo(getDashboardPath())}
+                  className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-[#8062ad]/40 hover:bg-[#f7f3fa]"
                 >
-                  Dashboard
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#efe8f6] text-xs font-black uppercase text-[#62458f]">
+                    {(userName || 'U').charAt(0)}
+                  </span>
+                  <span className="max-w-28 truncate">{userName || 'Account'}</span>
                 </button>
-
                 <button
-                  onClick={requestLogout}
-                  className="px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer text-gray-500 hover:text-red-600 hover:bg-red-50"
+                  onClick={() => setLogoutConfirmationOpen(true)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                  aria-label="Log out"
                 >
-                  Logout
+                  <LogOut className="h-4 w-4" />
                 </button>
               </>
             ) : (
               <>
                 <button
-                  onClick={() => navigate("/login")}
-                  className="px-5 py-2 text-sm font-semibold rounded-xl transition-all duration-200 cursor-pointer text-gray-700 hover:text-gray-900 hover:bg-gray-100/80"
+                  onClick={() => goTo('/login')}
+                  className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
                 >
-                  Log In
+                  Log in
                 </button>
-
                 <button
-                  onClick={() => navigate("/register")}
-                  className="px-5 py-2.5 text-sm font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.97] cursor-pointer text-white bg-gradient-to-r from-[#7E57C2] to-[#6C4AB8] shadow-purple-200/50 hover:shadow-purple-300/60"
+                  onClick={() => goTo('/register')}
+                  className="rounded-xl bg-[#65478d] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#543875]"
                 >
-                  Get Started
+                  Create account
                 </button>
               </>
             )}
           </div>
 
-          {/* ── Mobile Hamburger ──────────────── */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden flex flex-col justify-center items-center w-10 h-10 rounded-xl transition-colors cursor-pointer hover:bg-gray-100/70"
-            aria-label="Toggle menu"
-          >
-            <span
-              className={`block w-5 h-[2px] rounded-full transition-all duration-300 bg-gray-800 ${mobileOpen ? "rotate-45 translate-y-[5px]" : ""}`}
-            />
-            <span
-              className={`block w-5 h-[2px] rounded-full my-[3px] transition-all duration-300 bg-gray-800 ${mobileOpen ? "opacity-0 scale-x-0" : ""}`}
-            />
-            <span
-              className={`block w-5 h-[2px] rounded-full transition-all duration-300 bg-gray-800 ${mobileOpen ? "-rotate-45 -translate-y-[5px]" : ""}`}
-            />
-          </button>
-        </div>
-      </nav>
-
-      {/* ── Mobile Menu Drawer ─────────────── */}
-      <div
-        className={`fixed inset-0 z-40 transition-all duration-300 md:hidden ${mobileOpen ? "visible" : "invisible"
-          }`}
-      >
-        {/* Backdrop */}
-        <div
-          className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${mobileOpen ? "opacity-100" : "opacity-0"
-            }`}
-          onClick={() => setMobileOpen(false)}
-        />
-
-        {/* Panel */}
-        <div
-          className={`absolute top-0 right-0 h-full w-[85vw] max-w-sm bg-white shadow-2xl transition-transform duration-300 ease-out ${mobileOpen ? "translate-x-0" : "translate-x-full"
-            }`}
-        >
-          <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
-            <span className="text-lg font-bold text-gray-900">Menu</span>
+          <div className="ml-auto flex items-center gap-1 lg:hidden">
+            {canUseCart && (
+              <button
+                onClick={() => setCartOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-700 hover:bg-slate-100"
+                aria-label="Open booking cart"
+              >
+                <ShoppingBag className="h-5 w-5" />
+              </button>
+            )}
             <button
-              onClick={() => setMobileOpen(false)}
-              className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors cursor-pointer"
-              aria-label="Close menu"
+              onClick={() => setMobileOpen((open) => !open)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-700 hover:bg-slate-100"
+              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileOpen}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
-
-          {/* Links */}
-          <div className="px-4 py-4 space-y-1">
-            {navLinks.map(({ label, path }) => (
-              <button
-                key={label}
-                onClick={() => {
-                  if (path.startsWith("/#")) {
-                    if (window.location.pathname !== "/") {
-                      navigate(path);
-                    } else {
-                      document.querySelector(path.replace("/", ""))?.scrollIntoView({ behavior: "smooth" });
-                    }
-                  } else {
-                    navigate(path);
-                  }
-                  setMobileOpen(false);
-                }}
-                className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#7E57C2] transition-colors cursor-pointer"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Auth actions */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-100 bg-gray-50/50 space-y-3">
-            {token ? (
-              <>
-                <div className="flex items-center gap-3 px-2 pb-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-bold text-white">
-                      {(userName || "U").charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{userName}</p>
-                    <p className="text-xs text-gray-400 capitalize">{role}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => { navigate(getDashboardPath()); setMobileOpen(false); }}
-                  className="w-full py-3 bg-[#7E57C2] text-white font-semibold rounded-xl text-sm hover:bg-[#6C4AB8] transition-colors shadow-md shadow-purple-200/50 cursor-pointer"
-                >
-                  Go to Dashboard
-                </button>
-                <button
-                  onClick={requestLogout}
-                  className="w-full py-3 text-red-500 font-medium rounded-xl text-sm hover:bg-red-50 transition-colors cursor-pointer"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => { navigate("/login"); setMobileOpen(false); }}
-                  className="w-full py-3 border border-gray-200 text-gray-700 font-semibold rounded-xl text-sm hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  Log In
-                </button>
-                <button
-                  onClick={() => { navigate("/register"); setMobileOpen(false); }}
-                  className="w-full py-3 bg-gradient-to-r from-[#7E57C2] to-[#6C4AB8] text-white font-semibold rounded-xl text-sm hover:shadow-lg hover:shadow-purple-200/50 transition-all shadow-md cursor-pointer"
-                >
-                  Get Started — Free
-                </button>
-              </>
-            )}
-          </div>
         </div>
-      </div>
 
+        <form onSubmit={submitSearch} className="border-t border-slate-100 px-5 pb-3 pt-2 md:hidden">
+          <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3">
+            <Search className="h-4 w-4 text-slate-400" />
+            <span className="sr-only">Search services</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search event services…"
+              className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none"
+            />
+          </label>
+        </form>
+
+        {mobileOpen && (
+          <div className="border-t border-slate-200 bg-white p-4 shadow-xl lg:hidden">
+            <div className="mx-auto max-w-7xl space-y-1">
+              <button onClick={() => goTo('/#services')} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50">
+                <Search className="h-4 w-4 text-[#62458f]" />
+                Browse services
+              </button>
+              <button onClick={() => goTo('/register')} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50">
+                <BriefcaseBusiness className="h-4 w-4 text-[#62458f]" />
+                List your service
+              </button>
+              <button onClick={() => goTo('/contact')} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50">
+                <HelpCircle className="h-4 w-4 text-[#62458f]" />
+                Help & support
+              </button>
+              <div className="my-2 border-t border-slate-100" />
+              {token ? (
+                <>
+                  <button onClick={() => goTo(getDashboardPath())} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50">
+                    <LayoutDashboard className="h-4 w-4 text-[#62458f]" />
+                    Go to dashboard
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMobileOpen(false);
+                      setLogoutConfirmationOpen(true);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-rose-600 hover:bg-rose-50"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Log out
+                  </button>
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 p-2">
+                  <button onClick={() => goTo('/login')} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700">
+                    <UserRound className="h-4 w-4" />
+                    Log in
+                  </button>
+                  <button onClick={() => goTo('/register')} className="rounded-xl bg-[#65478d] px-4 py-3 text-sm font-bold text-white">
+                    Join Acara
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </header>
+
+      {canUseCart && <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />}
       <LogoutConfirmationModal
         isOpen={logoutConfirmationOpen}
         onCancel={() => setLogoutConfirmationOpen(false)}
-        onConfirm={handleLogout}
+        onConfirm={() => performLogout()}
       />
     </>
   );

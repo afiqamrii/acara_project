@@ -1,94 +1,69 @@
 import { Link } from 'react-router-dom';
+import { BadgeCheck, Mail, ShieldCheck } from 'lucide-react';
 
-const Footer = () => {
-    return (
-        <footer className="bg-gray-900 pt-20 pb-10 border-t border-gray-800">
-            <div className="container mx-auto px-6 max-w-7xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-                    {/* Brand Section */}
-                    <div className="col-span-1 lg:col-span-1">
-                        <Link to="/" className="inline-block mb-6">
-                            <span className="text-3xl font-black tracking-tight text-white">
-                                Acara<span className="text-purple-500">.</span>
-                            </span>
-                        </Link>
-                        <p className="text-gray-400 leading-relaxed mb-6">
-                            The ultimate all-in-one platform to discover premium venues, book exquisite catering, and hire professional event crews securely in Malaysia.
-                        </p>
-                        <div className="flex space-x-4">
-                            <a href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-purple-600 hover:text-white transition-all duration-300">
-                                <i className="fab fa-twitter"></i>
-                            </a>
-                            <a href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-purple-600 hover:text-white transition-all duration-300">
-                                <i className="fab fa-instagram"></i>
-                            </a>
-                            <a href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-purple-600 hover:text-white transition-all duration-300">
-                                <i className="fab fa-facebook-f"></i>
-                            </a>
-                            <a href="#" className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:bg-purple-600 hover:text-white transition-all duration-300">
-                                <i className="fab fa-linkedin-in"></i>
-                            </a>
-                        </div>
-                    </div>
-
-                    {/* Quick Links */}
-                    <div>
-                        <h4 className="text-white font-bold mb-6 text-lg tracking-wide">Platform</h4>
-                        <ul className="space-y-4">
-                            <li><Link to="/marketplace" className="text-gray-400 hover:text-purple-400 transition-colors duration-200">Browse Vendors</Link></li>
-                            <li><Link to="/crew/jobs" className="text-gray-400 hover:text-purple-400 transition-colors duration-200">Hire Crew</Link></li>
-                            <li><Link to="/service/register" className="text-gray-400 hover:text-purple-400 transition-colors duration-200">Register as Vendor</Link></li>
-                            <li><Link to="/about" className="text-gray-400 hover:text-purple-400 transition-colors duration-200">How It Works</Link></li>
-                            <li><Link to="/login" className="text-gray-400 hover:text-purple-400 transition-colors duration-200">Log In</Link></li>
-                        </ul>
-                    </div>
-
-                    {/* Categories */}
-                    <div>
-                        <h4 className="text-white font-bold mb-6 text-lg tracking-wide">Categories</h4>
-                        <ul className="space-y-4">
-                            <li><a href="#" className="text-gray-400 hover:text-purple-400 transition-colors duration-200">Venues & Spaces</a></li>
-                            <li><a href="#" className="text-gray-400 hover:text-purple-400 transition-colors duration-200">Catering & Food</a></li>
-                            <li><a href="#" className="text-gray-400 hover:text-purple-400 transition-colors duration-200">Photography & Video</a></li>
-                            <li><a href="#" className="text-gray-400 hover:text-purple-400 transition-colors duration-200">Event Decorators</a></li>
-                            <li><a href="#" className="text-gray-400 hover:text-purple-400 transition-colors duration-200">Entertainment</a></li>
-                        </ul>
-                    </div>
-
-                    {/* Contact */}
-                    <div>
-                        <h4 className="text-white font-bold mb-6 text-lg tracking-wide">Contact Us</h4>
-                        <ul className="space-y-4">
-                            <li className="flex items-start gap-3">
-                                <i className="fas fa-map-marker-alt text-purple-500 mt-1"></i>
-                                <span className="text-gray-400">123 Event Street, Kuala Lumpur, 50000, Malaysia</span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <i className="fas fa-envelope text-purple-500"></i>
-                                <span className="text-gray-400">support@acara.com</span>
-                            </li>
-                            <li className="flex items-center gap-3">
-                                <i className="fas fa-phone-alt text-purple-500"></i>
-                                <span className="text-gray-400">+60 3 1234 5678</span>
-                            </li>
-                        </ul>
+const Footer = () => (
+    <footer className="bg-[#211a2b] text-left text-slate-300">
+        <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:px-10">
+            <div className="grid gap-10 border-b border-white/10 pb-10 sm:grid-cols-2 lg:grid-cols-[1.35fr_0.8fr_0.8fr_1fr]">
+                <div>
+                    <Link to="/" className="inline-flex items-center gap-2">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#76539f] text-lg font-black text-white">A</span>
+                        <span className="text-2xl font-black tracking-[-0.04em] text-white">acara<span className="text-[#a988cf]">.</span></span>
+                    </Link>
+                    <p className="mt-4 max-w-sm text-sm leading-6 text-slate-400">
+                        A trusted marketplace for discovering and booking professional event services across Malaysia.
+                    </p>
+                    <div className="mt-5 flex flex-wrap gap-4 text-xs font-semibold text-slate-400">
+                        <span className="flex items-center gap-1.5"><BadgeCheck className="h-4 w-4 text-emerald-300" /> Approved providers</span>
+                        <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-emerald-300" /> Secure booking flow</span>
                     </div>
                 </div>
 
-                {/* Bottom Bar */}
-                <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <p className="text-gray-500 text-sm">
-                        &copy; {new Date().getFullYear()} Acara Platform. All rights reserved.
+                <div>
+                    <h2 className="text-sm font-extrabold text-white">Marketplace</h2>
+                    <nav className="mt-4 flex flex-col gap-3 text-sm text-slate-400">
+                        <Link to="/#services" className="transition hover:text-white">Browse services</Link>
+                        <Link to="/?search=venue#services" className="transition hover:text-white">Venues</Link>
+                        <Link to="/?search=catering#services" className="transition hover:text-white">Catering</Link>
+                        <Link to="/?search=photography#services" className="transition hover:text-white">Photography</Link>
+                    </nav>
+                </div>
+
+                <div>
+                    <h2 className="text-sm font-extrabold text-white">For business</h2>
+                    <nav className="mt-4 flex flex-col gap-3 text-sm text-slate-400">
+                        <Link to="/register" className="transition hover:text-white">Become a vendor</Link>
+                        <Link to="/login" className="transition hover:text-white">Vendor login</Link>
+                        <Link to="/about" className="transition hover:text-white">How Acara works</Link>
+                        <Link to="/contact" className="transition hover:text-white">Contact support</Link>
+                    </nav>
+                </div>
+
+                <div>
+                    <h2 className="text-sm font-extrabold text-white">Need help planning?</h2>
+                    <p className="mt-4 text-sm leading-6 text-slate-400">
+                        Sign in to manage enquiries, booking requests and vendor conversations in one place.
                     </p>
-                    <div className="flex space-x-6 text-sm">
-                        <Link to="/privacy-policy" className="text-gray-500 hover:text-white transition-colors duration-200">Privacy Policy</Link>
-                        <Link to="/terms-of-service" className="text-gray-500 hover:text-white transition-colors duration-200">Terms of Service</Link>
-                        <Link to="/cookie-policy" className="text-gray-500 hover:text-white transition-colors duration-200">Cookie Policy</Link>
-                    </div>
+                    <Link
+                        to="/contact"
+                        className="mt-5 inline-flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/10"
+                    >
+                        <Mail className="h-4 w-4" />
+                        Contact support
+                    </Link>
                 </div>
             </div>
-        </footer>
-    );
-};
+
+            <div className="flex flex-col gap-3 pt-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                <p>&copy; {new Date().getFullYear()} Acara. All rights reserved.</p>
+                <div className="flex gap-5">
+                    <Link to="/privacy-policy" className="transition hover:text-slate-300">Privacy</Link>
+                    <Link to="/terms-of-service" className="transition hover:text-slate-300">Terms</Link>
+                    <Link to="/contact" className="transition hover:text-slate-300">Support</Link>
+                </div>
+            </div>
+        </div>
+    </footer>
+);
 
 export default Footer;

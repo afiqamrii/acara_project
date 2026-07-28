@@ -31,8 +31,9 @@ api.interceptors.response.use(
       const requestUrl = error.config?.url || "";
       const onLoginPage = window.location.pathname === "/login";
       const isLoginRequest = requestUrl.includes("/login");
+      const isPublicMarketplaceRequest = requestUrl.startsWith("/marketplace/services");
 
-      if (!isLoginRequest) {
+      if (!isLoginRequest && !isPublicMarketplaceRequest) {
         logoutClient("unauthorized", !onLoginPage);
       }
     }
