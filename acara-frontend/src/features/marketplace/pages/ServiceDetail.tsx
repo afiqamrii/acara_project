@@ -11,12 +11,15 @@ import LoginGateModal from '../../../components/common/LoginGateModal';
 import api from '../../../lib/Api';
 import { hasAuthToken } from '../../../lib/auth';
 import BookingBriefForm from '../../bookings/components/BookingBriefForm';
+import ReusableEventBriefPicker from '../../bookings/components/ReusableEventBriefPicker';
 import {
+    applyReusableEventDetails,
     bookingBriefPayload,
     emptyBookingBrief,
     isBookingBriefValid,
     type BookingBriefFormValue,
 } from '../../bookings/components/bookingBriefFormState';
+import { fetchCart } from '../../header/pages/cartApi';
 
 import hero1 from '../../../img/wedimg1.jpg';
 import hero2 from '../../../img/wedimg2.jpg';
@@ -201,6 +204,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
         queryKey: ['service-availability', service.id],
         queryFn: () => fetchAvailability(service.id),
         staleTime: 1000 * 60 * 5,
+    });
+
+    const cartBriefQuery = useQuery({
+        queryKey: ['cart'],
+        queryFn: fetchCart,
+        staleTime: 1000 * 30,
+        enabled: step === 'brief',
     });
 
     const availableSet = useMemo(() => new Set(data?.dates ?? []), [data]);
@@ -440,11 +450,23 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose }) => {
                         >
                             <div className="flex-1 overflow-y-auto px-6 py-5">
                                 {selectedDate && (
-                                    <BookingBriefForm
-                                        value={brief}
-                                        onChange={setBrief}
-                                        selectedDate={selectedDate}
-                                    />
+                                    <>
+                                        <ReusableEventBriefPicker
+                                            items={cartBriefQuery.data?.items ?? []}
+                                            selectedDate={selectedDate}
+                                            isLoading={cartBriefQuery.isPending}
+                                            isError={cartBriefQuery.isError}
+                                            onApply={(source) => {
+                                                setBrief((current) => applyReusableEventDetails(current, source));
+                                                setCartError(null);
+                                            }}
+                                        />
+                                        <BookingBriefForm
+                                            value={brief}
+                                            onChange={setBrief}
+                                            selectedDate={selectedDate}
+                                        />
+                                    </>
                                 )}
                             </div>
                             <div className="border-t border-gray-100 bg-white px-6 py-4">

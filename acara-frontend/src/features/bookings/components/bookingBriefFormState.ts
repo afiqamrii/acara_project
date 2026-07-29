@@ -13,6 +13,18 @@ export type BookingBriefFormValue = {
   notes: string;
 };
 
+export type ReusableEventDetails = {
+  event_title: string;
+  event_type: string;
+  venue_name: string;
+  venue_address: string;
+  start_time: string;
+  end_time?: string | null;
+  guest_count?: number | string | null;
+  contact_name: string;
+  contact_phone: string;
+};
+
 export const emptyBookingBrief = (): BookingBriefFormValue => ({
   event_title: "",
   event_type: "",
@@ -26,6 +38,22 @@ export const emptyBookingBrief = (): BookingBriefFormValue => ({
   setup_time: "",
   requirements: "",
   notes: "",
+});
+
+export const applyReusableEventDetails = (
+  current: BookingBriefFormValue,
+  source: ReusableEventDetails,
+): BookingBriefFormValue => ({
+  ...current,
+  event_title: source.event_title,
+  event_type: source.event_type,
+  venue_name: source.venue_name,
+  venue_address: source.venue_address,
+  start_time: source.start_time,
+  end_time: source.end_time ?? "",
+  guest_count: source.guest_count == null ? "" : String(source.guest_count),
+  contact_name: source.contact_name,
+  contact_phone: source.contact_phone,
 });
 
 export const isBookingBriefValid = (value: BookingBriefFormValue) => {
