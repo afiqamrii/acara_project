@@ -31,7 +31,11 @@ const Navbar = () => {
   const canUseCart = Boolean(token && ['user', 'vendor'].includes(role));
 
   useEffect(() => {
-    setSearch(new URLSearchParams(location.search).get('search') ?? '');
+    const syncSearch = window.setTimeout(
+      () => setSearch(new URLSearchParams(location.search).get('search') ?? ''),
+      0,
+    );
+    return () => window.clearTimeout(syncSearch);
   }, [location.search]);
 
   useEffect(() => {
@@ -142,12 +146,14 @@ const Navbar = () => {
                 )}
                 <button
                   onClick={() => goTo(getDashboardPath())}
-                  className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-[#8062ad]/40 hover:bg-[#f7f3fa]"
+                  aria-label={`Open dashboard for ${userName || 'your account'}`}
+                  className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-[#8062ad]/40 hover:bg-[#f7f3fa] hover:text-[#62458f]"
                 >
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#efe8f6] text-xs font-black uppercase text-[#62458f]">
+                  <LayoutDashboard className="h-4 w-4 text-[#62458f]" aria-hidden="true" />
+                  <span>Dashboard</span>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#efe8f6] text-xs font-black uppercase text-[#62458f]" aria-hidden="true">
                     {(userName || 'U').charAt(0)}
                   </span>
-                  <span className="max-w-28 truncate">{userName || 'Account'}</span>
                 </button>
                 <button
                   onClick={() => setLogoutConfirmationOpen(true)}
