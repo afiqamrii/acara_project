@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\VendorProfile;
 use App\Services\AdminAuditService;
+use App\Services\VendorSsmDocumentStorage;
 use Illuminate\Http\Request;
 
 class VendorVerificationController extends Controller
 {
-    public function __construct(private readonly AdminAuditService $audits) {}
+    public function __construct(
+        private readonly AdminAuditService $audits,
+        private readonly VendorSsmDocumentStorage $ssmDocuments,
+    ) {}
 
     public function index()
     {
@@ -24,13 +28,16 @@ class VendorVerificationController extends Controller
                     'years_of_experience' => $vendor->years_of_experience,
                     'status' => $vendor->status,
                     'submitted_at' => $vendor->created_at->format('Y-m-d h:i A'),
-                    'ssm_document_url' => $vendor->ssm_document_path
-                        ? asset('storage/'.$vendor->ssm_document_path)
-                        : null,
+                    'ssm_document_available' => (bool) $vendor->ssm_document_path,
                 ];
             });
 
         return response()->json($vendors);
+    }
+
+    public function ssmDocument(VendorProfile $vendor)
+    {
+        return $this->ssmDocuments->response($vendor);
     }
 
     public function approve(Request $request, $id)

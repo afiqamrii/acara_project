@@ -21,6 +21,7 @@ import Stepper from "../../../../components/common/Stepper";
 import { usePageTitle } from "../../../../utils/usePageTitle";
 import { updateStoredUser } from "../../../../lib/auth";
 import { ME_QUERY_KEY } from "../../../../hooks/useCurrentUser";
+import { openProtectedDocument } from "../../../../lib/protectedDocument";
 
 type ApiErrorData = { message?: string };
 
@@ -97,6 +98,23 @@ const CompanyProfileOverview = ({
 }) => {
     const status = STATUS_META[profile.status];
     const websiteIsLink = /^https?:\/\//i.test(profile.business_link.trim());
+    const [documentLoading, setDocumentLoading] = useState(false);
+    const [documentError, setDocumentError] = useState<string | null>(null);
+
+    const viewDocument = async () => {
+        if (documentLoading) return;
+
+        setDocumentLoading(true);
+        setDocumentError(null);
+
+        try {
+            await openProtectedDocument("/vendor/profile/ssm-document");
+        } catch {
+            setDocumentError("Your SSM document could not be opened. Upload a replacement or contact support.");
+        } finally {
+            setDocumentLoading(false);
+        }
+    };
 
     return (
         <main className="flex-1 overflow-y-auto bg-[#f6f5fb] px-4 py-5 sm:px-6">
@@ -175,12 +193,13 @@ const CompanyProfileOverview = ({
                             <DetailItem
                                 label="SSM Document"
                                 icon={IconFileCertificate}
-                                value={profile.ssm_document_url ? (
-                                    <a href={profile.ssm_document_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-purple-600 hover:underline">
-                                        View document <IconExternalLink size={13} />
-                                    </a>
+                                value={profile.ssm_document_available ? (
+                                    <button type="button" onClick={viewDocument} disabled={documentLoading} className="inline-flex items-center gap-1 text-purple-600 hover:underline disabled:opacity-60">
+                                        {documentLoading ? "Opening securely..." : "View document"} <IconExternalLink size={13} />
+                                    </button>
                                 ) : "Not uploaded"}
                             />
+                            {documentError && <p className="px-1 text-xs font-semibold text-red-600">{documentError}</p>}
                         </div>
                     </div>
 
@@ -228,6 +247,7 @@ const VendorRegister: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [documentLoading, setDocumentLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [errors, setErrors] = useState<Record<string, boolean>>({});
     const [attemptedNext, setAttemptedNext] = useState(false);
@@ -273,6 +293,21 @@ const VendorRegister: React.FC = () => {
         }
     };
 
+    const handleViewCurrentDocument = async () => {
+        if (documentLoading) return;
+
+        setDocumentLoading(true);
+        setSubmitError(null);
+
+        try {
+            await openProtectedDocument("/vendor/profile/ssm-document");
+        } catch {
+            setSubmitError("Your current SSM document could not be opened. Please upload a replacement or contact support.");
+        } finally {
+            setDocumentLoading(false);
+        }
+    };
+
     const validateStep = (step: number) => {
         const newErrors: Record<string, boolean> = {};
 
@@ -295,7 +330,7 @@ const VendorRegister: React.FC = () => {
         }
 
         if (step === 4) {
-            if (!files.ssm_document && !existingProfile?.ssm_document_url) newErrors.ssm_document = true;
+            if (!files.ssm_document && !existingProfile?.ssm_document_available) newErrors.ssm_document = true;
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -701,7 +736,7 @@ const VendorRegister: React.FC = () => {
                         <div className="w-full px-2 md:px-8">
                             <h2 className="text-2xl font-bold text-gray-800 mb-2">Verification Document</h2>
                             <p className="text-gray-500 mb-6 text-sm">
-                                {existingProfile?.ssm_document_url
+                                {existingProfile?.ssm_document_available
                                     ? "Your current document remains active unless you upload a replacement."
                                     : "Upload your SSM certificate or related registration proof."}
                             </p>
@@ -712,8 +747,8 @@ const VendorRegister: React.FC = () => {
                                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     </div>
                                     <label className="block text-sm font-semibold text-gray-900 mb-1">
-                                        {existingProfile?.ssm_document_url ? "Replace SSM Document" : "SSM Document"}
-                                        {!existingProfile?.ssm_document_url && <span className="text-red-500"> *</span>}
+                                        {existingProfile?.ssm_document_available ? "Replace SSM Document" : "SSM Document"}
+                                        {!existingProfile?.ssm_document_available && <span className="text-red-500"> *</span>}
                                     </label>
                                     <p className="text-xs text-gray-500 mb-4">
                                         PDF, JPG, JPEG or PNG, up to 10 MB
@@ -725,10 +760,15 @@ const VendorRegister: React.FC = () => {
                                         onChange={handleFileChange}
                                         className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#7E57C2] file:text-white hover:file:bg-[#6C4AB8] cursor-pointer"
                                     />
-                                    {existingProfile?.ssm_document_url && !files.ssm_document && (
-                                        <a href={existingProfile.ssm_document_url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-purple-600 hover:underline">
-                                            View current document <IconExternalLink size={13} />
-                                        </a>
+                                    {existingProfile?.ssm_document_available && !files.ssm_document && (
+                                        <button
+                                            type="button"
+                                            onClick={handleViewCurrentDocument}
+                                            disabled={documentLoading}
+                                            className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-purple-600 hover:underline disabled:cursor-wait disabled:opacity-60"
+                                        >
+                                            {documentLoading ? "Opening securely..." : "View current document"} <IconExternalLink size={13} />
+                                        </button>
                                     )}
                                     {files.ssm_document && <p className="mt-2 text-xs text-green-600 font-medium truncate">{files.ssm_document.name}</p>}
                                     {attemptedNext && errors.ssm_document && <p className="text-red-500 text-xs mt-2">SSM document is required</p>}

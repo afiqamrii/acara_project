@@ -28,6 +28,10 @@ type LoginErrorResponse = {
   message?: string;
 };
 
+type LoginLocationState = {
+  returnTo?: string;
+};
+
 const Login: React.FC = () => {
   usePageTitle("Login");
   const [email, setEmail] = useState("");
@@ -41,6 +45,11 @@ const Login: React.FC = () => {
   const [requiresVerification, setRequiresVerification] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+  const requestedReturnTo = (location.state as LoginLocationState | null)?.returnTo;
+  const safeReturnTo =
+    requestedReturnTo?.startsWith('/') && !requestedReturnTo.startsWith('//')
+      ? requestedReturnTo
+      : null;
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -104,6 +113,11 @@ const Login: React.FC = () => {
 
       if (!isProfileCompleted) {
         navigate("/complete-profile");
+        return;
+      }
+
+      if (safeReturnTo && ["user", "vendor"].includes(res.data.role)) {
+        navigate(safeReturnTo, { replace: true });
         return;
       }
 

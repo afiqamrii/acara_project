@@ -3,8 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { AxiosError } from 'axios';
+import { BadgeCheck, CheckCircle2, ChevronRight, LockKeyhole, ShieldCheck } from 'lucide-react';
 import Loader from '../../../components/common/Loader';
+import Navbar from '../../header/pages/navbar';
+import Footer from '../../../components/common/Footer';
+import LoginGateModal from '../../../components/common/LoginGateModal';
 import api from '../../../lib/Api';
+import { hasAuthToken } from '../../../lib/auth';
 import BookingBriefForm from '../../bookings/components/BookingBriefForm';
 import {
     bookingBriefPayload,
@@ -511,7 +516,10 @@ const ServiceDetail: React.FC = () => {
     const navigate = useNavigate();
     const [imgLoaded, setImgLoaded] = useState(false);
     const [showBookingModal, setShowBookingModal] = useState(false);
-    const canBook = ["user", "vendor"].includes(localStorage.getItem("role") ?? "");
+    const [showLoginGate, setShowLoginGate] = useState(false);
+    const isAuthenticated = hasAuthToken();
+    const role = localStorage.getItem('role') ?? '';
+    const canBook = isAuthenticated && ['user', 'vendor'].includes(role);
 
     const { data: service, isPending, isError } = useQuery({
         queryKey: ['marketplace-service', serviceId],
@@ -521,251 +529,269 @@ const ServiceDetail: React.FC = () => {
     });
 
     if (isPending) {
-        return <Loader title="ACARA Marketplace" message="Loading service details..." />;
+        return (
+            <div className="min-h-screen bg-[#f7f6f9]">
+                <Navbar />
+                <div className="min-h-[70vh]">
+                    <Loader title="ACARA Marketplace" message="Loading service details..." />
+                </div>
+            </div>
+        );
     }
 
     if (isError || !service) {
         return (
-            <div className="flex-1 flex items-center justify-center bg-[#fcfaff]">
-                <div className="text-center p-12">
-                    <p className="text-2xl font-black text-gray-300 mb-2">Service not found</p>
-                    <p className="text-sm text-gray-400 mb-6">This service may no longer be available.</p>
-                    <button
-                        onClick={() => navigate('/marketplace')}
-                        className="bg-purple-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-purple-700 transition-colors"
-                    >
-                        Back to Marketplace
-                    </button>
+            <div className="min-h-screen bg-[#f7f6f9]">
+                <Navbar />
+                <div className="flex min-h-[65vh] items-center justify-center px-5">
+                    <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+                        <p className="text-2xl font-black text-slate-800">Service not found</p>
+                        <p className="mt-2 text-sm text-slate-500">This service may no longer be available.</p>
+                        <button
+                            onClick={() => navigate('/')}
+                            className="mt-6 rounded-xl bg-[#65478d] px-6 py-3 font-bold text-white transition hover:bg-[#543875]"
+                        >
+                            Browse other services
+                        </button>
+                    </div>
                 </div>
+                <Footer />
             </div>
         );
     }
 
     const imageUrl = getImageUrl(service);
     const reviews = service.reviews ?? [];
+    const startBooking = () => {
+        if (!isAuthenticated) {
+            setShowLoginGate(true);
+            return;
+        }
+        if (canBook) setShowBookingModal(true);
+    };
 
     return (
-        <div className="flex-1 overflow-y-auto bg-[#fcfaff]">
+        <div className="min-h-screen bg-[#f7f6f9] text-left text-slate-900">
+            <Navbar />
 
-            {/* ── Back nav ── */}
-            <div className="max-w-5xl mx-auto px-4 pt-8">
-                <button
-                    onClick={() => navigate('/marketplace')}
-                    className="flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-purple-600 transition-colors"
+            <main className="mx-auto max-w-7xl px-5 py-6 sm:px-8 lg:px-10 lg:py-9">
+                <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-slate-500">
+                    <button onClick={() => navigate('/')} className="transition hover:text-[#62458f]">Marketplace</button>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
+                    <button
+                        onClick={() => navigate(`/?search=${encodeURIComponent(service.category)}#services`)}
+                        className="transition hover:text-[#62458f]"
+                    >
+                        {service.category}
+                    </button>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
+                    <span className="max-w-[240px] truncate text-slate-400">{service.title}</span>
+                </nav>
+
+                <motion.section
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="grid overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_14px_40px_rgba(36,28,58,0.07)] lg:grid-cols-[1.05fr_0.95fr]"
                 >
-                    <IconBack /> Back to Marketplace
-                </button>
-            </div>
-
-            {/* ── Hero image ── */}
-            <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
-                className="max-w-5xl mx-auto px-4 pt-5"
-            >
-                <div className="relative rounded-[32px] overflow-hidden h-64 md:h-[420px] bg-purple-50">
-                    {!imgLoaded && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-purple-100 via-gray-100 to-purple-50">
-                            <motion.div
-                                animate={{ x: ['-100%', '200%'] }}
-                                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                                className="absolute inset-0 w-1/3 bg-white/60 blur-xl skew-x-12"
-                            />
-                        </div>
-                    )}
-                    <img
-                        src={imageUrl}
-                        alt={service.title}
-                        onLoad={() => setImgLoaded(true)}
-                        onError={(e) => {
-                            e.currentTarget.src = fallbackImages[service.id % fallbackImages.length];
-                            setImgLoaded(true);
-                        }}
-                        className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                    <div className="absolute bottom-6 left-6 right-6">
-                        <span className="inline-flex items-center gap-1 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-purple-600 shadow-sm">
+                    <div className="relative min-h-[300px] overflow-hidden bg-slate-100 sm:min-h-[430px] lg:min-h-[540px]">
+                        {!imgLoaded && <div className="absolute inset-0 animate-pulse bg-slate-100" />}
+                        <img
+                            src={imageUrl}
+                            alt={service.title}
+                            onLoad={() => setImgLoaded(true)}
+                            onError={(event) => {
+                                if (event.currentTarget.dataset.fallbackApplied !== 'true') {
+                                    event.currentTarget.dataset.fallbackApplied = 'true';
+                                    event.currentTarget.src = fallbackImages[service.id % fallbackImages.length];
+                                }
+                                setImgLoaded(true);
+                            }}
+                            className="h-full w-full object-cover"
+                        />
+                        <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#62458f] shadow-sm backdrop-blur">
                             <IconTag /> {service.category}
                         </span>
-                        <h1 className="text-white text-2xl md:text-4xl font-black mt-2 drop-shadow-lg leading-tight">
-                            {service.title}
-                        </h1>
-                        <p className="text-white/80 text-sm mt-1 flex items-center gap-1">
-                            <IconLocation /> {service.vendor} · {service.location}
-                        </p>
                     </div>
-                </div>
-            </motion.div>
 
-            {/* ── Content grid ── */}
-            <div className="max-w-5xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-                {/* Left column — about + vendor */}
-                <div className="lg:col-span-2 space-y-5">
-
-                    {/* About */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.1 }}
-                        className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100"
-                    >
-                        <h2 className="text-base font-bold text-gray-900 mb-3">About this Service</h2>
-                        <ExpandableText
-                            text={service.description || 'No description has been provided for this service.'}
-                            previewLength={DESCRIPTION_PREVIEW_LENGTH}
-                            className="text-gray-500 text-sm leading-relaxed whitespace-pre-line"
-                        />
-                    </motion.div>
-
-                    {/* Vendor */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.15 }}
-                        className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100"
-                    >
-                        <h2 className="text-base font-bold text-gray-900 mb-5">Vendor Information</h2>
-                        <div className="flex items-start gap-4">
-                            <div className="w-14 h-14 rounded-2xl bg-purple-100 flex items-center justify-center font-black text-purple-600 text-2xl flex-shrink-0 select-none">
-                                {service.vendor.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1 space-y-2">
-                                <p className="font-bold text-gray-900">{service.vendor}</p>
-                                <p className="text-sm text-gray-500 flex items-center gap-1.5">
-                                    <span className="text-red-400"><IconLocation /></span>
-                                    {service.location}
-                                </p>
-                                {service.vendor_experience != null && (
-                                    <p className="text-sm text-gray-500 flex items-center gap-1.5">
-                                        <span className="text-yellow-400"><IconStar /></span>
-                                        {service.vendor_experience} year{service.vendor_experience !== 1 ? 's' : ''} of experience
-                                    </p>
-                                )}
-                                {service.vendor_website && (
-                                    <a
-                                        href={service.vendor_website}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-sm text-purple-600 hover:text-purple-800 flex items-center gap-1.5 transition-colors"
-                                    >
-                                        <IconLink /> Visit vendor website
-                                    </a>
-                                )}
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Reviews */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.2 }}
-                        className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100"
-                    >
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <h2 className="text-base font-bold text-gray-900">Verified Reviews</h2>
-                                <p className="mt-1 text-sm text-gray-400">Feedback from completed Acara bookings.</p>
-                            </div>
+                    <div className="flex flex-col p-6 sm:p-8 lg:p-10">
+                        <div className="flex flex-wrap items-center gap-3 text-xs">
+                            <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700">
+                                <BadgeCheck className="h-4 w-4" />
+                                Verified provider
+                            </span>
                             {service.review_count > 0 && service.rating_average !== null && (
-                                <div className="rounded-2xl bg-amber-50 px-4 py-3 text-right ring-1 ring-amber-100">
-                                    <p className="text-2xl font-black text-gray-900">{Number(service.rating_average).toFixed(1)}</p>
-                                    <div className="mt-1 flex items-center gap-0.5 text-amber-400">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                            <span key={star} className={star <= Math.round(service.rating_average ?? 0) ? 'text-amber-400' : 'text-gray-200'}>
-                                                <IconStar />
-                                            </span>
-                                        ))}
-                                    </div>
-                                    <p className="mt-1 text-[11px] font-semibold text-amber-700">
-                                        {service.review_count} review{service.review_count === 1 ? '' : 's'}
-                                    </p>
-                                </div>
+                                <>
+                                    <span className="h-3 w-px bg-slate-200" />
+                                    <span className="flex items-center gap-1 font-bold text-slate-700">
+                                        <span className="text-amber-400"><IconStar /></span>
+                                        {Number(service.rating_average).toFixed(1)}
+                                        <span className="font-medium text-slate-400">({service.review_count} reviews)</span>
+                                    </span>
+                                </>
                             )}
                         </div>
 
-                        {reviews.length === 0 ? (
-                            <div className="mt-6 rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center">
-                                <p className="font-bold text-gray-700">No reviews yet</p>
-                                <p className="mt-1 text-sm text-gray-400">Completed customers can publish the first verified review.</p>
-                            </div>
-                        ) : (
-                            <div className="mt-6 space-y-3">
-                                {reviews.map((review) => (
-                                    <article key={review.id} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
-                                        <div className="flex flex-wrap items-center justify-between gap-3">
-                                            <div>
-                                                <p className="text-sm font-black text-gray-900">{review.reviewer_name}</p>
-                                                <p className="mt-0.5 text-xs text-gray-400">{formatReviewDate(review.created_at)}</p>
-                                            </div>
-                                            <div className="flex items-center gap-0.5">
-                                                {[1, 2, 3, 4, 5].map((star) => (
-                                                    <span key={star} className={star <= review.rating ? 'text-amber-400' : 'text-gray-200'}>
-                                                        <IconStar />
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-600">{review.comment}</p>
-                                    </article>
-                                ))}
-                            </div>
-                        )}
-                    </motion.div>
-                </div>
+                        <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-[-0.03em] text-slate-900 sm:text-4xl">
+                            {service.title}
+                        </h1>
+                        <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-slate-600">
+                            <IconLocation />
+                            {service.location}
+                        </p>
 
-                {/* Right column — pricing card */}
-                <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
-                    className="sticky top-6"
-                >
-                    <div className="bg-white rounded-[24px] p-8 shadow-sm border border-gray-100">
-                        <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Starting from</p>
-                        <p className="text-3xl font-black text-gray-700 mt-1">{service.price}</p>
-                        {service.pricing_description && (
-                            <ExpandableText
-                                text={service.pricing_description}
-                                previewLength={PRICING_PREVIEW_LENGTH}
-                                className="text-xs text-gray-400 mt-2 leading-relaxed whitespace-pre-line"
-                            />
-                        )}
+                        <div className="mt-6 rounded-2xl bg-[#f5f1f8] p-5">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Starting from</p>
+                            <p className="mt-1 text-3xl font-black tracking-tight text-[#55367f]">{service.price}</p>
+                            {service.pricing_description && (
+                                <ExpandableText
+                                    text={service.pricing_description}
+                                    previewLength={PRICING_PREVIEW_LENGTH}
+                                    className="mt-2 whitespace-pre-line text-xs leading-5 text-slate-500"
+                                />
+                            )}
+                        </div>
 
-                        <div className="mt-6 space-y-3">
-                            {canBook && <motion.button
-                                whileTap={{ scale: 0.97 }}
-                                onClick={() => setShowBookingModal(true)}
-                                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-2xl font-bold transition-colors shadow-lg shadow-purple-200 flex items-center justify-center gap-2"
+                        <div className="mt-6 flex items-center gap-3 border-y border-slate-100 py-5">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#ede6f4] text-lg font-black text-[#62458f]">
+                                {service.vendor.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                                <p className="truncate font-extrabold text-slate-900">{service.vendor}</p>
+                                <p className="mt-0.5 text-xs font-medium text-slate-500">
+                                    {service.vendor_experience != null
+                                        ? `${service.vendor_experience} year${service.vendor_experience === 1 ? '' : 's'} in business`
+                                        : 'Approved Acara service provider'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 space-y-2.5 text-sm text-slate-600">
+                            <p className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Check live vendor availability</p>
+                            <p className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-600" /> Keep your request and quotation in Acara</p>
+                        </div>
+
+                        <div className="mt-auto pt-7">
+                            <motion.button
+                                whileTap={{ scale: 0.98 }}
+                                onClick={startBooking}
+                                disabled={isAuthenticated && !canBook}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#65478d] px-5 py-4 text-sm font-bold text-white shadow-lg shadow-[#65478d]/15 transition hover:bg-[#543875] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
                             >
-                                <IconCalendar />
-                                Book Now
-                            </motion.button>}
-                            <button
-                                onClick={() => navigate('/marketplace')}
-                                className="w-full border border-gray-200 text-gray-600 hover:bg-gray-50 py-3 rounded-2xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
-                            >
-                                <IconBack /> Back to Marketplace
-                            </button>
+                                {!isAuthenticated && <LockKeyhole className="h-4 w-4" />}
+                                {isAuthenticated && !canBook
+                                    ? 'Customer account required to book'
+                                    : isAuthenticated
+                                        ? 'Check availability & book'
+                                        : 'Sign in to check availability'}
+                            </motion.button>
+                            {!isAuthenticated && (
+                                <p className="mt-3 text-center text-xs font-medium text-slate-400">
+                                    You can browse all service details without an account.
+                                </p>
+                            )}
                         </div>
                     </div>
-                </motion.div>
+                </motion.section>
 
-            </div>
+                <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_340px]">
+                    <div className="space-y-6">
+                        <section className="rounded-[22px] border border-slate-200 bg-white p-6 sm:p-8">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#76539f]">Service overview</p>
+                            <h2 className="mt-1 text-xl font-extrabold text-slate-900">About this service</h2>
+                            <ExpandableText
+                                text={service.description || 'No description has been provided for this service.'}
+                                previewLength={DESCRIPTION_PREVIEW_LENGTH}
+                                className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-600"
+                            />
+                        </section>
 
-            {/* ── Booking modal ── */}
+                        <section className="rounded-[22px] border border-slate-200 bg-white p-6 sm:p-8">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#76539f]">Customer feedback</p>
+                                    <h2 className="mt-1 text-xl font-extrabold text-slate-900">Verified reviews</h2>
+                                    <p className="mt-1 text-sm text-slate-500">Only customers with completed Acara bookings can review.</p>
+                                </div>
+                                {service.review_count > 0 && service.rating_average !== null && (
+                                    <div className="rounded-2xl bg-amber-50 px-5 py-3 text-left ring-1 ring-amber-100 sm:text-right">
+                                        <p className="text-2xl font-black text-slate-900">{Number(service.rating_average).toFixed(1)}</p>
+                                        <div className="mt-1 flex items-center gap-0.5 text-amber-400">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <span key={star} className={star <= Math.round(service.rating_average ?? 0) ? 'text-amber-400' : 'text-slate-200'}>
+                                                    <IconStar />
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {reviews.length === 0 ? (
+                                <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                                    <p className="font-bold text-slate-700">No reviews yet</p>
+                                    <p className="mt-1 text-sm text-slate-400">A completed customer can publish the first verified review.</p>
+                                </div>
+                            ) : (
+                                <div className="mt-6 space-y-3">
+                                    {reviews.map((review) => (
+                                        <article key={review.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-5">
+                                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                                <div>
+                                                    <p className="text-sm font-black text-slate-900">{review.reviewer_name}</p>
+                                                    <p className="mt-0.5 text-xs text-slate-400">{formatReviewDate(review.created_at)}</p>
+                                                </div>
+                                                <div className="flex items-center gap-0.5">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <span key={star} className={star <= review.rating ? 'text-amber-400' : 'text-slate-200'}>
+                                                            <IconStar />
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">{review.comment}</p>
+                                        </article>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+                    </div>
+
+                    <aside className="sticky top-28 rounded-[22px] border border-slate-200 bg-white p-6">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#76539f]">Provider details</p>
+                        <h2 className="mt-2 text-lg font-extrabold text-slate-900">{service.vendor}</h2>
+                        <div className="mt-5 space-y-3 text-sm text-slate-600">
+                            <p className="flex items-start gap-2"><span className="mt-0.5 text-[#76539f]"><IconLocation /></span>{service.location}</p>
+                            {service.vendor_experience != null && (
+                                <p className="flex items-center gap-2"><span className="text-amber-400"><IconStar /></span>{service.vendor_experience} year{service.vendor_experience === 1 ? '' : 's'} of experience</p>
+                            )}
+                            {service.vendor_website && (
+                                <a href={service.vendor_website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 font-bold text-[#62458f] hover:underline">
+                                    <IconLink /> Visit provider website
+                                </a>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => navigate('/#services')}
+                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-[#8062ad]/40 hover:bg-[#f8f5fa]"
+                        >
+                            <IconBack /> Browse more services
+                        </button>
+                    </aside>
+                </div>
+            </main>
+
+            <Footer />
+
             <AnimatePresence>
                 {canBook && showBookingModal && (
-                    <BookingModal
-                        service={service}
-                        onClose={() => setShowBookingModal(false)}
-                    />
+                    <BookingModal service={service} onClose={() => setShowBookingModal(false)} />
                 )}
             </AnimatePresence>
-
+            <LoginGateModal
+                open={showLoginGate}
+                onClose={() => setShowLoginGate(false)}
+                serviceName={service.title}
+            />
         </div>
     );
 };

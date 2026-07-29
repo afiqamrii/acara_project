@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 import viteImagemin from 'vite-plugin-imagemin';
 import { visualizer } from 'rollup-plugin-visualizer';
+import { sites } from './build/sites-vite-plugin';
 
 export default defineConfig(({ command }) => {
   const enableImageMin = process.env.ENABLE_IMAGE_MIN === '1';
@@ -20,6 +21,7 @@ export default defineConfig(({ command }) => {
         webp: { quality: 70 },
       }),
       enableBundleReport && visualizer({ open: true, gzipSize: true, filename: 'bundle-report.html' }),
+      sites(),
     ].filter(Boolean),
     build: {
       rollupOptions: {
