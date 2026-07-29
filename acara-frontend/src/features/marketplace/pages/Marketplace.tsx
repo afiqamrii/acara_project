@@ -88,6 +88,10 @@ type AppliedFilters = {
 
 type SortOption = 'recommended' | 'rating' | 'price-low' | 'price-high';
 
+type MarketplaceProps = {
+    variant?: 'landing' | 'catalog';
+};
+
 const categoryOptions = [
     { label: 'Catering', value: 'Catering', icon: Utensils, tone: 'bg-amber-50 text-amber-700' },
     { label: 'Photography', value: 'Photography', icon: Camera, tone: 'bg-blue-50 text-blue-700' },
@@ -228,8 +232,9 @@ const ProductSkeleton = () => (
     </div>
 );
 
-const Marketplace: React.FC = () => {
-    usePageTitle('Browse Event Services');
+const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
+    const isLanding = variant === 'landing';
+    usePageTitle(isLanding ? 'Plan Your Event' : 'Marketplace');
     const [searchParams, setSearchParams] = useSearchParams();
     const initialSearch = searchParams.get('search') ?? '';
     const [search, setSearch] = useState(initialSearch);
@@ -250,19 +255,20 @@ const Marketplace: React.FC = () => {
 
     useEffect(() => {
         const urlSearch = searchParams.get('search') ?? '';
-        setSearch(urlSearch);
-        setAppliedFilters((current) =>
-            current.search === urlSearch
-                ? current
-                : { ...current, search: urlSearch, page: 1 },
-        );
-
-        if (window.location.hash === '#services') {
-            window.setTimeout(
-                () => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-                0,
+        const syncFromUrl = window.setTimeout(() => {
+            setSearch(urlSearch);
+            setAppliedFilters((current) =>
+                current.search === urlSearch
+                    ? current
+                    : { ...current, search: urlSearch, page: 1 },
             );
-        }
+
+            if (window.location.hash === '#services') {
+                document.getElementById('services')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 0);
+
+        return () => window.clearTimeout(syncFromUrl);
     }, [searchParams]);
 
     const marketplaceParams = useMemo(
@@ -430,120 +436,195 @@ const Marketplace: React.FC = () => {
             <Navbar />
 
             <main>
-                <section className="relative overflow-hidden bg-[#282033]">
-                    <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_top_right,#b9a0d6,transparent_35%),radial-gradient(circle_at_bottom_left,#7e5ba7,transparent_30%)]" />
-                    <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:px-10 lg:py-16">
-                        <div className="max-w-2xl">
-                            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-violet-100">
-                                <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                                Verified event professionals across Malaysia
-                            </div>
-                            <h1 className="text-4xl font-extrabold leading-tight tracking-[-0.035em] text-white sm:text-5xl lg:text-[56px]">
-                                Everything your event needs, in one trusted marketplace.
-                            </h1>
-                            <p className="mt-5 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">
-                                Compare venues, catering, photographers, decorators and more. Browse freely, then sign in only when you are ready to book.
-                            </p>
+                {isLanding ? (
+                    <>
+                        <section className="relative overflow-hidden bg-[#282033]">
+                            <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_top_right,#b9a0d6,transparent_35%),radial-gradient(circle_at_bottom_left,#7e5ba7,transparent_30%)]" />
+                            <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:px-10 lg:py-16">
+                                <div className="max-w-2xl">
+                                    <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-violet-100">
+                                        <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                                        Verified event professionals across Malaysia
+                                    </div>
+                                    <h1 className="text-4xl font-extrabold leading-tight tracking-[-0.035em] text-white sm:text-5xl lg:text-[56px]">
+                                        Everything your event needs, in one trusted marketplace.
+                                    </h1>
+                                    <p className="mt-5 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">
+                                        Compare venues, catering, photographers, decorators and more. Browse freely, then sign in only when you are ready to book.
+                                    </p>
 
-                            <form
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    applyFilters();
-                                }}
-                                className="mt-7 flex max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-2xl shadow-black/20 sm:flex-row"
-                            >
-                                <label className="flex min-w-0 flex-1 items-center gap-3 px-3">
-                                    <Search className="h-5 w-5 shrink-0 text-[#75559e]" />
-                                    <span className="sr-only">Search event services</span>
-                                    <input
-                                        type="search"
-                                        value={search}
-                                        onChange={(event) => setSearch(event.target.value)}
-                                        placeholder="Search catering, venues, photographers…"
-                                        className="h-12 w-full min-w-0 border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
-                                    />
-                                </label>
-                                <button
-                                    type="submit"
-                                    className="h-12 rounded-xl bg-[#76539f] px-7 text-sm font-bold text-white transition hover:bg-[#634486] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#76539f] focus-visible:ring-offset-2"
-                                >
-                                    Search services
-                                </button>
-                            </form>
+                                    <form
+                                        onSubmit={(event) => {
+                                            event.preventDefault();
+                                            applyFilters();
+                                        }}
+                                        className="mt-7 flex max-w-2xl flex-col gap-2 rounded-2xl bg-white p-2 shadow-2xl shadow-black/20 sm:flex-row"
+                                    >
+                                        <label className="flex min-w-0 flex-1 items-center gap-3 px-3">
+                                            <Search className="h-5 w-5 shrink-0 text-[#75559e]" />
+                                            <span className="sr-only">Search event services</span>
+                                            <input
+                                                type="search"
+                                                value={search}
+                                                onChange={(event) => setSearch(event.target.value)}
+                                                placeholder="Search catering, venues, photographers…"
+                                                className="h-12 w-full min-w-0 border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                                            />
+                                        </label>
+                                        <button
+                                            type="submit"
+                                            className="h-12 rounded-xl bg-[#76539f] px-7 text-sm font-bold text-white transition hover:bg-[#634486] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#76539f] focus-visible:ring-offset-2"
+                                        >
+                                            Search services
+                                        </button>
+                                    </form>
 
-                            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-slate-300">
-                                <span className="flex items-center gap-1.5"><BadgeCheck className="h-4 w-4 text-emerald-300" /> Verified vendors</span>
-                                <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-emerald-300" /> Secure booking flow</span>
-                                <span className="flex items-center gap-1.5"><Headphones className="h-4 w-4 text-emerald-300" /> Local support</span>
-                            </div>
-                        </div>
+                                    <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-slate-300">
+                                        <span className="flex items-center gap-1.5"><BadgeCheck className="h-4 w-4 text-emerald-300" /> Verified vendors</span>
+                                        <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-emerald-300" /> Secure booking flow</span>
+                                        <span className="flex items-center gap-1.5"><Headphones className="h-4 w-4 text-emerald-300" /> Local support</span>
+                                    </div>
+                                </div>
 
-                        <div className="relative hidden h-[340px] lg:block">
-                            <div className="absolute left-4 top-4 h-64 w-[58%] overflow-hidden rounded-[28px] border border-white/15 shadow-2xl">
-                                <img src={hero1} alt="Elegant event venue" className="h-full w-full object-cover" />
-                            </div>
-                            <div className="absolute bottom-3 right-2 h-56 w-[52%] overflow-hidden rounded-[28px] border-4 border-[#282033] shadow-2xl">
-                                <img src={hero7} alt="Professional event catering" className="h-full w-full object-cover" />
-                            </div>
-                            <div className="absolute bottom-5 left-0 rounded-2xl border border-white/15 bg-white/95 p-4 shadow-xl">
-                                <div className="flex items-center gap-3">
-                                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-                                        <Store className="h-5 w-5" />
-                                    </span>
-                                    <div>
-                                        <p className="text-xs font-medium text-slate-500">Marketplace access</p>
-                                        <p className="text-sm font-extrabold text-slate-900">Browse before signing in</p>
+                                <div className="relative hidden h-[340px] lg:block">
+                                    <div className="absolute left-4 top-4 h-64 w-[58%] overflow-hidden rounded-[28px] border border-white/15 shadow-2xl">
+                                        <img src={hero1} alt="Elegant event venue" className="h-full w-full object-cover" />
+                                    </div>
+                                    <div className="absolute bottom-3 right-2 h-56 w-[52%] overflow-hidden rounded-[28px] border-4 border-[#282033] shadow-2xl">
+                                        <img src={hero7} alt="Professional event catering" className="h-full w-full object-cover" />
+                                    </div>
+                                    <div className="absolute bottom-5 left-0 rounded-2xl border border-white/15 bg-white/95 p-4 shadow-xl">
+                                        <div className="flex items-center gap-3">
+                                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                                                <Store className="h-5 w-5" />
+                                            </span>
+                                            <div>
+                                                <p className="text-xs font-medium text-slate-500">Marketplace access</p>
+                                                <p className="text-sm font-extrabold text-slate-900">Browse before signing in</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </section>
+                        </section>
 
-                <section aria-labelledby="categories-heading" className="border-b border-slate-200 bg-white">
-                    <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 lg:px-10">
-                        <div className="mb-5 flex items-end justify-between gap-4">
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#76539f]">Browse faster</p>
-                                <h2 id="categories-heading" className="mt-1 text-xl font-extrabold text-slate-900">Popular categories</h2>
+                        <section aria-labelledby="categories-heading" className="border-b border-slate-200 bg-white">
+                            <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 lg:px-10">
+                                <div className="mb-5 flex items-end justify-between gap-4">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#76539f]">Browse faster</p>
+                                        <h2 id="categories-heading" className="mt-1 text-xl font-extrabold text-slate-900">Popular categories</h2>
+                                    </div>
+                                    {serviceType && (
+                                        <button onClick={() => selectCategory('')} className="text-xs font-bold text-slate-500 hover:text-[#62458f]">
+                                            View all
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-4 gap-3 sm:grid-cols-7">
+                                    {categoryOptions.map(({ label, value, icon: Icon, tone }) => (
+                                        <button
+                                            key={value}
+                                            onClick={() => selectCategory(value)}
+                                            className={`group flex min-w-0 flex-col items-center rounded-2xl border px-2 py-4 transition ${
+                                                serviceType === value
+                                                    ? 'border-[#8062ad] bg-[#f3eef8] shadow-sm'
+                                                    : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-[#8062ad]/40 hover:shadow-md'
+                                            }`}
+                                        >
+                                            <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${tone}`}>
+                                                <Icon className="h-5 w-5" />
+                                            </span>
+                                            <span className="mt-2 w-full truncate text-center text-[11px] font-bold text-slate-700 sm:text-xs">{label}</span>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            {serviceType && (
-                                <button onClick={() => selectCategory('')} className="text-xs font-bold text-slate-500 hover:text-[#62458f]">
-                                    View all
-                                </button>
-                            )}
-                        </div>
-                        <div className="grid grid-cols-4 gap-3 sm:grid-cols-7">
-                            {categoryOptions.map(({ label, value, icon: Icon, tone }) => (
+                        </section>
+                    </>
+                ) : (
+                    <section className="border-b border-slate-200 bg-white">
+                        <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 lg:px-10">
+                            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#76539f]">Acara Marketplace</p>
+                                    <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-slate-950">Find event services</h1>
+                                </div>
+                                <form
+                                    onSubmit={(event) => {
+                                        event.preventDefault();
+                                        applyFilters();
+                                    }}
+                                    className="flex w-full max-w-2xl gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 transition focus-within:border-[#8062ad]/60 focus-within:bg-white focus-within:ring-4 focus-within:ring-[#8062ad]/10"
+                                >
+                                    <label className="flex min-w-0 flex-1 items-center gap-3 px-3">
+                                        <Search className="h-5 w-5 shrink-0 text-[#75559e]" />
+                                        <span className="sr-only">Search event services</span>
+                                        <input
+                                            type="search"
+                                            value={search}
+                                            onChange={(event) => setSearch(event.target.value)}
+                                            placeholder="Search services or vendors"
+                                            className="h-11 w-full min-w-0 border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                                        />
+                                    </label>
+                                    <button
+                                        type="submit"
+                                        className="h-11 rounded-xl bg-[#2a2139] px-5 text-sm font-bold text-white transition hover:bg-[#62458f]"
+                                    >
+                                        Search
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div className="-mx-1 mt-5 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Service categories">
                                 <button
-                                    key={value}
-                                    onClick={() => selectCategory(value)}
-                                    className={`group flex min-w-0 flex-col items-center rounded-2xl border px-2 py-4 transition ${
-                                        serviceType === value
-                                            ? 'border-[#8062ad] bg-[#f3eef8] shadow-sm'
-                                            : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-[#8062ad]/40 hover:shadow-md'
+                                    onClick={() => selectCategory('')}
+                                    className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition ${
+                                        serviceType === ''
+                                            ? 'border-[#62458f] bg-[#62458f] text-white'
+                                            : 'border-slate-200 bg-white text-slate-600 hover:border-[#8062ad]/50 hover:text-[#62458f]'
                                     }`}
                                 >
-                                    <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${tone}`}>
-                                        <Icon className="h-5 w-5" />
-                                    </span>
-                                    <span className="mt-2 w-full truncate text-center text-[11px] font-bold text-slate-700 sm:text-xs">{label}</span>
+                                    All services
                                 </button>
-                            ))}
+                                {categoryOptions.map(({ label, value, icon: Icon }) => (
+                                    <button
+                                        key={value}
+                                        onClick={() => selectCategory(value)}
+                                        className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition ${
+                                            serviceType === value
+                                                ? 'border-[#62458f] bg-[#62458f] text-white'
+                                                : 'border-slate-200 bg-white text-slate-600 hover:border-[#8062ad]/50 hover:text-[#62458f]'
+                                        }`}
+                                    >
+                                        <Icon className="h-3.5 w-3.5" />
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
+                )}
 
                 <section id="services" className="scroll-mt-24">
-                    <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-10 lg:py-14">
+                    <div className={`mx-auto max-w-7xl px-5 sm:px-8 lg:px-10 ${isLanding ? 'py-10 lg:py-14' : 'py-8 lg:py-10'}`}>
                         <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#76539f]">Marketplace</p>
+                                {isLanding && (
+                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#76539f]">Marketplace</p>
+                                )}
                                 <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
-                                    {appliedFilters.search ? `Results for “${appliedFilters.search}”` : 'Services for your next event'}
+                                    {appliedFilters.search
+                                        ? `Results for “${appliedFilters.search}”`
+                                        : isLanding
+                                            ? 'Services for your next event'
+                                            : 'All services'}
                                 </h2>
                                 <p className="mt-1 text-sm text-slate-500">
-                                    {loading ? 'Finding approved providers…' : `${totalServices} approved service${totalServices === 1 ? '' : 's'} available`}
+                                    {loading
+                                        ? 'Loading services…'
+                                        : `${totalServices} service${totalServices === 1 ? '' : 's'} available`}
                                 </p>
                             </div>
                             <div className="flex gap-2">
@@ -641,25 +722,27 @@ const Marketplace: React.FC = () => {
                     </div>
                 </section>
 
-                <section className="bg-white">
-                    <div className="mx-auto grid max-w-7xl gap-6 px-5 py-10 sm:grid-cols-3 sm:px-8 lg:px-10">
-                        {[
-                            { icon: BadgeCheck, title: 'Approved providers', text: 'Every listing is reviewed before it appears in the marketplace.' },
-                            { icon: ShieldCheck, title: 'Protected booking flow', text: 'Your request, quotation and booking history stay together in Acara.' },
-                            { icon: Headphones, title: 'Local event support', text: 'Plan with Malaysian vendors who understand your location and event.' },
-                        ].map(({ icon: Icon, title, text }) => (
-                            <div key={title} className="flex gap-4 rounded-2xl border border-slate-200 p-5">
-                                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f1ecf8] text-[#62458f]">
-                                    <Icon className="h-5 w-5" />
-                                </span>
-                                <div>
-                                    <h3 className="font-extrabold text-slate-900">{title}</h3>
-                                    <p className="mt-1 text-sm leading-6 text-slate-500">{text}</p>
+                {isLanding && (
+                    <section className="bg-white">
+                        <div className="mx-auto grid max-w-7xl gap-6 px-5 py-10 sm:grid-cols-3 sm:px-8 lg:px-10">
+                            {[
+                                { icon: BadgeCheck, title: 'Approved providers', text: 'Every listing is reviewed before it appears in the marketplace.' },
+                                { icon: ShieldCheck, title: 'Protected booking flow', text: 'Your request, quotation and booking history stay together in Acara.' },
+                                { icon: Headphones, title: 'Local event support', text: 'Plan with Malaysian vendors who understand your location and event.' },
+                            ].map(({ icon: Icon, title, text }) => (
+                                <div key={title} className="flex gap-4 rounded-2xl border border-slate-200 p-5">
+                                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f1ecf8] text-[#62458f]">
+                                        <Icon className="h-5 w-5" />
+                                    </span>
+                                    <div>
+                                        <h3 className="font-extrabold text-slate-900">{title}</h3>
+                                        <p className="mt-1 text-sm leading-6 text-slate-500">{text}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                            ))}
+                        </div>
+                    </section>
+                )}
             </main>
 
             <Footer />
