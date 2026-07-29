@@ -92,6 +92,8 @@ type MarketplaceProps = {
     variant?: 'landing' | 'catalog';
 };
 
+type RemovableFilter = 'search' | 'category' | 'location' | 'budget';
+
 const categoryOptions = [
     { label: 'Catering', value: 'Catering', icon: Utensils, tone: 'bg-amber-50 text-amber-700' },
     { label: 'Photography', value: 'Photography', icon: Camera, tone: 'bg-blue-50 text-blue-700' },
@@ -307,6 +309,37 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
         appliedFilters.minPrice ||
         appliedFilters.maxPrice,
     );
+    const activeFilterCount = [
+        appliedFilters.search,
+        appliedFilters.category,
+        appliedFilters.location,
+        appliedFilters.minPrice || appliedFilters.maxPrice,
+    ].filter(Boolean).length;
+    const activeFilterChips: Array<{ key: RemovableFilter; label: string }> = [
+        ...(appliedFilters.search
+            ? [{ key: 'search' as const, label: `Search: ${appliedFilters.search}` }]
+            : []),
+        ...(appliedFilters.category
+            ? [{
+                key: 'category' as const,
+                label: categoryOptions.find((option) => option.value === appliedFilters.category)?.label
+                    ?? appliedFilters.category,
+            }]
+            : []),
+        ...(appliedFilters.location
+            ? [{ key: 'location' as const, label: appliedFilters.location }]
+            : []),
+        ...(appliedFilters.minPrice || appliedFilters.maxPrice
+            ? [{
+                key: 'budget' as const,
+                label: appliedFilters.minPrice && appliedFilters.maxPrice
+                    ? `RM ${appliedFilters.minPrice}–${appliedFilters.maxPrice}`
+                    : appliedFilters.minPrice
+                        ? `From RM ${appliedFilters.minPrice}`
+                        : `Up to RM ${appliedFilters.maxPrice}`,
+            }]
+            : []),
+    ];
 
     const applyFilters = (overrides: Partial<AppliedFilters> = {}) => {
         const nextFilters = {
@@ -351,12 +384,43 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
         setMobileFiltersOpen(false);
     };
 
+    const removeFilter = (filter: RemovableFilter) => {
+        const nextFilters = { ...appliedFilters, page: 1 };
+
+        if (filter === 'search') {
+            nextFilters.search = '';
+            setSearch('');
+        }
+        if (filter === 'category') {
+            nextFilters.category = '';
+            setServiceType('');
+        }
+        if (filter === 'location') {
+            nextFilters.location = '';
+            setLocation('');
+        }
+        if (filter === 'budget') {
+            nextFilters.minPrice = '';
+            nextFilters.maxPrice = '';
+            setMinPrice('');
+            setMaxPrice('');
+        }
+
+        setAppliedFilters(nextFilters);
+        setSearchParams(nextFilters.search ? { search: nextFilters.search } : {}, { replace: true });
+    };
+
     const filterPanel = (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h3 className="flex items-center gap-2 font-bold text-slate-900">
                     <SlidersHorizontal className="h-4 w-4 text-[#62458f]" />
                     Refine results
+                    {activeFilterCount > 0 && (
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#62458f] px-1.5 text-[10px] font-black text-white">
+                            {activeFilterCount}
+                        </span>
+                    )}
                 </h3>
                 {hasActiveFilters && (
                     <button onClick={resetFilters} className="text-xs font-bold text-[#62458f] hover:underline">
@@ -634,6 +698,11 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                                 >
                                     <SlidersHorizontal className="h-4 w-4" />
                                     Filters
+                                    {activeFilterCount > 0 && (
+                                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#62458f] px-1.5 text-[10px] font-black text-white">
+                                            {activeFilterCount}
+                                        </span>
+                                    )}
                                 </button>
                                 <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
                                     <span className="hidden text-xs font-semibold text-slate-400 sm:inline">Sort</span>
@@ -651,12 +720,37 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                             </div>
                         </div>
 
-                        <div className="grid items-start gap-6 lg:grid-cols-[230px_1fr]">
-                            <aside className="sticky top-28 hidden rounded-2xl border border-slate-200 bg-white p-5 lg:block">
+                        <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+                            <aside className="sticky top-28 hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(36,28,58,0.04)] lg:block">
                                 {filterPanel}
                             </aside>
 
-                            <div>
+                            <div className="min-w-0">
+                                {!isLanding && activeFilterChips.length > 0 && (
+                                    <div className="mb-5 flex flex-wrap items-center gap-2">
+                                        <span className="mr-1 text-xs font-bold text-slate-500">Active filters</span>
+                                        {activeFilterChips.map((filter) => (
+                                            <button
+                                                key={filter.key}
+                                                type="button"
+                                                onClick={() => removeFilter(filter.key)}
+                                                aria-label={`Remove ${filter.label} filter`}
+                                                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#8062ad]/25 bg-[#f3eef8] px-3 py-1.5 text-xs font-bold text-[#62458f] transition hover:border-[#8062ad]/50 hover:bg-[#ebe3f4]"
+                                            >
+                                                <span className="truncate">{filter.label}</span>
+                                                <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                            </button>
+                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={resetFilters}
+                                            className="px-2 py-1.5 text-xs font-bold text-slate-500 transition hover:text-[#62458f]"
+                                        >
+                                            Clear all
+                                        </button>
+                                    </div>
+                                )}
+
                                 {marketplaceQuery.isError && sortedServices.length === 0 ? (
                                     <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center">
                                         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
@@ -764,7 +858,14 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                     />
                     <div className="absolute inset-y-0 right-0 w-[88%] max-w-sm overflow-y-auto bg-white p-6 shadow-2xl">
                         <div className="mb-6 flex items-center justify-between">
-                            <p className="text-lg font-extrabold text-slate-900">Filter services</p>
+                            <p className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
+                                Filter services
+                                {activeFilterCount > 0 && (
+                                    <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#62458f] px-1.5 text-[11px] font-black text-white">
+                                        {activeFilterCount}
+                                    </span>
+                                )}
+                            </p>
                             <button
                                 aria-label="Close filters"
                                 onClick={() => setMobileFiltersOpen(false)}
