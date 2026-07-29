@@ -745,7 +745,15 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                 )}
             </main>
 
-            <Footer />
+            {isLanding ? (
+                <Footer />
+            ) : (
+                <footer className="border-t border-slate-200 bg-white">
+                    <div className="mx-auto max-w-7xl px-5 py-5 text-center text-xs font-medium text-slate-500 sm:px-8 lg:px-10">
+                        &copy; {new Date().getFullYear()} Acara. All rights reserved.
+                    </div>
+                </footer>
+            )}
 
             {mobileFiltersOpen && (
                 <div className="fixed inset-0 z-[70] lg:hidden">
