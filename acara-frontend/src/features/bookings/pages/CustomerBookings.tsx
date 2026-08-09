@@ -1076,7 +1076,7 @@ const CustomerBookings = () => {
 
     return (
       <main className="flex-1 overflow-y-auto bg-[#f7f8fc]">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 md:px-8">
+        <div className="mx-auto flex w-full max-w-[1536px] flex-col gap-5 px-4 py-6 md:px-8">
           <button type="button" onClick={() => navigate("/bookings")} className="inline-flex w-fit items-center gap-2 text-sm font-bold text-slate-500 transition hover:text-indigo-700">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4"><path d="M19 12H5" /><path d="m12 19-7-7 7-7" /></svg>
             Back to My Bookings
@@ -1160,7 +1160,7 @@ const CustomerBookings = () => {
 
   return (
     <main className="flex-1 overflow-y-auto bg-[#f7f8fc]">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-8">
+      <div className="mx-auto flex w-full max-w-[1536px] flex-col gap-6 px-4 py-6 md:px-8">
         <section className="rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-700 to-purple-600 p-6 text-white shadow-lg">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>

@@ -18,7 +18,7 @@ import ComingSoon from './components/common/ComingSoon';
 import Loader from './components/common/Loader';
 import ProtectedRoute from './components/common/ProtectedRoute';
 
-import UserLayout from './components/layouts/UserLayout';
+import UnifiedLayout from './components/layouts/UnifiedLayout';
 import AdminLayout from './components/layouts/AdminLayout';
 const ServiceDetail = lazy(() => import('./features/marketplace/pages/ServiceDetail'));
 const VendorAvailability = lazy(() => import('./features/vendor/pages/VendorAvailability'));
@@ -62,7 +62,7 @@ function App() {
             <Route path="/about" element={<ComingSoon isPublic={true} title="About ACARA" description="Learn about our mission to revolutionize event planning in Malaysia. Meet the team behind the platform." />} />
             <Route path="/contact" element={<ComingSoon isPublic={true} title="Contact Us" description="Have questions or need support? Reach out to our team - we'd love to hear from you." />} />
 
-            <Route element={<ProtectedRoute><UserLayout /></ProtectedRoute>}>
+            <Route element={<ProtectedRoute><UnifiedLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<ProtectedRoute requiredRole={["user", "vendor"]}><UserDashboard /></ProtectedRoute>} />
               <Route path="/vendor/dashboard" element={<ProtectedRoute requiredRole={["vendor"]}><VendorDashboard /></ProtectedRoute>} />
               <Route path="/vendor/register" element={<ProtectedRoute requiredRole={["user", "vendor"]}><VendorRegister /></ProtectedRoute>} />

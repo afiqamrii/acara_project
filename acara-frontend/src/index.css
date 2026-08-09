@@ -16,6 +16,18 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* ── ACARA Unified Brand Tokens ─────────────────────────────── */
+  --acara-brand:        #6f52a3;   /* Primary brand purple            */
+  --acara-brand-dark:   #251d31;   /* Deep dark — announcement bar    */
+  --acara-brand-mid:    #8a68c0;   /* Lighter purple for hover states */
+  --acara-brand-deep:   #4b3480;   /* Deeper purple for gradients     */
+  --acara-brand-light:  #f0eaf8;   /* Tint — active nav, highlights   */
+  --acara-brand-border: #e4d9f5;   /* Subtle purple-tinted borders    */
+  --acara-surface:      #f7f6fb;   /* Page background for app shell   */
+  --acara-sidebar-bg:   #ffffff;   /* Sidebar background              */
+  /* ─────────────────────────────────────────────────────────────── */
+
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -69,6 +81,14 @@ body {
   min-height: 100vh;
 }
 
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -77,6 +97,37 @@ body {
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Global Brand Color Overrides */
+  --color-indigo-50: var(--acara-brand-light);
+  --color-indigo-100: var(--acara-brand-border);
+  --color-indigo-200: #d4c1f0;
+  --color-indigo-300: #b39be0;
+  --color-indigo-400: #9b7ed4;
+  --color-indigo-500: var(--acara-brand-mid);
+  --color-indigo-600: var(--acara-brand);
+  --color-indigo-700: var(--acara-brand-deep);
+  --color-indigo-800: #392663;
+  --color-indigo-900: var(--acara-brand-dark);
+  --color-indigo-950: #1c1525;
+
+  --color-purple-50: var(--acara-brand-light);
+  --color-purple-100: var(--acara-brand-border);
+  --color-purple-200: #d4c1f0;
+  --color-purple-300: #b39be0;
+  --color-purple-400: #9b7ed4;
+  --color-purple-500: var(--acara-brand-mid);
+  --color-purple-600: var(--acara-brand);
+  --color-purple-700: var(--acara-brand-deep);
+  --color-purple-800: #392663;
+  --color-purple-900: var(--acara-brand-dark);
+  --color-purple-950: #1c1525;
+
+  /* Global Background/Surface Overrides */
+  --color-gray-50: var(--acara-surface);
+  --color-slate-50: var(--acara-surface);
+  --color-gray-100: var(--acara-brand-border);
+  --color-slate-100: var(--acara-brand-border);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

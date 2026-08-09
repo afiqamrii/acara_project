@@ -250,8 +250,8 @@ const UserProfile = () => {
     const completion    = profileCompletion(user);
 
     return (
-        <main className="flex-1 overflow-y-auto bg-[#f5f4fb] p-4 sm:p-5">
-            <div className="max-w-4xl mx-auto space-y-3 pt-12 md:pt-0">
+        <main className="flex-1 overflow-y-auto bg-[#f5f4fb] px-4 py-7 md:px-8 md:py-9">
+            <div className="max-w-[1536px] mx-auto space-y-3 pt-12 md:pt-0">
 
                 {/* ══ HERO ══════════════════════════════════════════════ */}
                 <motion.div

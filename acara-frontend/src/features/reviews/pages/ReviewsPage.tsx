@@ -184,7 +184,7 @@ const ReviewsPage = () => {
 
   return (
     <main className="flex-1 overflow-y-auto bg-slate-50 px-4 py-7 md:px-8 md:py-9">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-[1536px]">
         <header className="flex flex-col gap-5 border-b border-slate-200 pb-7 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-purple-700">

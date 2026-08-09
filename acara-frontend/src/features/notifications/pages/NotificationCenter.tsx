@@ -2,18 +2,11 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
-  IconAlertTriangle,
   IconBell,
-  IconCalendarCheck,
   IconChecks,
   IconChevronRight,
   IconCircleCheck,
-  IconCircleX,
-  IconClipboardCheck,
-  IconClock,
-  IconMessageCircle,
   IconRefresh,
-  IconStar,
 } from "@tabler/icons-react";
 import { usePageTitle } from "../../../utils/usePageTitle";
 import {
@@ -23,73 +16,12 @@ import {
   type NotificationFilter,
   type UserNotification,
 } from "../api";
+import { notificationStyle, notificationActionLabel, relativeTime } from "../utils";
 
 const FILTERS: { key: NotificationFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "unread", label: "Unread" },
 ];
-
-const notificationStyle = (type: string) => {
-  switch (type) {
-    case "booking_request":
-      return { icon: IconClipboardCheck, className: "bg-purple-100 text-purple-700" };
-    case "booking_message":
-      return { icon: IconMessageCircle, className: "bg-indigo-100 text-indigo-700" };
-    case "booking_approved":
-      return { icon: IconCircleCheck, className: "bg-emerald-100 text-emerald-700" };
-    case "booking_rejected":
-      return { icon: IconCircleX, className: "bg-orange-100 text-orange-700" };
-    case "booking_cancelled":
-      return { icon: IconAlertTriangle, className: "bg-red-100 text-red-700" };
-    case "booking_completed":
-      return { icon: IconCalendarCheck, className: "bg-blue-100 text-blue-700" };
-    case "booking_expiry_reminder":
-      return { icon: IconClock, className: "bg-amber-100 text-amber-700" };
-    case "booking_expired":
-      return { icon: IconClock, className: "bg-slate-200 text-slate-700" };
-    case "review_received":
-      return { icon: IconStar, className: "bg-amber-100 text-amber-700" };
-    case "service_approved":
-      return { icon: IconCircleCheck, className: "bg-emerald-100 text-emerald-700" };
-    case "service_rejected":
-      return { icon: IconAlertTriangle, className: "bg-orange-100 text-orange-700" };
-    case "account_suspended":
-      return { icon: IconAlertTriangle, className: "bg-red-100 text-red-700" };
-    case "account_reactivated":
-      return { icon: IconCircleCheck, className: "bg-emerald-100 text-emerald-700" };
-    default:
-      return { icon: IconBell, className: "bg-gray-100 text-gray-600" };
-  }
-};
-
-const notificationActionLabel = (type: string) => {
-  if (type === "booking_message") return "Open conversation";
-  if (type === "review_received") return "View review";
-  if (type === "service_approved" || type === "service_rejected") return "Manage service";
-  if (type === "account_reactivated") return "View account";
-  return "View booking";
-};
-
-const relativeTime = (value: string) => {
-  const timestamp = new Date(value.replace(" ", "T")).getTime();
-  const difference = Math.max(0, Date.now() - timestamp);
-  const minutes = Math.floor(difference / 60_000);
-
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes} min ago`;
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
-
-  return new Date(timestamp).toLocaleDateString("en-MY", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-};
 
 const dayGroup = (value: string): "Today" | "Yesterday" | "Earlier" => {
   const notificationDate = new Date(value.replace(" ", "T"));
@@ -199,7 +131,7 @@ const NotificationCenter = () => {
 
   return (
     <main className="flex-1 overflow-y-auto bg-slate-50 px-4 py-7 md:px-8 md:py-9">
-      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="mx-auto max-w-[1536px] space-y-5">
         <header className="flex flex-col gap-5 border-b border-slate-200 pb-7 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-purple-700">

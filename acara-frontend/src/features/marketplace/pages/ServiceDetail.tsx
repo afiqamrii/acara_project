@@ -596,7 +596,7 @@ const ServiceDetail: React.FC = () => {
         <div className="min-h-screen bg-[#f7f6f9] text-left text-slate-900">
             <Navbar />
 
-            <main className="mx-auto max-w-7xl px-5 py-6 sm:px-8 lg:px-10 lg:py-9">
+            <main className="mx-auto max-w-[1536px] w-[90%] lg:w-[80%] py-6 lg:py-9">
                 <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-slate-500">
                     <button onClick={() => navigate('/')} className="transition hover:text-[#62458f]">Marketplace</button>
                     <ChevronRight className="h-3.5 w-3.5 text-slate-300" />

@@ -139,7 +139,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
   const sidebarContent = (isMobile = false) => (
     <>
 
-      <div className={`flex items-center gap-3 border-b border-gray-50 px-4 py-5 ${!isMobile && collapsed ? "justify-center" : "justify-between"}`}>
+      <div className={`flex items-center gap-3 border-b border-[#e4d9f5] px-4 py-5 ${!isMobile && collapsed ? "justify-center" : "justify-between"}`}>
         <div className="flex items-center overflow-hidden">
           <AnimatePresence mode="wait" initial={false}>
             {(isMobile || !collapsed) ? (
@@ -150,7 +150,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
                 exit={{ opacity: 0, x: -10 }}
                 className="whitespace-nowrap text-2xl font-black tracking-tight text-gray-900"
               >
-                Acara<span className="text-[#7E57C2]">.</span>
+                Acara<span className="text-[#6f52a3]">.</span>
               </motion.span>
             ) : (
               <motion.span
@@ -160,7 +160,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
                 exit={{ opacity: 0 }}
                 className="whitespace-nowrap text-2xl font-black tracking-tight text-gray-900 text-center"
               >
-                A<span className="text-[#7E57C2]">.</span>
+                A<span className="text-[#6f52a3]">.</span>
               </motion.span>
             )}
           </AnimatePresence>
@@ -178,7 +178,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
       </div>
 
       {userRole === "vendor" && (
-        <div className="border-b border-gray-100 p-2">
+        <div className="border-t border-[#e4d9f5] p-3">
           <div className={`grid grid-cols-2 rounded-xl bg-gray-100 p-1 ${!isMobile && collapsed ? "gap-0" : "gap-1"}`}>
             {([
               { key: "planning" as const, label: "Planning", icon: IconShoppingBag },
@@ -190,7 +190,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
                 onClick={() => switchWorkspace(key)}
                 title={`${label} workspace`}
                 className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[10px] font-bold transition ${
-                  workspace === key ? "bg-white text-purple-700 shadow-sm" : "text-gray-400 hover:text-gray-600"
+                  workspace === key ? "bg-white text-[#6f52a3] shadow-sm" : "text-gray-400 hover:text-gray-600"
                 }`}
               >
                 <Icon size={15} />
@@ -207,10 +207,10 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
           onClick={() => { onCartOpen(); if (isMobile) setMobileOpen(false); }}
           className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
         >
-          <div className="shrink-0 text-gray-400 group-hover:text-gray-600 transition-colors relative">
+          <div className="shrink-0 text-gray-400 group-hover:text-[#6f52a3] transition-colors relative">
             <IconShoppingCart size={18} />
             {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center rounded-full bg-purple-600 text-[9px] font-bold text-white leading-none">
+              <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center rounded-full bg-[#6f52a3] text-[9px] font-bold text-white leading-none">
                 {cartCount > 9 ? '9+' : cartCount}
               </span>
             )}
@@ -231,7 +231,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
             <motion.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="ml-auto text-[10px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full"
+              className="ml-auto text-[10px] font-bold text-[#6f52a3] bg-[#f0eaf8] px-1.5 py-0.5 rounded-full"
             >
               {cartCount}
             </motion.span>
@@ -249,15 +249,15 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
               onClick={() => handleNavigate(href, itemWorkspace)}
               className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                 isActive
-                  ? "bg-indigo-50 text-indigo-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-[#f0eaf8] text-[#6f52a3]"
+                  : "text-gray-600 hover:bg-[#f7f4fc] hover:text-[#6f52a3]"
               }`}
             >
               <div
                 className={`relative shrink-0 transition-colors ${
                   isActive
-                    ? "text-indigo-600"
-                    : "text-gray-400 group-hover:text-gray-600"
+                    ? "text-[#6f52a3]"
+                    : "text-gray-400 group-hover:text-[#6f52a3]"
                 }`}
               >
                 <Icon size={18} />
@@ -290,7 +290,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
               {isActive && (isMobile || !collapsed) && (
                 <motion.div
                   layoutId={isMobile ? "mobileActiveIndicator" : "activeIndicator"}
-                  className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-600"
+                  className="ml-auto h-1.5 w-1.5 rounded-full bg-[#6f52a3]"
                 />
               )}
             </button>
@@ -298,7 +298,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
         })}
       </nav>
 
-      <div className="border-t border-gray-100 p-3">
+      <div className="border-t border-[#e4d9f5] p-3">
         <div
           className={`flex items-center gap-3 rounded-xl px-2 py-2 ${
             !isMobile && collapsed ? "justify-center" : ""
@@ -311,7 +311,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
               className="h-8 w-8 shrink-0 rounded-full object-cover ring-2 ring-purple-100"
             />
           ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-600">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#6f52a3] to-[#4b3480]">
               <span className="text-xs font-semibold text-white">{initials}</span>
             </div>
           )}
@@ -361,7 +361,7 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
     <>
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-40 flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-600 shadow-md transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 md:hidden"
+        className="fixed left-4 top-4 z-40 flex h-11 w-11 items-center justify-center rounded-2xl border border-[#e4d9f5] bg-white text-[#6f52a3] shadow-md transition-colors hover:border-[#6f52a3] hover:bg-[#f0eaf8] md:hidden"
         aria-label="Open navigation menu"
       >
         <IconMenu2 size={20} />
@@ -371,14 +371,14 @@ export function UserSidebar({ onCartOpen }: UserSidebarProps) {
         <motion.aside
           animate={{ width: collapsed ? 72 : 240 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="flex h-full w-full flex-col overflow-hidden border-r border-gray-100 bg-white shadow-sm"
+          className="flex h-full w-full flex-col overflow-hidden border-r border-[#e4d9f5] bg-white shadow-[2px_0_12px_rgba(111,82,163,0.06)]"
         >
           {sidebarContent()}
         </motion.aside>
         
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-6 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-md transition-colors hover:border-indigo-300 hover:text-indigo-600"
+          className="absolute -right-3 top-6 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-[#e4d9f5] bg-white text-[#6f52a3] shadow-md transition-colors hover:border-[#6f52a3] hover:bg-[#f0eaf8]"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? <IconChevronRight size={12} /> : <IconChevronLeft size={12} />}

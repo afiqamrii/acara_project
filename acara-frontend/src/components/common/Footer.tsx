@@ -3,7 +3,7 @@ import { BadgeCheck, Mail, ShieldCheck } from 'lucide-react';
 
 const Footer = () => (
     <footer className="bg-[#211a2b] text-left text-slate-300">
-        <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:px-10">
+        <div className="mx-auto max-w-[1536px] w-[90%] lg:w-[80%] py-12">
             <div className="grid gap-10 border-b border-white/10 pb-10 sm:grid-cols-2 lg:grid-cols-[1.35fr_0.8fr_0.8fr_1fr]">
                 <div>
                     <Link to="/" className="inline-flex items-center gap-2">

@@ -96,7 +96,7 @@ const AdminAuditDetail = () => {
 
   return (
     <main className="min-w-0 flex-1 overflow-y-auto bg-slate-50 px-4 py-6 md:px-8 md:py-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto max-w-[1536px] space-y-6">
         <Link to="/admin/audit-logs" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-indigo-700"><IconArrowLeft size={18} /> Back to audit log</Link>
 
         <header className="overflow-hidden rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 p-5 text-white shadow-lg shadow-slate-300/30 sm:p-7">

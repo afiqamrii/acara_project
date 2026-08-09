@@ -10,7 +10,7 @@ const UserLayout = () => {
     const isVendor = localStorage.getItem("role") === "vendor";
 
     return (
-        <div className="flex min-h-screen w-full bg-[#f7f8fc] md:h-screen md:overflow-hidden">
+        <div className="flex min-h-screen w-full bg-[#f7f6fb] md:h-screen md:overflow-hidden">
             <UserSidebar onCartOpen={() => setCartOpen(true)} />
             <Outlet />
             {isCustomer && <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />}

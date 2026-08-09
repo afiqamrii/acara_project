@@ -6,7 +6,6 @@ import api from "../../../lib/Api";
 import IconAlertCircle from "@tabler/icons-react/dist/esm/icons/IconAlertCircle.mjs";
 import IconArrowDownRight from "@tabler/icons-react/dist/esm/icons/IconArrowDownRight.mjs";
 import IconArrowUpRight from "@tabler/icons-react/dist/esm/icons/IconArrowUpRight.mjs";
-import IconBell from "@tabler/icons-react/dist/esm/icons/IconBell.mjs";
 import IconCalendarEvent from "@tabler/icons-react/dist/esm/icons/IconCalendarEvent.mjs";
 import IconCheck from "@tabler/icons-react/dist/esm/icons/IconCheck.mjs";
 import IconChevronRight from "@tabler/icons-react/dist/esm/icons/IconChevronRight.mjs";
@@ -14,9 +13,7 @@ import IconClock from "@tabler/icons-react/dist/esm/icons/IconClock.mjs";
 import IconConfetti from "@tabler/icons-react/dist/esm/icons/IconConfetti.mjs";
 import IconCurrencyDollar from "@tabler/icons-react/dist/esm/icons/IconCurrencyDollar.mjs";
 import IconMapPin from "@tabler/icons-react/dist/esm/icons/IconMapPin.mjs";
-import IconSearch from "@tabler/icons-react/dist/esm/icons/IconSearch.mjs";
 import IconShoppingBag from "@tabler/icons-react/dist/esm/icons/IconShoppingBag.mjs";
-import IconSparkles from "@tabler/icons-react/dist/esm/icons/IconSparkles.mjs";
 import IconStar from "@tabler/icons-react/dist/esm/icons/IconStar.mjs";
 import IconTrendingUp from "@tabler/icons-react/dist/esm/icons/IconTrendingUp.mjs";
 import IconX from "@tabler/icons-react/dist/esm/icons/IconX.mjs";
@@ -99,21 +96,21 @@ const quickActions = [
     label: "Plan Event",
     icon: IconCalendarEvent,
     href: "/events",
-    gradient: "from-purple-500 to-pink-500",
+    gradient: "from-[#8a68c0] to-[#6f52a3]",
     description: "Create and manage",
   },
   {
     label: "View Bookings",
     icon: IconConfetti,
     href: "/bookings",
-    gradient: "from-emerald-500 to-teal-600",
+    gradient: "from-[#6f52a3] to-[#4b3480]",
     description: "Track status",
   },
   {
     label: "My Reviews",
     icon: IconStar,
     href: "/reviews",
-    gradient: "from-amber-500 to-orange-500",
+    gradient: "from-[#9b7ed4] to-[#8a68c0]",
     description: "Rate vendors",
   },
 ];
@@ -122,25 +119,25 @@ const spendingBreakdown = [
   {
     label: "Catering",
     percent: 40,
-    color: "from-indigo-500 to-purple-500",
+    color: "from-[#6f52a3] to-[#4b3480]",
     amount: "RM 1,800",
   },
   {
     label: "Photography",
     percent: 25,
-    color: "from-pink-500 to-rose-400",
+    color: "from-[#8a68c0] to-[#6f52a3]",
     amount: "RM 1,125",
   },
   {
     label: "Venue and Decor",
     percent: 20,
-    color: "from-emerald-500 to-teal-400",
+    color: "from-[#9b7ed4] to-[#8a68c0]",
     amount: "RM 900",
   },
   {
     label: "Entertainment",
     percent: 15,
-    color: "from-amber-500 to-orange-400",
+    color: "from-[#b39be0] to-[#9b7ed4]",
     amount: "RM 675",
   },
 ];
@@ -180,7 +177,7 @@ const UserDashboard = () => {
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery] = useState("");
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -224,7 +221,7 @@ const UserDashboard = () => {
       change: "+2 this month",
       positive: true,
       icon: <IconCalendarEvent size={22} />,
-      gradient: "from-indigo-500 to-purple-600",
+      gradient: "from-[#6f52a3] to-[#4b3480]",
     },
     {
       label: "Total Spent",
@@ -233,7 +230,7 @@ const UserDashboard = () => {
       change: "+RM 1,200 this month",
       positive: true,
       icon: <IconCurrencyDollar size={22} />,
-      gradient: "from-emerald-500 to-teal-600",
+      gradient: "from-[#8a68c0] to-[#6f52a3]",
     },
     {
       label: "Pending Actions",
@@ -242,7 +239,7 @@ const UserDashboard = () => {
       change: pendingCount > 0 ? "Needs attention" : "All clear",
       positive: pendingCount === 0,
       icon: <IconAlertCircle size={22} />,
-      gradient: "from-amber-500 to-orange-500",
+      gradient: "from-[#9b7ed4] to-[#8a68c0]",
     },
     {
       label: "Confirmed Bookings",
@@ -251,7 +248,7 @@ const UserDashboard = () => {
       change: confirmedCount > 0 ? "On your calendar" : "Nothing confirmed yet",
       positive: true,
       icon: <IconStar size={22} />,
-      gradient: "from-pink-500 to-rose-500",
+      gradient: "from-[#b39be0] to-[#9b7ed4]",
     },
   ];
 
@@ -264,54 +261,20 @@ const UserDashboard = () => {
   );
 
   return (
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex-none border-b border-gray-100 bg-white px-4 py-4 shadow-sm sm:px-6 md:pl-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0 pt-12 md:pt-0">
-              <h1 className="text-lg font-bold text-gray-900 sm:text-xl">
-                Hello, {userName.split(" ")[0]}
-              </h1>
-              <p className="mt-0.5 text-xs text-gray-400">{dateStr}</p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-              <div className="relative flex items-center sm:min-w-[240px] sm:flex-1 lg:max-w-xs lg:flex-none">
-                <IconSearch
-                  size={15}
-                  className="pointer-events-none absolute left-3 text-gray-400"
-                />
-                <input
-                  type="text"
-                  placeholder="Search bookings..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-9 pr-4 text-sm transition-all focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-500 transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600">
-                  <IconBell size={17} />
-                  {pendingCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                      {pendingCount}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => navigate("/marketplace")}
-                  className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:opacity-90 hover:shadow-lg sm:flex-none"
-                >
-                  <IconSparkles size={15} />
-                  <span>Find Vendors</span>
-                </button>
-              </div>
-            </div>
+      <div className="space-y-6">
+        {/* Lightweight greeting */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">
+              Hello, {userName.split(" ")[0]}
+            </h1>
+            <p className="mt-0.5 text-xs text-gray-400">{dateStr}</p>
           </div>
-        </header>
 
-        <div className="flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
+
+        </div>
+
+        <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {stats.map((stat, index) => (
               <motion.div
@@ -320,7 +283,7 @@ const UserDashboard = () => {
                 variants={fadeUp}
                 initial="hidden"
                 animate="visible"
-                className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5"
+                className="rounded-2xl border border-[#e4d9f5] bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div
@@ -775,7 +738,7 @@ const UserDashboard = () => {
             </div>
           </div>
         </div>
-      </main>
+      </div>
   );
 };
 

@@ -155,13 +155,16 @@ const ProductCard: React.FC<{ item: MarketplaceService; priority: boolean }> = (
     const [imageLoaded, setImageLoaded] = useState(false);
     const imageUrl = getServiceImageUrl(item);
     const rating = item.rating_average == null ? null : Number(item.rating_average);
+    const priceParts = item.price.split('/');
+    const mainPrice = priceParts[0];
+    const perText = priceParts[1] ? `/${priceParts[1]}` : '';
 
     return (
         <article
             onClick={() => navigate(`/marketplace/${item.id}`)}
-            className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white text-left shadow-[0_8px_30px_rgba(36,28,58,0.04)] transition duration-300 hover:-translate-y-1 hover:border-[#6f52a3]/30 hover:shadow-[0_18px_40px_rgba(62,44,91,0.12)]"
+            className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-[24px] border border-slate-100 bg-white text-left shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.08)]"
         >
-            <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+            <div className="relative h-44 w-full shrink-0 overflow-hidden bg-slate-100">
                 {!imageLoaded && <div className="absolute inset-0 animate-pulse bg-slate-100" />}
                 <img
                     src={imageUrl}
@@ -176,46 +179,57 @@ const ProductCard: React.FC<{ item: MarketplaceService; priority: boolean }> = (
                         }
                         setImageLoaded(true);
                     }}
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
                 />
-                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/35 to-transparent" />
-                <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#62458f] shadow-sm backdrop-blur">
-                    {item.category}
-                </span>
-                <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-[#211a2f]/85 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur">
-                    <BadgeCheck className="h-3.5 w-3.5 text-emerald-300" />
-                    Verified provider
-                </span>
             </div>
 
-            <div className="flex flex-1 flex-col p-4">
-                <h3 className="line-clamp-2 min-h-12 text-base font-bold leading-6 text-slate-900 transition-colors group-hover:text-[#62458f]">
-                    {item.title}
-                </h3>
-                <p className="mt-1 line-clamp-1 text-xs font-medium text-slate-500">{item.vendor}</p>
-
-                <div className="mt-3 flex items-center justify-between gap-2 text-xs">
-                    <span className="flex min-w-0 items-center gap-1 text-slate-500">
-                        <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                        <span className="truncate">{item.location}</span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-1 font-semibold text-slate-700">
-                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                        {rating == null ? 'New' : rating.toFixed(1)}
-                        {item.review_count > 0 && (
-                            <span className="font-normal text-slate-400">({item.review_count})</span>
-                        )}
+            <div className="flex flex-1 flex-col p-5">
+                <div className="flex items-start justify-between gap-3">
+                    <h3 className="break-words font-serif text-[17px] font-bold leading-snug text-[#2c2c2c]">
+                        {item.title}
+                    </h3>
+                    <span className="shrink-0 rounded-full bg-slate-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 ring-1 ring-slate-200/50">
+                        {item.category}
                     </span>
                 </div>
 
-                <div className="mt-auto flex items-end justify-between gap-3 border-t border-slate-100 pt-4">
-                    <div className="min-w-0">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">From</p>
-                        <p className="truncate text-base font-extrabold text-[#55367f]">{item.price}</p>
+                <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+                    <BadgeCheck className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>Verified provider</span>
+                </div>
+
+                <p className="mt-3 line-clamp-1 text-[13px] text-slate-500">{item.vendor}</p>
+
+                <div className="mt-auto pt-4">
+                    <div className="mb-5 flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-1.5 truncate text-[13px] text-slate-500">
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                            <span className="truncate">{item.location}</span>
+                        </span>
+                        <span className="flex items-center gap-1 text-[13px] font-bold text-slate-700">
+                            <Star className="h-4 w-4 fill-[#F59E0B] text-[#F59E0B]" />
+                            {rating == null ? 'New' : rating.toFixed(1)}
+                            {item.review_count > 0 && (
+                                <span className="ml-0.5 font-medium text-slate-400">({item.review_count})</span>
+                            )}
+                        </span>
                     </div>
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f1ecf8] text-[#62458f] transition group-hover:bg-[#62458f] group-hover:text-white">
-                        <ArrowRight className="h-4 w-4" />
-                    </span>
+
+                    <div className="flex items-end justify-between border-t border-slate-100/80 pt-5">
+                        <div>
+                            <p className="text-lg font-extrabold text-[#2c2c2c]">
+                                {mainPrice.trim()}
+                                {perText && (
+                                    <span className="ml-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                                        {perText}
+                                    </span>
+                                )}
+                            </p>
+                        </div>
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-100 bg-slate-50 text-slate-400 transition-all duration-300 group-hover:border-[#2c2c2c] group-hover:bg-[#2c2c2c] group-hover:text-white">
+                            <ArrowRight className="h-4 w-4" />
+                        </span>
+                    </div>
                 </div>
             </div>
         </article>
@@ -223,13 +237,25 @@ const ProductCard: React.FC<{ item: MarketplaceService; priority: boolean }> = (
 };
 
 const ProductSkeleton = () => (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div className="aspect-[4/3] animate-pulse bg-slate-100" />
-        <div className="space-y-3 p-4">
-            <div className="h-5 w-4/5 animate-pulse rounded bg-slate-100" />
-            <div className="h-4 w-1/2 animate-pulse rounded bg-slate-100" />
-            <div className="h-px bg-slate-100" />
-            <div className="h-5 w-2/3 animate-pulse rounded bg-slate-100" />
+    <div className="flex h-full flex-col overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-[0_2px_15px_-3px_rgba(0,0,0,0.03)]">
+        <div className="h-44 w-full shrink-0 animate-pulse bg-slate-100" />
+        <div className="flex flex-1 flex-col p-5">
+            <div className="flex justify-between gap-3">
+                <div className="h-6 w-3/4 animate-pulse rounded-md bg-slate-100" />
+                <div className="h-5 w-16 shrink-0 animate-pulse rounded-full bg-slate-100" />
+            </div>
+            <div className="mt-2.5 h-3 w-1/3 animate-pulse rounded bg-slate-100" />
+            <div className="mt-3 h-4 w-1/2 animate-pulse rounded bg-slate-100" />
+            <div className="mt-auto pt-4">
+                <div className="mb-5 flex justify-between">
+                    <div className="h-4 w-1/4 animate-pulse rounded bg-slate-100" />
+                    <div className="h-4 w-1/4 animate-pulse rounded bg-slate-100" />
+                </div>
+                <div className="flex items-end justify-between border-t border-slate-100 pt-5">
+                    <div className="h-6 w-1/3 animate-pulse rounded-md bg-slate-100" />
+                    <div className="h-9 w-9 animate-pulse rounded-full bg-slate-100" />
+                </div>
+            </div>
         </div>
     </div>
 );
@@ -504,7 +530,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                     <>
                         <section className="relative overflow-hidden bg-[#282033]">
                             <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_top_right,#b9a0d6,transparent_35%),radial-gradient(circle_at_bottom_left,#7e5ba7,transparent_30%)]" />
-                            <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-5 py-12 sm:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:px-10 lg:py-16">
+                            <div className="relative mx-auto grid max-w-[1536px] w-[90%] lg:w-[80%] items-center gap-10 py-12 lg:grid-cols-[1.08fr_0.92fr] lg:py-16">
                                 <div className="max-w-2xl">
                                     <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-violet-100">
                                         <ShieldCheck className="h-4 w-4 text-emerald-300" />
@@ -573,7 +599,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                         </section>
 
                         <section aria-labelledby="categories-heading" className="border-b border-slate-200 bg-white">
-                            <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 lg:px-10">
+                            <div className="mx-auto max-w-[1536px] w-[90%] lg:w-[80%] py-7">
                                 <div className="mb-5 flex items-end justify-between gap-4">
                                     <div>
                                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#76539f]">Browse faster</p>
@@ -608,7 +634,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                     </>
                 ) : (
                     <section className="border-b border-slate-200 bg-white">
-                        <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 lg:px-10">
+                        <div className="mx-auto max-w-[1536px] w-[90%] lg:w-[80%] py-7">
                             <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#76539f]">Acara Marketplace</p>
@@ -672,7 +698,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                 )}
 
                 <section id="services" className="scroll-mt-24">
-                    <div className={`mx-auto max-w-7xl px-5 sm:px-8 lg:px-10 ${isLanding ? 'py-10 lg:py-14' : 'py-8 lg:py-10'}`}>
+                    <div className={`mx-auto max-w-[1536px] w-[90%] lg:w-[80%] ${isLanding ? 'py-10 lg:py-14' : 'py-8 lg:py-10'}`}>
                         <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                             <div>
                                 {isLanding && (
@@ -768,7 +794,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                                         </button>
                                     </div>
                                 ) : loading ? (
-                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                                         {Array.from({ length: 6 }).map((_, index) => <ProductSkeleton key={index} />)}
                                     </div>
                                 ) : sortedServices.length === 0 ? (
@@ -781,7 +807,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className={`grid grid-cols-1 gap-4 transition-opacity sm:grid-cols-2 xl:grid-cols-3 ${updating ? 'opacity-55' : 'opacity-100'}`}>
+                                    <div className={`grid grid-cols-1 gap-5 transition-opacity sm:grid-cols-2 xl:grid-cols-3 ${updating ? 'opacity-55' : 'opacity-100'}`}>
                                         {sortedServices.map((item, index) => (
                                             <ProductCard key={item.id} item={item} priority={index < 3} />
                                         ))}
@@ -818,7 +844,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
 
                 {isLanding && (
                     <section className="bg-white">
-                        <div className="mx-auto grid max-w-7xl gap-6 px-5 py-10 sm:grid-cols-3 sm:px-8 lg:px-10">
+                        <div className="mx-auto grid max-w-[1536px] gap-6 w-[90%] lg:w-[80%] py-10 sm:grid-cols-3">
                             {[
                                 { icon: BadgeCheck, title: 'Approved providers', text: 'Every listing is reviewed before it appears in the marketplace.' },
                                 { icon: ShieldCheck, title: 'Protected booking flow', text: 'Your request, quotation and booking history stay together in Acara.' },
@@ -839,15 +865,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                 )}
             </main>
 
-            {isLanding ? (
-                <Footer />
-            ) : (
-                <footer className="border-t border-slate-200 bg-white">
-                    <div className="mx-auto max-w-7xl px-5 py-5 text-center text-xs font-medium text-slate-500 sm:px-8 lg:px-10">
-                        &copy; {new Date().getFullYear()} Acara. All rights reserved.
-                    </div>
-                </footer>
-            )}
+            <Footer />
 
             {mobileFiltersOpen && (
                 <div className="fixed inset-0 z-[70] lg:hidden">

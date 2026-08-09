@@ -176,7 +176,7 @@ const AdminBookingDetail = () => {
 
   return (
     <main className="min-w-0 flex-1 overflow-y-auto bg-slate-100">
-      <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col gap-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto flex min-h-full w-full max-w-[1536px] flex-col gap-5 p-4 sm:p-6 lg:p-8">
         <Link to="/admin/bookings" className="inline-flex w-fit items-center gap-2 text-sm font-bold text-slate-500 transition hover:text-indigo-700">
           <IconArrowLeft size={18} /> Back to Booking Orders
         </Link>
