@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
@@ -272,6 +272,10 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
     const [maxPrice, setMaxPrice] = useState('');
     const [sort, setSort] = useState<SortOption>('recommended');
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+    const [navHidden, setNavHidden] = useState(false);
+    const [headerStuck, setHeaderStuck] = useState(false);
+    const headerSentinelRef = useRef<HTMLDivElement>(null);
+    const headerZoneRef = useRef<HTMLDivElement>(null);
     const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({
         search: initialSearch,
         category: '',
@@ -298,6 +302,63 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
 
         return () => window.clearTimeout(syncFromUrl);
     }, [searchParams]);
+
+    // ── Catalog-only: smart navbar hide / show on scroll ───────────────
+    useEffect(() => {
+        if (isLanding) return;
+        let lastY = window.scrollY;
+        let consecutiveUp = 0;
+
+        const onScroll = () => {
+            const y = window.scrollY;
+            const dy = y - lastY;
+            if (dy > 5) {
+                consecutiveUp = 0;
+                if (headerStuck) setNavHidden(true);
+            } else if (dy < -3) {
+                consecutiveUp++;
+                if (consecutiveUp >= 2) setNavHidden(false);
+            }
+            if (y < 50) { setNavHidden(false); consecutiveUp = 0; }
+            lastY = y;
+        };
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, [isLanding, headerStuck]);
+
+    // Apply navbar transform
+    useEffect(() => {
+        if (isLanding) return;
+        const el = document.getElementById('main-navbar');
+        if (!el) return;
+        el.style.transform = navHidden ? 'translateY(-100%)' : 'translateY(0)';
+        return () => { if (el) el.style.transform = ''; };
+    }, [navHidden, isLanding]);
+
+    // Detect sticky state via IntersectionObserver sentinel
+    useEffect(() => {
+        if (isLanding) return;
+        const sentinel = headerSentinelRef.current;
+        if (!sentinel) return;
+        const obs = new IntersectionObserver(
+            ([e]) => setHeaderStuck(!e.isIntersecting),
+            { threshold: 0, rootMargin: '-1px 0px 0px 0px' },
+        );
+        obs.observe(sentinel);
+        return () => obs.disconnect();
+    }, [isLanding]);
+
+    // Track header zone height for sidebar sticky offset
+    useEffect(() => {
+        if (isLanding || !headerZoneRef.current) return;
+        const obs = new ResizeObserver((entries) => {
+            const h = entries[0]?.borderBoxSize?.[0]?.blockSize ?? entries[0]?.contentRect.height ?? 120;
+            document.documentElement.style.setProperty('--sticky-header-h', `${h}px`);
+        });
+        obs.observe(headerZoneRef.current);
+        return () => { obs.disconnect(); document.documentElement.style.removeProperty('--sticky-header-h'); };
+    }, [isLanding]);
 
     const marketplaceParams = useMemo(
         () => buildMarketplaceParams(appliedFilters),
@@ -633,71 +694,81 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                         </section>
                     </>
                 ) : (
-                    <section className="border-b border-slate-200 bg-white">
-                        <div className="mx-auto max-w-[1536px] w-[90%] lg:w-[80%] py-7">
-                            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                                <div>
-                                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#76539f]">Acara Marketplace</p>
-                                    <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-slate-950">Find event services</h1>
-                                </div>
-                                <form
-                                    onSubmit={(event) => {
-                                        event.preventDefault();
-                                        applyFilters();
-                                    }}
-                                    className="flex w-full max-w-2xl gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 transition focus-within:border-[#8062ad]/60 focus-within:bg-white focus-within:ring-4 focus-within:ring-[#8062ad]/10"
-                                >
-                                    <label className="flex min-w-0 flex-1 items-center gap-3 px-3">
-                                        <Search className="h-5 w-5 shrink-0 text-[#75559e]" />
-                                        <span className="sr-only">Search event services</span>
-                                        <input
-                                            type="search"
-                                            value={search}
-                                            onChange={(event) => setSearch(event.target.value)}
-                                            placeholder="Search services or vendors"
-                                            className="h-11 w-full min-w-0 border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
-                                        />
-                                    </label>
-                                    <button
-                                        type="submit"
-                                        className="h-11 rounded-xl bg-[#2a2139] px-5 text-sm font-bold text-white transition hover:bg-[#62458f]"
-                                    >
-                                        Search
-                                    </button>
-                                </form>
-                            </div>
+                    <>
+                        {/* Sentinel – when this scrolls out of view the header enters sticky mode */}
+                        <div ref={headerSentinelRef} aria-hidden="true" />
 
-                            <div className="-mx-1 mt-5 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Service categories">
-                                <button
-                                    onClick={() => selectCategory('')}
-                                    className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition ${
-                                        serviceType === ''
-                                            ? 'border-[#62458f] bg-[#62458f] text-white'
-                                            : 'border-slate-200 bg-white text-slate-600 hover:border-[#8062ad]/50 hover:text-[#62458f]'
-                                    }`}
-                                >
-                                    All services
-                                </button>
-                                {categoryOptions.map(({ label, value, icon: Icon }) => (
+                        {/* ═══ Sticky catalog header zone ═══ */}
+                        <section
+                            ref={headerZoneRef}
+                            className={`sticky top-0 z-40 border-b bg-white transition-shadow duration-300 ${headerStuck ? 'shadow-[0_4px_20px_rgba(0,0,0,0.06)]' : 'border-slate-200'}`}
+                        >
+                            <div className="mx-auto max-w-[1536px] w-[90%] lg:w-[80%]">
+                                {/* Title + search: stacked normally, side-by-side when condensed */}
+                                <div className={`transition-all duration-300 ease-out ${headerStuck ? 'flex items-center gap-5 py-3' : 'py-7'}`}>
+                                    <div className={headerStuck ? 'shrink-0' : ''}>
+                                        <p className={`text-xs font-bold uppercase tracking-[0.16em] text-[#76539f] transition-all duration-200 ${headerStuck ? 'hidden' : ''}`}>
+                                            Acara Marketplace
+                                        </p>
+                                        <h1 className={`font-extrabold tracking-tight text-slate-950 transition-all duration-300 ${headerStuck ? 'text-lg' : 'mt-1 text-3xl'}`}>
+                                            Find event services
+                                        </h1>
+                                    </div>
+
+                                    <form
+                                        onSubmit={(event) => { event.preventDefault(); applyFilters(); }}
+                                        className={`flex gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 transition-all duration-300 focus-within:border-[#8062ad]/60 focus-within:bg-white focus-within:ring-4 focus-within:ring-[#8062ad]/10 ${headerStuck ? 'flex-1' : 'mt-4 w-full max-w-2xl'}`}
+                                    >
+                                        <label className="flex min-w-0 flex-1 items-center gap-3 px-3">
+                                            <Search className="h-5 w-5 shrink-0 text-[#75559e]" />
+                                            <span className="sr-only">Search event services</span>
+                                            <input
+                                                type="search"
+                                                value={search}
+                                                onChange={(event) => setSearch(event.target.value)}
+                                                placeholder="Search services or vendors"
+                                                className="h-11 w-full min-w-0 border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                                            />
+                                        </label>
+                                        <button type="submit" className="h-11 rounded-xl bg-[#2a2139] px-5 text-sm font-bold text-white transition hover:bg-[#62458f]">
+                                            Search
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* Category pills */}
+                                <div className={`-mx-1 flex gap-2 overflow-x-auto px-1 transition-all duration-300 ${headerStuck ? 'pb-2.5' : 'pb-5'}`} aria-label="Service categories">
                                     <button
-                                        key={value}
-                                        onClick={() => selectCategory(value)}
-                                        className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition ${
-                                            serviceType === value
+                                        onClick={() => selectCategory('')}
+                                        className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition ${
+                                            serviceType === ''
                                                 ? 'border-[#62458f] bg-[#62458f] text-white'
                                                 : 'border-slate-200 bg-white text-slate-600 hover:border-[#8062ad]/50 hover:text-[#62458f]'
                                         }`}
                                     >
-                                        <Icon className="h-3.5 w-3.5" />
-                                        {label}
+                                        All services
                                     </button>
-                                ))}
+                                    {categoryOptions.map(({ label, value, icon: Icon }) => (
+                                        <button
+                                            key={value}
+                                            onClick={() => selectCategory(value)}
+                                            className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition ${
+                                                serviceType === value
+                                                    ? 'border-[#62458f] bg-[#62458f] text-white'
+                                                    : 'border-slate-200 bg-white text-slate-600 hover:border-[#8062ad]/50 hover:text-[#62458f]'
+                                            }`}
+                                        >
+                                            <Icon className="h-3.5 w-3.5" />
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    </section>
+                        </section>
+                    </>
                 )}
 
-                <section id="services" className="scroll-mt-24">
+                <section id="services" style={isLanding ? undefined : { scrollMarginTop: 'var(--sticky-header-h, 120px)' }}>
                     <div className={`mx-auto max-w-[1536px] w-[90%] lg:w-[80%] ${isLanding ? 'py-10 lg:py-14' : 'py-8 lg:py-10'}`}>
                         <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                             <div>
@@ -709,7 +780,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                                         ? `Results for “${appliedFilters.search}”`
                                         : isLanding
                                             ? 'Services for your next event'
-                                            : 'All services'}
+                                            : 'Available services'}
                                 </h2>
                                 <p className="mt-1 text-sm text-slate-500">
                                     {loading
@@ -747,7 +818,10 @@ const Marketplace: React.FC<MarketplaceProps> = ({ variant = 'catalog' }) => {
                         </div>
 
                         <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-                            <aside className="sticky top-28 hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(36,28,58,0.04)] lg:block">
+                            <aside
+                                className="sticky hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(36,28,58,0.04)] lg:block"
+                                style={{ top: isLanding ? '7rem' : 'calc(var(--sticky-header-h, 120px) + 16px)' }}
+                            >
                                 {filterPanel}
                             </aside>
 

@@ -155,7 +155,7 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-[0_4px_18px_rgba(36,28,58,0.05)]">
+      <header id="main-navbar" className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-[0_4px_18px_rgba(36,28,58,0.05)] transition-transform duration-300">
         <div className="hidden bg-[#251d31] text-slate-300 lg:block">
           <div className="mx-auto flex h-8 max-w-[1536px] items-center justify-between w-[90%] lg:w-[80%] text-[11px] font-medium">
             <div className="flex items-center gap-5">
