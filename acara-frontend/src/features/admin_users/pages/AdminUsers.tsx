@@ -13,6 +13,7 @@ import {
   IconSearch,
   IconShieldCheck,
   IconUserCheck,
+  IconUserPlus,
   IconUsers,
 } from "@tabler/icons-react";
 import Loader from "../../../components/common/Loader";
@@ -84,6 +85,7 @@ const StatCard = ({ label, value, detail, icon: Icon, tone }: {
 const AdminUsers = () => {
   usePageTitle("User Management");
   const navigate = useNavigate();
+  const isSuperAdmin = localStorage.getItem("role") === "super_admin";
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search.trim());
   const [role, setRole] = useState("all");
@@ -146,9 +148,21 @@ const AdminUsers = () => {
               Review account standing, verification and platform activity before taking a documented moderation action.
             </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Records shown</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-950">{meta.total}</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => navigate("/admin/register")}
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-indigo-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-800 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+              >
+                <IconUserPlus size={18} aria-hidden="true" />
+                Invite admin
+              </button>
+            )}
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Records shown</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-950">{meta.total}</p>
+            </div>
           </div>
         </header>
 
