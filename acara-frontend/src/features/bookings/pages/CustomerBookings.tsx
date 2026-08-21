@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import type { AxiosError } from "axios";
@@ -563,6 +563,7 @@ const BookingDetailRecord = ({
   quotationActionPending,
   completionActionPending,
   openConversation,
+  mobileConversation,
 }: {
   booking: BookingItem;
   onCancel: (id: number) => void;
@@ -575,6 +576,7 @@ const BookingDetailRecord = ({
   quotationActionPending: boolean;
   completionActionPending: boolean;
   openConversation: boolean;
+  mobileConversation: boolean;
 }) => {
   const navigate = useNavigate();
   const canCancel =
@@ -589,12 +591,51 @@ const BookingDetailRecord = ({
   const requiresCompletionDecision = booking.status === "completion_pending";
   const vendorName = booking.vendor_name || booking.vendor || "Vendor";
 
+  useEffect(() => {
+    if (!mobileConversation) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") navigate(`/bookings/${booking.id}`);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileConversation, navigate, booking.id]);
+
+  const suggestedReplies = [
+    ...(booking.payment_status && !["paid", "completed"].includes(booking.payment_status.toLowerCase())
+      ? [{ label: "Ask about payment", message: "Hi, just checking in on the payment for this booking. Please let me know if you need anything from me.", danger: true }]
+      : []),
+    ...(booking.status === "confirmed" && (new Date(`${booking.selected_date}T00:00:00`).getTime() - new Date().setHours(0, 0, 0, 0)) <= 14 * 86_400_000
+      ? [{ label: "Confirm timing", message: "Hi, I would like to confirm the timing and arrangements for the upcoming event." }]
+      : []),
+    { label: "Share booking details", message: "Hi, here are the latest details for our booking. Please let me know if anything needs to be updated." },
+  ];
+
+  if (mobileConversation) {
+    return (
+      <section className="min-h-[calc(100vh-10rem)]">
+        <button type="button" onClick={() => navigate(`/bookings/${booking.id}`)} className="mb-4 inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-bold text-slate-600 outline-none transition hover:bg-indigo-50 hover:text-indigo-700 focus-visible:ring-4 focus-visible:ring-indigo-100">
+          <IconChevronRight size={17} className="rotate-180" />
+          Back to booking
+        </button>
+        <div className="h-[calc(100vh-13rem)] min-h-[520px]">
+          <BookingConversation
+            bookingId={booking.id}
+            messageCount={booking.message_count}
+            unreadCount={booking.unread_message_count}
+            title={`Conversation with ${vendorName}`}
+            suggestedReplies={suggestedReplies}
+          />
+        </div>
+      </section>
+    );
+  }
+
   return (
     <motion.article
       layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]"
+      className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.72fr)_minmax(360px,1fr)]"
     >
       <div className="min-w-0 space-y-5">
         {booking.status === "expired" && (
@@ -698,24 +739,48 @@ const BookingDetailRecord = ({
           )}
         </RecordSection>
 
-        <RecordSection
-          eyebrow="Communication"
-          title={`Conversation with ${vendorName}`}
-          description="Keep booking decisions and service discussions attached to this record."
-        >
-          <div>
-            <BookingConversation
-              bookingId={booking.id}
-              defaultOpen={openConversation}
-              messageCount={booking.message_count}
-              unreadCount={booking.unread_message_count}
-              title={`Conversation with ${vendorName}`}
-            />
-          </div>
-        </RecordSection>
+        {(booking.timeline?.length ?? 0) > 0 && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">Audit trail</p>
+            <h2 className="mt-1 text-base font-bold text-slate-900">Booking activity</h2>
+            <div className="mt-5 border-t border-slate-100 pt-5">
+              <BookingTimeline events={booking.timeline ?? []} />
+            </div>
+          </section>
+        )}
       </div>
 
-      <aside className="space-y-5 xl:sticky xl:top-6">
+      <aside className="space-y-5 xl:sticky xl:top-5">
+        <button
+          type="button"
+          onClick={() => navigate(`/bookings/${booking.id}/messages`)}
+          className="flex w-full items-center gap-3 rounded-2xl border border-indigo-100 bg-white p-4 text-left shadow-sm outline-none transition hover:border-indigo-200 hover:bg-indigo-50/60 focus-visible:ring-4 focus-visible:ring-indigo-100 lg:hidden"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
+            <IconMessageCircle size={18} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-black text-slate-900">Conversation with {vendorName}</span>
+            <span className="mt-0.5 block text-xs text-slate-500">
+              {(booking.unread_message_count ?? 0) > 0 ? `${booking.unread_message_count} unread message${booking.unread_message_count === 1 ? "" : "s"}` : "View messages for this booking"}
+            </span>
+          </span>
+          {(booking.unread_message_count ?? 0) > 0 && (
+            <span className="shrink-0 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">{booking.unread_message_count}</span>
+          )}
+          <IconChevronRight size={17} className="shrink-0 text-slate-300" />
+        </button>
+
+        <div className="hidden h-[calc(100vh-40px)] min-h-[600px] max-h-[760px] lg:block">
+          <BookingConversation
+            bookingId={booking.id}
+            defaultOpen={openConversation}
+            messageCount={booking.message_count}
+            unreadCount={booking.unread_message_count}
+            title={`Conversation with ${vendorName}`}
+            suggestedReplies={suggestedReplies}
+          />
+        </div>
         <section className={`rounded-2xl border bg-white p-5 shadow-sm ${requiresQuotationDecision || requiresCompletionDecision ? "border-amber-200" : "border-slate-200"}`}>
           <div className="flex items-start gap-3">
             <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${requiresQuotationDecision || requiresCompletionDecision ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
@@ -845,16 +910,6 @@ const BookingDetailRecord = ({
           )}
           </div>
         </section>
-
-        {(booking.timeline?.length ?? 0) > 0 && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-indigo-600">Audit trail</p>
-            <h2 className="mt-1 text-base font-bold text-slate-900">Booking activity</h2>
-            <div className="mt-5 border-t border-slate-100 pt-5">
-              <BookingTimeline events={booking.timeline ?? []} />
-            </div>
-          </section>
-        )}
       </aside>
     </motion.article>
   );
@@ -862,6 +917,7 @@ const BookingDetailRecord = ({
 
 const CustomerBookings = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { bookingId: bookingIdParam } = useParams();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -873,6 +929,7 @@ const CustomerBookings = () => {
 
   const bookingId = Number(bookingIdParam);
   const isDetailRoute = bookingIdParam !== undefined;
+  const isMobileMessagesRoute = location.pathname.endsWith("/messages");
   const validBookingId = Number.isInteger(bookingId) && bookingId > 0;
 
   const bookingListQuery = useQuery({
@@ -1074,6 +1131,30 @@ const CustomerBookings = () => {
 
     const displayAmount = detailBooking.quotation?.total_amount ?? detailBooking.price_value;
 
+    if (isMobileMessagesRoute) {
+      return (
+        <main className="flex-1 bg-[#f7f8fc] px-4 py-6 md:px-8">
+          <div className="mx-auto w-full max-w-2xl">
+            <BookingDetailRecord
+              booking={detailBooking}
+              onCancel={handleCancel}
+              onReschedule={openReschedule}
+              onWithdrawReschedule={handleWithdrawReschedule}
+              onQuotationAction={openQuotationAction}
+              onCompletionAction={openCompletionAction}
+              cancelling={cancelMutation.isPending && cancelMutation.variables === detailBooking.id}
+              withdrawing={withdrawMutation.isPending && withdrawMutation.variables === detailBooking.id}
+              quotationActionPending={quotationMutation.isPending && quotationMutation.variables?.booking.id === detailBooking.id}
+              completionActionPending={completionMutation.isPending && completionMutation.variables?.booking.id === detailBooking.id}
+              openConversation
+              mobileConversation
+            />
+          </div>
+          {bookingDialogs}
+        </main>
+      );
+    }
+
     return (
       <main className="flex-1 overflow-y-auto bg-[#f7f8fc]">
         <div className="mx-auto flex w-full max-w-[1536px] flex-col gap-5 px-4 py-6 md:px-8">
@@ -1147,6 +1228,7 @@ const CustomerBookings = () => {
             quotationActionPending={quotationMutation.isPending && quotationMutation.variables?.booking.id === detailBooking.id}
             completionActionPending={completionMutation.isPending && completionMutation.variables?.booking.id === detailBooking.id}
             openConversation={searchParams.get("conversation") === "1"}
+            mobileConversation={false}
           />
         </div>
         {bookingDialogs}

@@ -10,6 +10,7 @@ import {
   Search,
   ShoppingBag,
   Bell,
+  MessageCircle,
   UserRound,
   X,
   Receipt,
@@ -21,6 +22,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { fetchUnreadNotificationCount } from '../../notifications/api';
+import { fetchVendorConversationSummaries } from '../../bookings/api';
 import NotificationPopover from '../../notifications/components/NotificationPopover';
 import CartDrawer from './cartdrawer';
 
@@ -60,6 +62,14 @@ const Navbar = () => {
     enabled: !!token,
   });
   const unreadCount = notificationCountData?.unread_count ?? 0;
+  const { data: conversationSummaryData } = useQuery({
+    queryKey: ["vendor-booking-conversations"],
+    queryFn: fetchVendorConversationSummaries,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    enabled: !!token && role === "vendor",
+  });
+  const unreadConversationCount = conversationSummaryData?.unread_count ?? 0;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -276,6 +286,21 @@ const Navbar = () => {
               Browse
             </button>
 
+            {token && role === "vendor" && (
+              <button
+                onClick={() => goTo('/dashboard/messages')}
+                className={`relative flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-bold transition ${location.pathname.startsWith('/dashboard/messages') ? 'bg-[#f1ecf8] text-[#62458f]' : 'text-slate-600 hover:bg-[#f1ecf8] hover:text-[#62458f]'}`}
+              >
+                <MessageCircle className="h-4 w-4" />
+                Messages
+                {unreadConversationCount > 0 && (
+                  <span className="flex min-w-4 items-center justify-center rounded-full border-2 border-white bg-rose-500 px-1 text-[9px] font-black text-white">
+                    {unreadConversationCount > 9 ? "9+" : unreadConversationCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {token ? (
               <>
                 <div className="relative flex items-center justify-center">
@@ -453,6 +478,13 @@ const Navbar = () => {
                 <Search className="h-4 w-4 text-[#6f52a3]" />
                 Browse services
               </button>
+              {token && role === "vendor" && (
+                <button onClick={() => goTo('/dashboard/messages')} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50">
+                  <MessageCircle className="h-4 w-4 text-[#6f52a3]" />
+                  Messages
+                  {unreadConversationCount > 0 && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-black text-white">{unreadConversationCount > 9 ? "9+" : unreadConversationCount}</span>}
+                </button>
+              )}
               <button onClick={() => goTo('/register')} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-slate-700 hover:bg-slate-50">
                 <BriefcaseBusiness className="h-4 w-4 text-[#6f52a3]" />
                 List your service

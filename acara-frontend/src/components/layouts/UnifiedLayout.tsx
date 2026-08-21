@@ -4,12 +4,10 @@ import Navbar from "../../features/header/pages/navbar";
 import Footer from "../common/Footer";
 import AccountTabBar from "../common/AccountTabBar";
 import CartDrawer from "../../features/header/pages/cartdrawer";
-import VendorMessageLauncher from "../../features/bookings/components/VendorMessageLauncher";
 
 const UnifiedLayout = () => {
     const [cartOpen, setCartOpen] = useState(false);
     const isCustomer = ["user", "vendor"].includes(localStorage.getItem("role") ?? "");
-    const isVendor = localStorage.getItem("role") === "vendor";
 
     return (
         <div className="flex min-h-screen flex-col bg-[#f7f6fb]">
@@ -27,9 +25,8 @@ const UnifiedLayout = () => {
             {/* Same footer as marketplace */}
             <Footer />
 
-            {/* Drawers and floating elements */}
+            {/* Drawers */}
             {isCustomer && <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />}
-            {isVendor && <VendorMessageLauncher />}
         </div>
     );
 };

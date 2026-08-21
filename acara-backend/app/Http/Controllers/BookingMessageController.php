@@ -65,7 +65,7 @@ class BookingMessageController extends Controller
 
         return response()->json([
             'conversations' => $bookings,
-            'unread_count' => $bookings->sum('unread_message_count'),
+            'unread_count' => $bookings->where('unread_message_count', '>', 0)->count(),
         ]);
     }
 

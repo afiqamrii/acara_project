@@ -373,3 +373,20 @@ export const fetchVendorConversationSummaries = async (): Promise<VendorConversa
   const res = await api.get<VendorConversationSummariesResponse>("/vendor/booking-conversations");
   return res.data;
 };
+
+export type VendorInboxBooking = {
+  id: number;
+  booking_reference?: string;
+  service_name: string;
+  selected_date: string;
+  price?: string;
+  price_value?: number;
+  total_amount?: number;
+  payment_status?: string;
+  status: BookingStatus;
+};
+
+export const fetchVendorInboxBookings = async (): Promise<{ bookings: VendorInboxBooking[] }> => {
+  const res = await api.get<{ bookings: VendorInboxBooking[] }>("/vendor/bookings");
+  return res.data;
+};

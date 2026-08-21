@@ -28,6 +28,7 @@ const ServiceVerificationQueue = lazy(() => import('./features/dashboard/pages/S
 const UserProfile = lazy(() => import('./features/profile/pages/UserProfile'));
 const VendorDashboard = lazy(() => import('./features/dashboard/pages/VendorDashboard'));
 const CustomerBookings = lazy(() => import('./features/bookings/pages/CustomerBookings'));
+const VendorMessages = lazy(() => import('./features/bookings/pages/VendorMessages'));
 const AdminBookings = lazy(() => import('./features/bookings/pages/AdminBookings'));
 const AdminBookingDetail = lazy(() => import('./features/bookings/pages/AdminBookingDetail'));
 const NotificationCenter = lazy(() => import('./features/notifications/pages/NotificationCenter'));
@@ -63,16 +64,19 @@ function App() {
 
             <Route element={<ProtectedRoute><UnifiedLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<ProtectedRoute requiredRole={["user", "vendor"]}><UserDashboard /></ProtectedRoute>} />
+              <Route path="/dashboard/messages" element={<ProtectedRoute requiredRole={["vendor"]}><VendorMessages /></ProtectedRoute>} />
               <Route path="/vendor/dashboard" element={<ProtectedRoute requiredRole={["vendor"]}><VendorDashboard /></ProtectedRoute>} />
               <Route path="/vendor/register" element={<ProtectedRoute requiredRole={["user", "vendor"]}><VendorRegister /></ProtectedRoute>} />
               <Route path="/vendor/availability" element={<ProtectedRoute requiredRole={["vendor"]}><VendorAvailability /></ProtectedRoute>} />
               <Route path="/vendor/bookings" element={<ProtectedRoute requiredRole={["vendor"]}><VendorBookings /></ProtectedRoute>} />
               <Route path="/vendor/bookings/:bookingId" element={<ProtectedRoute requiredRole={["vendor"]}><VendorBookings /></ProtectedRoute>} />
+              <Route path="/vendor/bookings/:bookingId/messages" element={<ProtectedRoute requiredRole={["vendor"]}><VendorBookings /></ProtectedRoute>} />
               <Route path="/vendor/services" element={<ProtectedRoute requiredRole={["vendor"]}><VendorServices /></ProtectedRoute>} />
               <Route path="/service/register" element={<ProtectedRoute requiredRole={["vendor"]}><ServiceRegister /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute requiredRole={["user", "vendor"]}><ComingSoon title="My Events" description="Manage all your upcoming and past events in one place. Create, edit, and track event status seamlessly." /></ProtectedRoute>} />
               <Route path="/bookings" element={<ProtectedRoute requiredRole={["user", "vendor"]}><CustomerBookings /></ProtectedRoute>} />
               <Route path="/bookings/:bookingId" element={<ProtectedRoute requiredRole={["user", "vendor"]}><CustomerBookings /></ProtectedRoute>} />
+              <Route path="/bookings/:bookingId/messages" element={<ProtectedRoute requiredRole={["user", "vendor"]}><CustomerBookings /></ProtectedRoute>} />
               <Route path="/reviews" element={<ProtectedRoute requiredRole={["user", "vendor"]}><ReviewsPage /></ProtectedRoute>} />
               <Route path="/notifications" element={<NotificationCenter />} />
               <Route path="/profile" element={<UserProfile />} />
